@@ -74,7 +74,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-primary to-primary/80 text-primary-foreground py-12 md:py-20">
+      <section className="bg-primary text-primary-foreground py-12 md:py-20">
         <div className="container mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             <motion.div
@@ -102,7 +102,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
                 <Button 
                   size="lg"
                   variant="outline"
-                  className="border-white text-white bg-primary/80 hover:bg-white hover:text-primary transition-colors duration-200 flex-1"
+                  className="border-primary-foreground text-primary-foreground bg-primary/80 hover:bg-primary-foreground hover:text-primary transition-colors duration-200 flex-1"
                   onClick={() => onNavigate('auth')}
                 >
                   Sell
