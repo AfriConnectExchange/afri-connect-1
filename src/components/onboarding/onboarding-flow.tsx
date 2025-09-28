@@ -33,7 +33,7 @@ export function OnboardingFlow() {
       setUserData((prev) => ({
         ...prev,
         full_name: user?.user_metadata.full_name || user?.email || '',
-        phone_number: user?.phone || '',
+        phone_number: user?.user_metadata.phone_number || '',
         location: user?.user_metadata.location || '',
       }));
     };
