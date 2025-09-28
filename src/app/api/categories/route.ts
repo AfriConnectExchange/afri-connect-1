@@ -12,14 +12,19 @@ export async function GET() {
     return NextResponse.json({ error: categoriesError.message }, { status: 500 });
   }
 
-  // We will need to get counts later. For now, it's a placeholder.
+  // Fetch all products to calculate counts
   const { data: productsData, error: productsError } = await supabase
     .from('products')
-    .select('id');
+    .select('category_id');
 
+  if (productsError) {
+    return NextResponse.json({ error: productsError.message }, { status: 500 });
+  }
+
+  // Calculate the count for each category
   const mappedCategories = categoriesData.map((c: any) => ({
     ...c,
-    count: Math.floor(Math.random() * 200), // Placeholder count
+    count: productsData?.filter(p => p.category_id === c.id).length || 0,
   }));
 
   const allCategories = [
