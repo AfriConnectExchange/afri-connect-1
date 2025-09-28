@@ -11,8 +11,9 @@ import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
 import { type User, type Session } from '@supabase/supabase-js';
+import OTPVerification from '@/components/auth/OTPVerification';
 
-type AuthMode = 'signin' | 'signup' | 'awaiting-verification';
+type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
 export default function Home() {
   const supabase = createClient();
@@ -25,6 +26,7 @@ export default function Home() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     acceptTerms: false,
@@ -69,7 +71,7 @@ export default function Home() {
     }));
   };
 
-  const handleRegistration = async () => {
+  const handleEmailRegistration = async () => {
     if (formData.password !== formData.confirmPassword) {
       showAlert('destructive', 'Error', 'Passwords do not match.');
       return;
@@ -99,8 +101,61 @@ export default function Home() {
     }
     setIsLoading(false);
   };
+  
+    const handlePhoneRegistration = async () => {
+    if (!formData.phone) {
+      showAlert('destructive', 'Error', 'Phone number is required.');
+      return;
+    }
+     if (formData.password !== formData.confirmPassword) {
+      showAlert('destructive', 'Error', 'Passwords do not match.');
+      return;
+    }
+    if (!formData.acceptTerms) {
+      showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
+      return;
+    }
+    setIsLoading(true);
+    
+    const { data, error } = await supabase.auth.signUp({
+        phone: formData.phone,
+        password: formData.password,
+        options: {
+            data: {
+                full_name: formData.name,
+            }
+        }
+    });
 
-  const handleLogin = async () => {
+    if (error) {
+        showAlert('destructive', 'Registration Failed', error.message);
+        setIsLoading(false);
+    } else {
+        showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
+        setAuthMode('otp');
+        setIsLoading(false);
+    }
+  };
+  
+  const handleOtpVerification = async (otp: string) => {
+    setIsLoading(true);
+    const { data, error } = await supabase.auth.verifyOtp({
+        phone: formData.phone,
+        token: otp,
+        type: 'sms',
+    });
+
+    if (error) {
+        showAlert('destructive', 'Verification Failed', error.message);
+        setIsLoading(false);
+    } else {
+        showAlert('default', 'Verification Successful!', 'You are now logged in.');
+        router.refresh();
+    }
+  }
+
+
+  const handleEmailLogin = async () => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
@@ -121,6 +176,28 @@ export default function Home() {
        router.refresh();
     }
   };
+  
+  const handlePhoneLogin = async () => {
+    if (!formData.phone) {
+      showAlert('destructive', 'Error', 'Phone number is required.');
+      return;
+    }
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.signInWithOtp({
+        phone: formData.phone,
+    });
+
+    if (error) {
+        showAlert('destructive', 'Failed to Send OTP', error.message);
+        setIsLoading(false);
+    } else {
+        showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
+        setAuthMode('otp');
+        setIsLoading(false);
+    }
+  };
+
 
   if (!isClient) {
     return <PageLoader />;
@@ -137,7 +214,8 @@ export default function Home() {
             showPassword={showPassword}
             setShowPassword={setShowPassword}
             isLoading={isLoading}
-            handleLogin={handleLogin}
+            handleEmailLogin={handleEmailLogin}
+            handlePhoneLogin={handlePhoneLogin}
             onSwitch={() => handleSwitchMode('signup')}
           />
         );
@@ -151,7 +229,8 @@ export default function Home() {
             showConfirmPassword={showConfirmPassword}
             setShowConfirmPassword={setShowConfirmPassword}
             isLoading={isLoading}
-            handleRegistration={handleRegistration}
+            handleEmailRegistration={handleEmailRegistration}
+            handlePhoneRegistration={handlePhoneRegistration}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
@@ -163,6 +242,16 @@ export default function Home() {
             isVerifying={isLoading}
           />
         );
+       case 'otp':
+        return (
+            <OTPVerification
+                formData={formData}
+                handleOTPComplete={handleOtpVerification}
+                handleResendOTP={handlePhoneLogin}
+                isLoading={isLoading}
+                onBack={() => setAuthMode('signin')}
+            />
+        )
       default:
         return null;
     }
@@ -170,7 +259,7 @@ export default function Home() {
 
   return (
     <div className="w-full bg-background">
-      <div className="relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 p-0">
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
           {authBgImage && (
             <Image
@@ -198,7 +287,7 @@ export default function Home() {
           </div>
         </div>
         <div className="p-4 lg:p-8 flex items-center justify-center">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
             {renderAuthCard()}
           </div>
         </div>
