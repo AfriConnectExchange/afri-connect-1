@@ -197,7 +197,7 @@ export default function Home() {
             </blockquote>
           </div>
         </div>
-        <div className="hidden lg:flex items-center justify-center p-8">
+        <div className="lg:p-8 flex items-center justify-center">
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
             {renderAuthCard()}
           </div>
