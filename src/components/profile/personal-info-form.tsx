@@ -72,12 +72,12 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         return;
     }
 
+    // Do not update phone number here. It requires a separate verification flow.
     const { error } = await supabase.auth.updateUser({
         data: { 
             full_name: values.full_name,
             location: values.location,
-        },
-        phone: values.phone
+        }
     });
     
     if (error) {
