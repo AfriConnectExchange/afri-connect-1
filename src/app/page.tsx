@@ -13,9 +13,10 @@ import { useFirebase } from '@/firebase';
 import { 
   signInWithEmailAndPassword, 
   GoogleAuthProvider, 
-  signInWithPopup 
+  signInWithPopup,
+  UserCredential
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 
 type AuthMode = 'signin' | 'signup' | 'otp';
@@ -40,23 +41,30 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  useEffect(() => {
-    const checkUserAndRedirect = async () => {
-      if (user) {
-        // If user is logged in, check onboarding status and redirect
-        const profileDoc = await getDoc(doc(firestore, "profiles", user.uid));
-
-        if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
-          router.push('/marketplace');
-        } else {
-          router.push('/onboarding');
-        }
+  const handleSuccessfulLogin = async (loggedInUser: any) => {
+    const profileDoc = await getDoc(doc(firestore, "profiles", loggedInUser.uid));
+    if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
+      router.push('/marketplace');
+    } else {
+      // If the user is new from a social login, we might need to create their profile doc first.
+      if (!profileDoc.exists()) {
+          await setDoc(doc(firestore, "profiles", loggedInUser.uid), {
+            id: loggedInUser.uid,
+            full_name: loggedInUser.displayName,
+            email: loggedInUser.email,
+            role_id: 1, // Default role to 'buyer'
+            onboarding_completed: false, 
+        });
       }
-    };
-    if (!isUserLoading) {
-        checkUserAndRedirect();
+      router.push('/onboarding');
     }
-  }, [user, isUserLoading, firestore, router]);
+  };
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+        handleSuccessfulLogin(user);
+    }
+  }, [user, isUserLoading]);
 
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
@@ -126,8 +134,8 @@ export default function Home() {
   const handleEmailLogin = async () => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      // onAuthStateChange will handle the redirect in the useEffect hook
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      // Let the useEffect handle the redirect after state update
     } catch (error: any) {
        showAlert('destructive', 'Login Failed', error.message);
        setIsLoading(false);
@@ -149,8 +157,9 @@ export default function Home() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-        await signInWithPopup(auth, provider);
-        // onAuthStateChange will handle the redirect
+        const userCredential = await signInWithPopup(auth, provider);
+        // Explicitly handle successful login here instead of relying on useEffect
+        await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
         showAlert('destructive', 'Google Login Failed', error.message);
         setIsLoading(false);
