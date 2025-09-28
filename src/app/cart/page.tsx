@@ -2,26 +2,38 @@
 import { useState, useEffect } from 'react';
 import { CartPageComponent } from '@/components/cart/cart-page';
 import type { CartItem } from '@/components/cart/cart-page';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
-import type { Product } from '@/app/marketplace/page';
 import { useToast } from '@/hooks/use-toast';
 
 export default function CartPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
-  // This state will eventually be replaced by a global state manager
+  
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   
   useEffect(() => {
     // In a real app, this would be fetched from a global state store.
-    // For now, we simulate adding some items to the cart for demonstration.
-    const mockCart: CartItem[] = [];
-    setCartItems(mockCart);
-  }, []);
+    // For now, we simulate receiving items from the previous page via search params.
+    try {
+        const cartData = searchParams.get('cart');
+        if (cartData) {
+            const items = JSON.parse(cartData);
+            setCartItems(items);
+        }
+    } catch (e) {
+        console.error("Failed to parse cart items from URL", e);
+        setCartItems([]);
+    }
+  }, [searchParams]);
 
   const onNavigate = (page: string) => {
-    router.push(`/${page}`);
+    if (page === 'checkout') {
+         router.push(`/checkout?cart=${encodeURIComponent(JSON.stringify(cartItems))}`);
+    } else {
+        router.push(`/${page}`);
+    }
   };
 
   const handleUpdateCart = (items: CartItem[]) => {

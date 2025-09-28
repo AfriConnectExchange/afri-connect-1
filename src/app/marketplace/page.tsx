@@ -157,6 +157,10 @@ export default function MarketplacePage() {
         return [...prevCart, { ...product, quantity: 1 }];
       }
     });
+    toast({
+        title: "Added to Cart",
+        description: `${product.name} has been added to your cart.`,
+    });
   };
 
   // Filter state

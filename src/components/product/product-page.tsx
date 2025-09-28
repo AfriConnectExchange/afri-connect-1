@@ -118,10 +118,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
   const handleAddToCart = () => {
     onAddToCart({ ...product, quantity });
-    toast({
-        title: "Added to Cart",
-        description: `${product.name} has been added to your cart.`,
-    })
   };
   
   const reviews = [
