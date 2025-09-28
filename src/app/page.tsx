@@ -16,9 +16,7 @@ type AuthMode = 'signin' | 'signup' | 'awaiting-verification';
 
 export default function Home() {
   const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const [isClient, setIsClient] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -35,60 +33,23 @@ export default function Home() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const handleAuthChange = useCallback(
-    async (event: string, session: Session | null) => {
-      setUser(session?.user ?? null);
-      setSession(session);
-      setIsUserLoading(false);
-
-      if (session?.user) {
-        // If user is signed in, check if onboarding is complete
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('onboarding_completed')
-          .eq('id', session.user.id)
-          .single();
-        
-        // This error code means the row doesn't exist yet.
-        // This is expected for a brand new user right after email verification.
-        if (error && error.code === 'PGRST116') {
-          console.log('Profile not found for new user, redirecting to onboarding.');
-          router.push('/onboarding');
-          return;
-        }
-        
-        if (error) {
-            console.error("Error fetching profile:", error);
-            // Optional: show a toast to the user
-            toast({
-                variant: 'destructive',
-                title: 'Error Loading Profile',
-                description: 'Could not load your profile. Please try again.'
-            });
-            return;
-        }
-
-        if (data && data.onboarding_completed) {
-          router.push('/marketplace');
-        } else {
-          router.push('/onboarding');
-        }
-      }
-    },
-    [router, supabase, toast]
-  );
 
   useEffect(() => {
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(handleAuthChange);
+    // This ensures the component only renders on the client, avoiding hydration errors
+    // with authentication logic.
+    setIsClient(true);
+    
+    // Check if the user is already logged in, the middleware should handle redirects,
+    // but this can provide a smoother experience if the user lands here momentarily.
+    const checkUser = async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+            router.replace('/marketplace');
+        }
+    }
+    checkUser();
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, handleAuthChange]);
-
+  }, [router, supabase]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -154,9 +115,12 @@ export default function Home() {
         } else {
             showAlert('destructive', 'Login Failed', error.message);
         }
-    } 
-    // The onAuthStateChange listener will handle the redirect on success.
-    setIsLoading(false);
+        setIsLoading(false);
+    } else {
+       // On successful login, the middleware will handle the redirect.
+       // We can force a reload to trigger the middleware check.
+       router.refresh();
+    }
   };
   
   const handleGoogleLogin = async () => {
@@ -170,12 +134,12 @@ export default function Home() {
     setIsLoading(false);
   };
 
+  if (!isClient) {
+    return <PageLoader />;
+  }
+
 
   const renderAuthCard = () => {
-    if (isUserLoading || session?.user) {
-      return <PageLoader />;
-    }
-
     switch (authMode) {
       case 'signin':
         return (
@@ -208,7 +172,7 @@ export default function Home() {
           <CheckEmailCard
             email={formData.email}
             onBack={() => setAuthMode('signin')}
-            isVerifying={false} // This component is now just for display
+            isVerifying={isLoading}
           />
         );
       default:
