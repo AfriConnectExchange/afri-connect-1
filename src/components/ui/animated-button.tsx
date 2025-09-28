@@ -42,7 +42,10 @@ const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>(
             <Loader2 className="animate-spin h-5 w-5" />
           </div>
         )}
-        <span className={cn(isLoading ? 'opacity-0' : 'opacity-100')}>
+        <span className={cn(
+          'flex items-center justify-center gap-2',
+          isLoading ? 'opacity-0' : 'opacity-100'
+          )}>
           {children}
         </span>
       </Button>
