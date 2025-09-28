@@ -89,12 +89,12 @@ export function ProfilePage() {
               </div>
 
               <TabsContent value="profile" className="space-y-6 mt-0">
-                 <PersonalInfoForm user={user} onFeedback={handleFeedback} />
+                 <PersonalInfoForm onFeedback={handleFeedback} />
                  <AccountRoleForm onFeedback={handleFeedback} />
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6 mt-0">
-                <PreferencesForm user={user} onFeedback={handleFeedback} />
+                <PreferencesForm onFeedback={handleFeedback} />
               </TabsContent>
 
               <TabsContent value="account" className="space-y-6 mt-0">
