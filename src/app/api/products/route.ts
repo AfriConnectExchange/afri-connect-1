@@ -15,6 +15,7 @@ export async function GET() {
     .eq('status', 'active');
 
   if (productsError) {
+    console.error('Error fetching products:', productsError);
     return NextResponse.json({ error: productsError.message }, { status: 500 });
   }
 
