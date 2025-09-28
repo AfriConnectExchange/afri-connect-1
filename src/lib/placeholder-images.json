@@ -1,34 +1,16 @@
 {
   "placeholderImages": [
     {
-      "id": "item-1",
-      "description": "Handmade African Jewelry",
-      "imageUrl": "https://images.unsplash.com/photo-1648176504950-c26dd4867443?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8aGFuZG1hZGUlMjBqZXdlbHJ5fGVufDB8fHx8MTc1ODk2MTcwNnww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "handmade jewelry"
-    },
-    {
-      "id": "item-2",
-      "description": "Custom Tailoring Services",
-      "imageUrl": "https://images.unsplash.com/photo-1753162660010-b8f4fe074fa6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHx0YWlsb3IlMjBmYWJyaWN8ZW58MHx8fHwxNzU4OTYxNzA3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "tailor fabric"
-    },
-    {
-      "id": "item-3",
-      "description": "Organic Farm Produce Box",
-      "imageUrl": "https://images.unsplash.com/photo-1696586838934-2ec48f193cfc?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx2ZWdldGFibGUlMjBib3h8ZW58MHx8fHwxNzU4OTYxNzA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "vegetable box"
-    },
-    {
-      "id": "item-4",
-      "description": "Graphic Design for Startups",
-      "imageUrl": "https://images.unsplash.com/photo-1683921012865-7a1bc200bf28?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxsYXB0b3AlMjBkZXNpZ258ZW58MHx8fHwxNzU4OTYxNzA2fDA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "laptop design"
+      "id": "auth-background",
+      "description": "Background image for the authentication screen",
+      "imageUrl": "https://images.unsplash.com/photo-1571624436279-b272aff752b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtb2Rlcm4lMjBvZmZpY2V8ZW58MHx8fHwxNzU4NzA5NzgyfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "modern office"
     },
     {
       "id": "user-avatar",
-      "description": "User avatar placeholder",
-      "imageUrl": "https://images.unsplash.com/photo-1586297135537-94bc9ba060aa?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx1c2VyJTIwYXZhdGFyfGVufDB8fHx8MTc1ODkyODk3NHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "user avatar"
+      "description": "Default user avatar",
+      "imageUrl": "https://images.unsplash.com/photo-1619895862022-09114b41f16f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxwcm9maWxlJTIwcGljdHVyZXxlbnwwfHx8fDE3NTg3MDMwNjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "profile picture"
     }
   ]
 }
