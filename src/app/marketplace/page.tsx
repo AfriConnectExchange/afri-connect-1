@@ -36,7 +36,7 @@ export interface Product {
   listing_type: 'sale' | 'barter' | 'freebie';
   status: 'active' | 'sold' | 'delisted';
   images: string[]; // Assuming images are an array of URLs
-  location: any; // Or a more specific type for GeoJSON
+  location_text: string; 
   created_at: string;
   updated_at: string;
   
