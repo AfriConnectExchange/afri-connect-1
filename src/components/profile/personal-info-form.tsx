@@ -16,8 +16,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
-import { useFirebase } from '@/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
 
 const formSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters.'),
@@ -32,7 +31,7 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const { user, firestore } = useFirebase();
+  const supabase = createClient();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -46,34 +45,45 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
   });
 
   useEffect(() => {
-    if (!user) return;
     const fetchProfile = async () => {
       setIsLoading(true);
-      const docRef = doc(firestore, "profiles", user.uid);
-      const docSnap = await getDoc(docRef);
-      
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        // In a real app, you'd fetch this from your 'profiles' table.
+        // For now, we use the auth user metadata.
         form.reset({
-          full_name: data.full_name || user.displayName || '',
-          phone: data.phone || user.phoneNumber || '',
-          location: data.location || '',
+          full_name: user.user_metadata.full_name || user.email || '',
+          phone: user.phone || '',
+          location: user.user_metadata.location || '',
         });
       }
       setIsLoading(false);
     };
     fetchProfile();
-  }, [user, firestore, form]);
+  }, [supabase, form]);
 
   const onSubmit = async (values: PersonalInfoFormValues) => {
-    if (!user) return;
     setIsSaving(true);
-    const docRef = doc(firestore, "profiles", user.uid);
-    try {
-        await updateDoc(docRef, values);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+        onFeedback('error', 'You must be logged in to update your profile.');
+        setIsSaving(false);
+        return;
+    }
+
+    const { error } = await supabase.auth.updateUser({
+        data: { 
+            full_name: values.full_name,
+            location: values.location,
+        },
+        phone: values.phone
+    });
+    
+    if (error) {
+        onFeedback('error', error.message);
+    } else {
         onFeedback('success', 'Profile updated successfully!');
-    } catch(e: any) {
-        onFeedback('error', e.message || 'Failed to update profile.');
     }
     setIsSaving(false);
   };

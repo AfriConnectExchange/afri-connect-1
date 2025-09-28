@@ -23,7 +23,6 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import type { CartItem } from '@/components/cart/cart-page';
-import { useFirebase } from '@/firebase';
 
 export interface Product {
   id: number;
@@ -58,7 +57,6 @@ export interface FilterState {
 }
 
 export default function MarketplacePage() {
-  const { user } = useFirebase();
   const router = useRouter();
   const { toast } = useToast();
   

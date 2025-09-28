@@ -1,6 +1,6 @@
 'use client';
 
-import type { User as FirebaseUser } from 'firebase/auth';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { Mail, Phone, MapPin, User, Settings, Receipt, LogOut } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,12 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 import { useState, useEffect } from 'react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { cn } from '@/lib/utils';
-import { useFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-
+import { createClient } from '@/lib/supabase/client';
 
 interface ProfileSummaryCardProps {
-  user: FirebaseUser;
+  user: SupabaseUser;
   onNavigate: (page: string) => void;
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -40,25 +38,23 @@ const getRoleLabel = (roleId?: number) => {
 };
 
 export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }: ProfileSummaryCardProps) {
-  const { auth, firestore } = useFirebase();
+  const supabase = createClient();
   const { toast } = useToast();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const docRef = doc(firestore, "profiles", user.uid);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        setUserProfile(docSnap.data());
-      }
+      // In a real app, you would fetch profile data from your 'profiles' table in Supabase
+      // For now, we use user metadata
+      setUserProfile(user.user_metadata);
     };
     fetchProfile();
-  }, [user.uid, firestore]);
+  }, [user]);
 
   const handleSignOut = async () => {
     try {
-      await auth.signOut();
+      await supabase.auth.signOut();
       toast({
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
@@ -75,7 +71,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
     }
   };
 
-  const userName = userProfile?.full_name || user.displayName || 'Unnamed User';
+  const userName = userProfile?.full_name || user.email || 'Unnamed User';
   
   const menuItems = [
     { id: 'profile', label: 'Edit Profile', icon: User },
@@ -89,7 +85,7 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
         <CardContent className="pt-6">
           <div className="text-center">
             <Avatar className="w-20 h-20 mx-auto mb-4 border-2 border-primary/20 p-1">
-              <AvatarImage src={userProfile?.avatar_url || user.photoURL || undefined} alt={userName} />
+              <AvatarImage src={userProfile?.avatar_url || undefined} alt={userName} />
               <AvatarFallback className="text-2xl bg-muted">
                 {userName?.split(' ').map(n => n[0]).join('').toUpperCase() || 'A'}
               </AvatarFallback>

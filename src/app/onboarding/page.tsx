@@ -3,34 +3,29 @@ import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { PageLoader } from '@/components/ui/loader';
-import { useFirebase } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { createClient } from '@/lib/supabase/client';
 
 export default function OnboardingPage() {
-    const { user, isUserLoading, firestore } = useFirebase();
+    const supabase = createClient();
     const router = useRouter();
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (isUserLoading) return;
-
-        if (!user) {
-            router.push('/');
-            return;
-        }
-
-        const checkOnboarding = async () => {
-            const profileRef = doc(firestore, "profiles", user.uid);
-            const profileSnap = await getDoc(profileRef);
-
-            if (profileSnap.exists() && profileSnap.data().onboarding_completed) {
-                router.push('/marketplace');
+        const checkUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                router.push('/');
+            } else {
+                // Here you could also check if onboarding is already complete
+                // and redirect to marketplace if so.
+                setIsLoading(false);
             }
         };
 
-        checkOnboarding();
-    }, [user, isUserLoading, firestore, router]);
+        checkUser();
+    }, [supabase, router]);
 
-    if(isUserLoading || !user) {
+    if(isLoading) {
          return <PageLoader />;
     }
   

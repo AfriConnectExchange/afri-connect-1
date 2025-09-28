@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
-import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'AfriConnect Exchange',
@@ -29,12 +28,10 @@ export default function RootLayout({
           'min-h-screen bg-background font-body antialiased'
         )}
       >
-        <FirebaseClientProvider>
-            <div className="container mx-auto px-4">
-            {children}
-            </div>
-            <Toaster />
-        </FirebaseClientProvider>
+        <div className="container mx-auto px-4">
+        {children}
+        </div>
+        <Toaster />
       </body>
     </html>
   );

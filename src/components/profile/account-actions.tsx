@@ -7,14 +7,15 @@ import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
+import { createClient } from '@/lib/supabase/client';
+
 
 interface AccountActionsProps {
   onFeedback: (type: 'success' | 'error', message: string) => void;
 }
 
 export function AccountActions({ onFeedback }: AccountActionsProps) {
-  const { auth } = useFirebase();
+  const supabase = createClient();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -27,7 +28,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   
   const confirmDeactivate = async () => {
      try {
-      await auth.signOut();
+      await supabase.auth.signOut();
       toast({ title: 'Account Deactivated', description: 'You have been signed out. Sign in again to reactivate.' });
       router.push('/');
     } catch (e: any) {
@@ -42,21 +43,10 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   };
 
   const confirmDelete = async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      onFeedback('error', 'User not found.');
-      setShowDeleteConfirm(false);
-      return;
-    }
-    
-    try {
-        await user.delete();
-        toast({ title: 'Account Deleted', description: 'Your account has been permanently deleted.' });
-        router.push('/');
-    } catch(e: any) {
-        onFeedback('error', `Could not delete account: ${e.message}. This may require a recent sign-in.`);
-    }
-
+    onFeedback('error', 'Account deletion is a server-side operation and not implemented in this demo.');
+    // In a real app, this would call a Supabase Edge Function to delete user data
+    // from all tables before deleting the auth user.
+    // const { error } = await supabase.rpc('delete_user_account');
     setShowDeleteConfirm(false);
   };
 

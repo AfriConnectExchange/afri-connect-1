@@ -1,15 +1,21 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 
 export async function GET(request: Request) {
-  // This route is now primarily for handling OAuth callbacks from Firebase.
-  // The actual session management and profile creation logic is best handled 
-  // on the client-side after the redirect from the OAuth provider.
-  
   const { searchParams, origin } = new URL(request.url);
+  const code = searchParams.get('code');
+  // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/';
-  
-  // The Firebase client SDK will handle the session persistence.
-  // We just redirect the user to their intended destination.
-  // If it's a new user, client-side logic will redirect to onboarding.
-  return NextResponse.redirect(`${origin}${next}`);
+
+  if (code) {
+    const supabase = createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error) {
+      // Redirect to the originally intended page or the marketplace
+      return NextResponse.redirect(`${origin}${next}`);
+    }
+  }
+
+  // return the user to an error page with instructions
+  return NextResponse.redirect(`${origin}/auth/auth-code-error`);
 }

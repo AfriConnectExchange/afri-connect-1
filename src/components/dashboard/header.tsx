@@ -9,7 +9,6 @@ import {
   Bell,
   TrendingUp,
   HelpCircle,
-  Gift,
   LogOut,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -22,7 +21,8 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useFirebase } from '@/firebase';
+import { createClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 
 interface HeaderProps {
@@ -30,11 +30,24 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
+  const supabase = createClient();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, auth } = useFirebase();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
+  
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user ?? null);
+      }
+    );
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, [supabase]);
   
   useEffect(() => {
     if (cartCount > 0) {
@@ -45,7 +58,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    await auth.signOut();
+    await supabase.auth.signOut();
     router.push('/');
   }
 

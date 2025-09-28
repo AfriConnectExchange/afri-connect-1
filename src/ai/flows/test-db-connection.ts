@@ -1,58 +1,79 @@
+import * as React from "react"
 
-'use server';
-/**
- * @fileOverview A flow to test the database connection.
- */
-import { ai } from '@/ai/genkit';
-import { z } from 'genkit';
-import { Pool } from 'pg';
+import { cn } from "@/lib/utils"
 
-let db: Pool;
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-// This function initializes the database connection pool.
-const initDb = () => {
-  if (db) return;
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-  const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-    host: process.env.DB_HOST || 'localhost', // Default to localhost for proxy
-    port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
-  };
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-  // For production, the host should point to the Cloud SQL socket directory.
-  if (process.env.NODE_ENV === 'production' && process.env.INSTANCE_CONNECTION_NAME) {
-    config.host = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
-  }
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-  db = new Pool(config);
-};
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
 
-// Initialize the database connection when the module is loaded.
-initDb();
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
 
-export async function testDbConnection(): Promise<any> {
-  return testDbConnectionFlow();
-}
-
-const testDbConnectionFlow = ai.defineFlow(
-  {
-    name: 'testDbConnectionFlow',
-    inputSchema: z.void(),
-    outputSchema: z.any(),
-  },
-  async () => {
-    try {
-      const client = await db.connect();
-      const result = await client.query('SELECT NOW()');
-      client.release();
-      return { success: true, dbTime: result.rows[0].now };
-    } catch (error: any) {
-      console.error('Database connection test failed:', error);
-      // Provide a more detailed error message to help diagnose the issue.
-      throw new Error(`Database connection failed: ${error.message}`);
-    }
-  }
-);
-
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

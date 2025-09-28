@@ -16,10 +16,12 @@ import { AnimatedButton } from '../ui/animated-button';
 import { Textarea } from '../ui/textarea';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
+import { createClient } from '@/lib/supabase/client';
+import { useEffect } from 'react';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
-  phoneNumber: z.string().min(10, 'Please enter a valid phone number.'),
+  phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   location: z.string().min(10, 'Please enter a full address.').optional().or(z.literal('')),
 });
 
@@ -33,14 +35,23 @@ interface PersonalDetailsStepProps {
 }
 
 export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }: PersonalDetailsStepProps) {
+  const supabase = createClient();
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      fullName: defaultValues.fullName || '',
-      phoneNumber: defaultValues.phoneNumber || '',
-      location: defaultValues.location || '',
-    },
+    defaultValues,
   });
+  
+  useEffect(() => {
+    const getUserMetadata = async () => {
+      const {data: { user }} = await supabase.auth.getUser();
+      form.reset({
+        fullName: user?.user_metadata.full_name || defaultValues.fullName || '',
+        phoneNumber: user?.phone || defaultValues.phoneNumber || '',
+        location: defaultValues.location || ''
+      })
+    }
+    getUserMetadata();
+  }, [supabase, form, defaultValues])
 
   const onSubmit = (values: PersonalDetailsFormValues) => {
     onUpdate(values);

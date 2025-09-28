@@ -8,26 +8,19 @@ import SignUpCard from '@/components/auth/SignUpCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import OTPVerification from '@/components/auth/OTPVerification';
-import { useFirebase } from '@/firebase';
-import { 
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword, 
-  GoogleAuthProvider, 
-  signInWithPopup,
-  updateProfile,
-  User,
-  getAdditionalUserInfo
-} from 'firebase/auth';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
 
-type AuthMode = 'signin' | 'signup' | 'otp';
+type AuthMode = 'signin' | 'signup';
 
 export default function Home() {
+  const supabase = createClient();
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { auth, firestore, user, isUserLoading } = useFirebase();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -36,32 +29,30 @@ export default function Home() {
     confirmPassword: '',
     acceptTerms: false,
     phone: '',
-    otp: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const handleSuccessfulLogin = async (user: User, isNewUser = false) => {
-    if (isNewUser) {
-        // The onUserCreate Cloud Function will handle profile creation.
-        // We just need to redirect to onboarding.
-        router.push('/onboarding');
-    } else {
-        // For existing users, check if onboarding is complete.
-        // This check can be done on the client or via a backend call.
-        // For now, we will redirect all existing users to the marketplace.
-        router.push('/marketplace');
-    }
-  };
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-        // If there's an authenticated user, redirect them away from the login page.
-        router.push('/marketplace');
-    }
-  }, [user, isUserLoading, router]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+      if (session?.user) {
+        if (event === 'SIGNED_IN') {
+           // For new users, Supabase doesn't immediately tell us if it's their first sign-in on the client.
+           // We'll handle redirection to onboarding after checking their profile status.
+           // For simplicity now, we redirect all signed-in users to the marketplace.
+           // A more robust solution would check a `onboarding_complete` flag in the user's profile.
+           router.push('/marketplace');
+        }
+      }
+    });
 
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -79,10 +70,9 @@ export default function Home() {
       ...prev,
       password: '',
       confirmPassword: '',
-      otp: '',
     }));
   };
-  
+
   const handleEmailRegistration = async () => {
     if (formData.password !== formData.confirmPassword) {
       showAlert('destructive', 'Error', 'Passwords do not match.');
@@ -94,75 +84,56 @@ export default function Home() {
     }
     setIsLoading(true);
 
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-      const user = userCredential.user;
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.name,
+        },
+      },
+    });
 
-      // Update the user's profile with their name in Firebase Auth
-      await updateProfile(user, { displayName: formData.name });
-      
-      // The onUserCreate Cloud Function will now handle creating the profile in Cloud SQL.
-      
-      showAlert('default', 'Registration Successful!', 'Welcome to AfriConnect Exchange!');
-      await handleSuccessfulLogin(user, true); // Pass true for isNewUser
-      
-    } catch (error: any) {
-       showAlert('destructive', 'Registration Failed', error.message);
-    } finally {
-       setIsLoading(false);
+    if (error) {
+      showAlert('destructive', 'Registration Failed', error.message);
+    } else if (data.user) {
+       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+       // The onAuthStateChange listener will handle the redirect.
     }
+    setIsLoading(false);
   };
-  
-  const handlePhoneRegistration = async () => {
-    // Phone registration logic is not implemented yet
-    console.log("Phone registration UI is visible but functionality is disabled for now.");
-  };
-
 
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    try {
-      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      await handleSuccessfulLogin(userCredential.user);
-    } catch (error: any) {
-       showAlert('destructive', 'Login Failed', error.message);
-       setIsLoading(false);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) {
+      showAlert('destructive', 'Login Failed', error.message);
+      setIsLoading(false);
     }
+    // onAuthStateChange handles success
   };
-
-  const handlePhoneLogin = async () => {
-    // Phone login logic is not implemented yet
-    console.log("Phone login UI is visible but functionality is disabled for now.");
-  };
-  
-  const handleOTPComplete = async (otp: string) => {
-     // OTP logic is not implemented yet
-    console.log("OTP UI is visible but functionality is disabled for now.");
-  }
-
   
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-        const result = await signInWithPopup(auth, provider);
-        const additionalInfo = getAdditionalUserInfo(result);
-        await handleSuccessfulLogin(result.user, additionalInfo?.isNewUser);
-    } catch (error: any) {
-        if (error.code !== 'auth/popup-closed-by-user') {
-            showAlert('destructive', 'Google Login Failed', error.message);
-        }
-    } finally {
-        setIsLoading(false);
-    }
-  }
-
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${location.origin}/auth/callback`,
+      },
+    });
+    // The user will be redirected to Google, and then back to our callback route.
+    // The onAuthStateChange listener will then pick up the new session.
+  };
 
   const renderAuthCard = () => {
-    if (isUserLoading || (!isUserLoading && user)) {
-        return <PageLoader />;
+    if (isUserLoading || user) {
+      return <PageLoader />;
     }
-    
+
     switch (authMode) {
       case 'signin':
         return (
@@ -175,7 +146,7 @@ export default function Home() {
             handleEmailLogin={handleEmailLogin}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signup')}
-            handlePhoneLogin={handlePhoneLogin}
+            handlePhoneLogin={() => {}} // Phone login not implemented with Supabase yet
           />
         );
       case 'signup':
@@ -191,18 +162,8 @@ export default function Home() {
             handleEmailRegistration={handleEmailRegistration}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signin')}
-            handlePhoneRegistration={handlePhoneRegistration}
+            handlePhoneRegistration={() => {}} // Phone registration not implemented with Supabase yet
           />
-        );
-      case 'otp':
-        return (
-            <OTPVerification
-                formData={formData}
-                handleOTPComplete={handleOTPComplete}
-                handleResendOTP={handlePhoneLogin} // Resending OTP is the same as initial send
-                isLoading={isLoading}
-                onBack={() => handleSwitchMode('signin')}
-            />
         );
       default:
         return null;

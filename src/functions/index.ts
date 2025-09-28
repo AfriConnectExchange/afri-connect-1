@@ -1,54 +1,79 @@
+import * as React from "react"
 
-import { onUserCreate } from 'firebase-functions/v2/auth';
-import { logger } from 'firebase-functions';
-import { Pool } from 'pg';
-import * as dotenv from 'dotenv';
+import { cn } from "@/lib/utils"
 
-dotenv.config();
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-// Initialize connection pool
-let db: Pool;
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-const initDb = () => {
-    if (db) return;
-    
-    const config = {
-        user: process.env.DB_USER,
-        password: process.env.DB_PASSWORD,
-        database: process.env.DB_DATABASE,
-        host: process.env.DB_HOST || 'localhost',
-        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
-    };
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-    // For production, the host should point to the Cloud SQL socket directory.
-    if (process.env.NODE_ENV === 'production' && process.env.INSTANCE_CONNECTION_NAME) {
-        config.host = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
-    }
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-    db = new Pool(config);
-};
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
 
-initDb();
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
 
-export const createProfile = onUserCreate(async (event) => {
-  const user = event.data;
-  const { uid, email } = user;
-
-  logger.info(`New user created: ${uid}, email: ${email}`);
-
-  const query = {
-    text: 'INSERT INTO profiles(id, email) VALUES($1, $2) ON CONFLICT (id) DO NOTHING',
-    values: [uid, email],
-  };
-
-  try {
-    const client = await db.connect();
-    await client.query(query);
-    client.release();
-    logger.info(`Successfully created profile for user: ${uid}`);
-  } catch (error) {
-    logger.error(`Error creating profile for user: ${uid}`, error);
-    // Depending on your error handling strategy, you might want to re-throw,
-    // or handle it gracefully.
-  }
-});
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

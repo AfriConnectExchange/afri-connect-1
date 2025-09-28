@@ -1,64 +1,79 @@
-'use client';
-import { FirestorePermissionError } from '@/firebase/errors';
+import * as React from "react"
 
-/**
- * Defines the shape of all possible events and their corresponding payload types.
- * This centralizes event definitions for type safety across the application.
- */
-export interface AppEvents {
-  'permission-error': FirestorePermissionError;
-}
+import { cn } from "@/lib/utils"
 
-// A generic type for a callback function.
-type Callback<T> = (data: T) => void;
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-/**
- * A strongly-typed pub/sub event emitter.
- * It uses a generic type T that extends a record of event names to payload types.
- */
-function createEventEmitter<T extends Record<string, any>>() {
-  // The events object stores arrays of callbacks, keyed by event name.
-  // The types ensure that a callback for a specific event matches its payload type.
-  const events: { [K in keyof T]?: Array<Callback<T[K]>> } = {};
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-  return {
-    /**
-     * Subscribe to an event.
-     * @param eventName The name of the event to subscribe to.
-     * @param callback The function to call when the event is emitted.
-     */
-    on<K extends keyof T>(eventName: K, callback: Callback<T[K]>) {
-      if (!events[eventName]) {
-        events[eventName] = [];
-      }
-      events[eventName]?.push(callback);
-    },
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-    /**
-     * Unsubscribe from an event.
-     * @param eventName The name of the event to unsubscribe from.
-     * @param callback The specific callback to remove.
-     */
-    off<K extends keyof T>(eventName: K, callback: Callback<T[K]>) {
-      if (!events[eventName]) {
-        return;
-      }
-      events[eventName] = events[eventName]?.filter(cb => cb !== callback);
-    },
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-    /**
-     * Publish an event to all subscribers.
-     * @param eventName The name of the event to emit.
-     * @param data The data payload that corresponds to the event's type.
-     */
-    emit<K extends keyof T>(eventName: K, data: T[K]) {
-      if (!events[eventName]) {
-        return;
-      }
-      events[eventName]?.forEach(callback => callback(data));
-    },
-  };
-}
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
 
-// Create and export a singleton instance of the emitter, typed with our AppEvents interface.
-export const errorEmitter = createEventEmitter<AppEvents>();
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

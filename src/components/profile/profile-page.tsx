@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,14 +9,32 @@ import { AccountRoleForm } from './account-role-form';
 import { PreferencesForm } from './preferences-form';
 import { AccountActions } from './account-actions';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
+import { createClient } from '@/lib/supabase/client';
+import type { User } from '@supabase/supabase-js';
+
 
 export function ProfilePage() {
-  const { user, isUserLoading } = useFirebase();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
   const router = useRouter();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+      if (!session?.user) {
+        router.push('/');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   const handleFeedback = (type: 'success' | 'error', message: string) => {
     if (type === 'success') {
@@ -41,7 +59,6 @@ export function ProfilePage() {
   }
 
   if (!user) {
-     setTimeout(() => router.push('/'), 100);
      return (
         <div className="flex h-[400px] items-center justify-center">
             <div className="flex items-center gap-2">
