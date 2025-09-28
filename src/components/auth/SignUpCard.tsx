@@ -1,5 +1,6 @@
 'use client';
-import React, { useState } from 'react';
+import React, 'use client';
+import { useState } from 'react';
 import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -8,6 +9,7 @@ import { AnimatedButton } from '../ui/animated-button';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import PhoneInput from 'react-phone-number-input';
+import { PasswordStrength } from './PasswordStrength';
 
 type Props = any;
 
@@ -137,6 +139,7 @@ export default function SignUpCard({
               </button>
             </div>
           </div>
+          <PasswordStrength password={formData.password} />
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
             <div className="relative">
