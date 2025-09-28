@@ -170,7 +170,7 @@ export default function Home() {
 
   return (
     <div className="w-full bg-background">
-      <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
           {authBgImage && (
             <Image
@@ -197,7 +197,7 @@ export default function Home() {
             </blockquote>
           </div>
         </div>
-        <div className="lg:p-8 flex items-center justify-center">
+        <div className="p-4 lg:p-8 flex items-center justify-center">
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
             {renderAuthCard()}
           </div>
