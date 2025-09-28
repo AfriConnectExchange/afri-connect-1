@@ -1,11 +1,13 @@
 'use client';
-import React from 'react';
-import { Mail, Eye, EyeOff, User } from 'lucide-react';
+import React, { useState } from 'react';
+import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { AnimatedButton } from '../ui/animated-button';
 import { Separator } from '../ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import PhoneInput from 'react-phone-number-input';
 
 type Props = any;
 
@@ -18,8 +20,20 @@ export default function SignUpCard({
   setShowConfirmPassword,
   isLoading,
   handleEmailRegistration,
+  handlePhoneRegistration,
   onSwitch,
 }: Props) {
+    const [signupMethod, setSignupMethod] = useState('email');
+
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if(signupMethod === 'email') {
+            handleEmailRegistration();
+        } else {
+            handlePhoneRegistration();
+        }
+    }
+
   return (
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
       <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
@@ -35,20 +49,51 @@ export default function SignUpCard({
         </p>
       </div>
       <div className="p-8">
-        
-        <div className="flex items-center my-6">
-            <Separator className="flex-1" />
-            <span className="mx-4 text-xs text-muted-foreground">SIGN UP WITH EMAIL</span>
-            <Separator className="flex-1" />
-        </div>
 
         <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleEmailRegistration();
-          }}
-          className="space-y-4 pt-4"
+          onSubmit={handleFormSubmit}
+          className="space-y-4"
         >
+         <Tabs value={signupMethod} onValueChange={setSignupMethod} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="email">Email</TabsTrigger>
+                <TabsTrigger value="phone">Phone</TabsTrigger>
+            </TabsList>
+            <TabsContent value="email" className="space-y-4 pt-4">
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        className="pl-10"
+                        value={formData.email}
+                        onChange={(e) =>
+                        setFormData((prev: any) => ({ ...prev, email: e.target.value }))
+                        }
+                        required={signupMethod === 'email'}
+                    />
+                    </div>
+                </div>
+            </TabsContent>
+            <TabsContent value="phone" className="space-y-4 pt-4">
+                <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+                    <PhoneInput
+                        id="phone"
+                        placeholder="Enter your phone number"
+                        international
+                        defaultCountry="GB"
+                        value={formData.phone}
+                        onChange={(value) => setFormData((prev: any) => ({ ...prev, phone: value || ''}))}
+                        required={signupMethod === 'phone'}
+                    />
+                </div>
+            </TabsContent>
+         </Tabs>
+
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
               <div className="relative">
@@ -65,23 +110,7 @@ export default function SignUpCard({
                 />
             </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address</Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                className="pl-10"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData((prev: any) => ({ ...prev, email: e.target.value }))
-                }
-                required
-              />
-            </div>
-          </div>
+          
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <div className="relative">

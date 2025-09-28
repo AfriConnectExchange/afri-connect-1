@@ -6,13 +6,14 @@ import Image from 'next/image';
 import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
 import CheckEmailCard from '@/components/auth/CheckEmailCard';
+import OTPVerification from '@/components/auth/OTPVerification';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
 import { type User, type Session } from '@supabase/supabase-js';
 
-type AuthMode = 'signin' | 'signup' | 'awaiting-verification';
+type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
 export default function Home() {
   const supabase = createClient();
@@ -100,6 +101,55 @@ export default function Home() {
     }
     setIsLoading(false);
   };
+  
+  const handlePhoneRegistration = async () => {
+    if (!formData.phone) {
+        showAlert('destructive', 'Error', 'Please enter a phone number.');
+        return;
+    }
+     if (!formData.acceptTerms) {
+      showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
+      return;
+    }
+    setIsLoading(true);
+
+    const { error } = await supabase.auth.signUp({
+        phone: formData.phone,
+        password: formData.password,
+        options: {
+            data: {
+                full_name: formData.name,
+            }
+        }
+    });
+    
+    if (error) {
+        showAlert('destructive', 'Registration Failed', error.message);
+    } else {
+        setAuthMode('otp');
+    }
+    setIsLoading(false);
+  };
+  
+  const handleOTPComplete = async (otp: string) => {
+    if (otp.length < 6) return;
+    setIsLoading(true);
+    
+    const { error } = await supabase.auth.verifyOtp({
+        phone: formData.phone,
+        token: otp,
+        type: 'sms',
+    });
+    
+    if (error) {
+        showAlert('destructive', 'Verification Failed', error.message);
+    } else {
+        showAlert('default', 'Account Verified!', 'Your account has been successfully created.');
+        router.refresh();
+    }
+    setIsLoading(false);
+  };
+
 
   const handleEmailLogin = async () => {
     setIsLoading(true);
@@ -164,6 +214,7 @@ export default function Home() {
             setShowConfirmPassword={setShowConfirmPassword}
             isLoading={isLoading}
             handleEmailRegistration={handleEmailRegistration}
+            handlePhoneRegistration={handlePhoneRegistration}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
@@ -173,6 +224,16 @@ export default function Home() {
             email={formData.email}
             onBack={() => setAuthMode('signin')}
             isVerifying={isLoading}
+          />
+        );
+       case 'otp':
+        return (
+          <OTPVerification
+            formData={formData}
+            handleOTPComplete={handleOTPComplete}
+            handleResendOTP={handlePhoneRegistration}
+            isLoading={isLoading}
+            onBack={() => setAuthMode('signup')}
           />
         );
       default:
