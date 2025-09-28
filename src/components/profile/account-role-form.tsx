@@ -38,29 +38,52 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      role_id: '1', // Default to 'buyer'
+      role_id: '1',
     },
   });
 
   useEffect(() => {
     const fetchProfile = async () => {
       setIsLoading(true);
-      // In a real app, you'd fetch the role from your 'profiles' table
-      // For now, we'll just simulate loading and use the default.
-      setTimeout(() => {
-          setIsLoading(false);
-      }, 500);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('role_id')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+          form.reset({
+            role_id: String(profile.role_id || '1'),
+          });
+        }
+      }
+      setIsLoading(false);
     };
     fetchProfile();
-  }, [form]);
+  }, [form, supabase]);
 
   const onSubmit = async (values: RoleFormValues) => {
     setIsSaving(true);
-    // In a real app, this would call a Supabase function to update the user's role in the database.
-    // await supabase.rpc('update_user_role', { new_role_id: parseInt(values.role_id) });
-    console.log("Updating role to:", values.role_id);
-    await new Promise(res => setTimeout(res, 1000));
-    onFeedback('success', 'Role updated successfully!');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      onFeedback('error', 'User not found');
+      setIsSaving(false);
+      return;
+    }
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role_id: parseInt(values.role_id) })
+      .eq('id', user.id);
+
+    if (error) {
+      onFeedback('error', error.message);
+    } else {
+      onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
+      setTimeout(() => window.location.reload(), 1500);
+    }
     setIsSaving(false);
   };
   
@@ -79,18 +102,16 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   }
   
   const selectedRole = form.watch('role_id');
-  const selectedRoleName = ['seller', 'sme', 'trainer'].includes(
-      { '2': 'seller', '3': 'sme', '4': 'trainer' }[selectedRole] || ''
-  );
+  const requiresKyc = ['2', '3', '4'].includes(selectedRole);
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Account Role</CardTitle>
-        <CardDescription>Change your account type to access different features.</CardDescription>
-      </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
+          <CardHeader>
+            <CardTitle>Account Role</CardTitle>
+            <CardDescription>Change your account type to access different features.</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
@@ -115,7 +136,7 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
                 </FormItem>
               )}
             />
-             {selectedRoleName && (
+             {requiresKyc && (
                 <Alert>
                     <Shield className="h-4 w-4" />
                     <AlertDescription>

@@ -92,6 +92,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         onFeedback('error', error.message);
     } else {
         onFeedback('success', 'Profile updated successfully!');
+        setTimeout(() => window.location.reload(), 1500);
     }
     setIsSaving(false);
   };
@@ -112,47 +113,49 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Personal Information</CardTitle>
-        <CardDescription>
-          Update your personal details and contact information.
-        </CardDescription>
-      </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
-          <CardContent className="space-y-4">
-             <FormField
-                control={form.control}
-                name="full_name"
-                render={({ field }) => (
+           <CardHeader>
+            <CardTitle>Personal Information</CardTitle>
+            <CardDescription>
+              Update your personal details and contact information.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                    control={form.control}
+                    name="full_name"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                            <Input placeholder="John Doe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                <FormField
+                  control={form.control}
+                  name="phone_number"
+                  render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Full Name</FormLabel>
-                    <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                            id="phone"
+                            placeholder="Enter phone number"
+                            international
+                            defaultCountry="GB"
+                            {...field}
+                          />
+                      </FormControl>
+                      <FormMessage />
                     </FormItem>
-                )}
-            />
-            <FormField
-              control={form.control}
-              name="phone_number"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone Number</FormLabel>
-                  <FormControl>
-                    <PhoneInput
-                        id="phone"
-                        placeholder="Enter phone number"
-                        international
-                        defaultCountry="GB"
-                        {...field}
-                      />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                  )}
+                />
+             </div>
             <FormField
               control={form.control}
               name="location"
