@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { PlusCircle, MoreHorizontal, Search, ListFilter, X } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Search, ListFilter, X, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
