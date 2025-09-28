@@ -4,14 +4,14 @@ import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
 
 interface Props {
-  onComplete: (otp: string) => void;
-  onResend: () => void;
+  formData: any;
+  handleOTPComplete: (otp: string) => void;
+  handleResendOTP: () => void;
   isLoading: boolean;
-  phone: string;
   onBack: () => void;
 }
 
-export function OTPVerification({ onComplete, onResend, isLoading, phone, onBack }: Props) {
+export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, isLoading, onBack }: Props) {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -27,7 +27,7 @@ export function OTPVerification({ onComplete, onResend, isLoading, phone, onBack
       }
 
       if(newOtp.every(digit => digit !== '')) {
-        onComplete(newOtp.join(''));
+        handleOTPComplete(newOtp.join(''));
       }
     }
   };
@@ -51,7 +51,7 @@ export function OTPVerification({ onComplete, onResend, isLoading, phone, onBack
           </AnimatedButton>
           <h2 className="text-2xl font-bold mb-2 pt-8">Verify Your Phone</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Enter the 6-digit code sent to {phone}.
+            Enter the 6-digit code sent to {formData.phone}.
           </p>
 
           <div className="flex justify-center gap-2 mb-6">
@@ -71,7 +71,7 @@ export function OTPVerification({ onComplete, onResend, isLoading, phone, onBack
           </div>
           
           <AnimatedButton
-            onClick={() => onComplete(otp.join(''))}
+            onClick={() => handleOTPComplete(otp.join(''))}
             isLoading={isLoading}
             disabled={otp.some(digit => digit === '')}
             className="w-full"
@@ -82,7 +82,7 @@ export function OTPVerification({ onComplete, onResend, isLoading, phone, onBack
 
           <div className="mt-4 text-sm">
             Didn't receive the code?{' '}
-            <button onClick={onResend} disabled={isLoading} className="text-primary hover:underline font-semibold disabled:text-muted-foreground disabled:cursor-not-allowed">
+            <button onClick={handleResendOTP} disabled={isLoading} className="text-primary hover:underline font-semibold disabled:text-muted-foreground disabled:cursor-not-allowed">
               Resend OTP
             </button>
           </div>

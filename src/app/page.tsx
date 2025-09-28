@@ -200,6 +200,7 @@ export default function Home() {
             setShowPassword={setShowPassword}
             isLoading={isLoading}
             handleEmailLogin={handleEmailLogin}
+            handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signup')}
           />
         );
@@ -215,6 +216,7 @@ export default function Home() {
             isLoading={isLoading}
             handleEmailRegistration={handleEmailRegistration}
             handlePhoneRegistration={handlePhoneRegistration}
+            handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
