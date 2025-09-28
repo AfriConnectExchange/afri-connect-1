@@ -53,25 +53,31 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const handleSuccessfulLogin = async (loggedInUser: any) => {
-    const profileDoc = await getDoc(doc(firestore, "profiles", loggedInUser.uid));
-    if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
-      router.push('/marketplace');
+  const handleSuccessfulLogin = async (loggedInUser: User) => {
+    const profileRef = doc(firestore, "profiles", loggedInUser.uid);
+    const profileSnap = await getDoc(profileRef);
+
+    if (profileSnap.exists() && profileSnap.data().onboarding_completed) {
+        router.push('/marketplace');
     } else {
-      if (!profileDoc.exists()) {
-          await setDoc(doc(firestore, "profiles", loggedInUser.uid), {
-            id: loggedInUser.uid,
-            full_name: loggedInUser.displayName || 'New User',
-            email: loggedInUser.email,
-            role_id: 1, 
-            onboarding_completed: false, 
-        });
-      }
-      router.push('/onboarding');
+        // If profile doesn't exist (new Google user), create it
+        if (!profileSnap.exists()) {
+            await setDoc(profileRef, {
+                id: loggedInUser.uid,
+                full_name: loggedInUser.displayName || 'New User',
+                email: loggedInUser.email,
+                role_id: 1, // Default to buyer
+                onboarding_completed: false, 
+            });
+        }
+        router.push('/onboarding');
     }
   };
 
   useEffect(() => {
+    // This effect can handle redirects for users who are already logged in
+    // when they visit the root page. The direct login handling is now in
+    // handleGoogleLogin and handleEmailLogin.
     if (!isUserLoading && user) {
         handleSuccessfulLogin(user);
     }
@@ -145,8 +151,8 @@ export default function Home() {
   const handleEmailLogin = async () => {
     setIsLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      // Let the useEffect handle the redirect after state update
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
        showAlert('destructive', 'Login Failed', error.message);
        setIsLoading(false);
@@ -171,8 +177,6 @@ export default function Home() {
         const userCredential = await signInWithPopup(auth, provider);
         await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
-        // Only show an error if it's not the common "popup closed" error,
-        // which can happen if the user intentionally closes the popup.
         if (error.code !== 'auth/popup-closed-by-user') {
             showAlert('destructive', 'Google Login Failed', error.message);
         }
@@ -183,7 +187,7 @@ export default function Home() {
 
 
   const renderAuthCard = () => {
-    if (isUserLoading || user) {
+    if (isUserLoading || (!isUserLoading && user)) {
         return <PageLoader />;
     }
     
