@@ -61,12 +61,39 @@ export default function MarketplacePage() {
   const { toast } = useToast();
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Set to true initially
   const [sortBy, setSortBy] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchError, setSearchError] = useState('');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartCount, setCartCount] = useState(0);
+
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    // In a real app, this effect would fetch data from your API
+    // For now, it just sets loading to false after a delay
+    const fetchData = async () => {
+      setLoading(true);
+      // const productsResponse = await fetch('/api/products');
+      // const productsData = await productsResponse.json();
+      // setAllProducts(productsData);
+      
+      // const categoriesResponse = await fetch('/api/categories');
+      // const categoriesData = await categoriesResponse.json();
+      // setCategories(categoriesData);
+
+      // Simulate API delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setAllProducts([]); // Start with no products
+      setCategories([]); // Start with no categories
+      setLoading(false);
+    };
+
+    fetchData();
+  }, []);
+
 
   useEffect(() => {
     // In a real app, you'd fetch the cart from a global state or API
@@ -98,138 +125,6 @@ export default function MarketplacePage() {
       }
     });
   };
-
-  const categories = [
-    { id: 'all', name: 'All Categories', count: 1250 },
-    { id: 'clothing', name: 'Clothing & Fashion', count: 320 },
-    { id: 'crafts', name: 'Arts & Crafts', count: 280 },
-    { id: 'beauty', name: 'Beauty & Wellness', count: 150 },
-    { id: 'electronics', name: 'Electronics', count: 95 },
-    { id: 'home', name: 'Home & Decor', count: 210 },
-    { id: 'food', name: 'Food & Beverages', count: 185 },
-  ];
-
-  // Sample products with GBP pricing and free listings
-  const allProducts: Product[] = [
-    {
-      id: 1,
-      name: 'Traditional Kente Cloth - Authentic Ghanaian Design',
-      price: 125,
-      originalPrice: 145,
-      rating: 4.8,
-      reviews: 124,
-      seller: 'Accra Crafts',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1692689383138-c2df3476072c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwbWFya2V0cGxhY2UlMjBjb2xvcmZ1bCUyMHByb2R1Y3RzfGVufDF8fHx8MTc1ODEyMTQ3NXww&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'clothing',
-      featured: true,
-      discount: 14,
-      location: 'Ghana',
-      condition: 'new',
-      shippingType: 'paid',
-      estimatedDelivery: '7-10 business days',
-    },
-    {
-      id: 2,
-      name: 'Handcrafted Wooden Sculpture - Elephant Design',
-      price: 78,
-      rating: 4.9,
-      reviews: 89,
-      seller: 'Lagos Artisans',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3JhZnRzfGVufDF8fHx8MTc1ODEyMTQ4MHww&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'crafts',
-      location: 'Nigeria',
-      condition: 'new',
-      shippingType: 'free',
-      estimatedDelivery: '5-7 business days',
-    },
-    {
-      id: 3,
-      name: 'African Print Dress - Ankara Style',
-      price: 42,
-      rating: 4.7,
-      reviews: 156,
-      seller: 'Ankara Fashion',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFzaGlvbnxlbnwxfHx8fDE3NTgxMjE0ODV8MA&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'clothing',
-      location: 'Kenya',
-      condition: 'new',
-      shippingType: 'paid',
-      estimatedDelivery: '4-6 business days',
-    },
-    {
-      id: 4,
-      name: 'Organic Shea Butter - Raw & Unprocessed',
-      price: 0,
-      rating: 4.6,
-      reviews: 203,
-      seller: 'Natural Beauty Co',
-      sellerVerified: false,
-      image:
-        'https://images.unsplash.com/photo-1571781926291-c477ebfd024b?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzaGVhJTIwYnV0dGVyfGVufDF8fHx8MTc1ODEyMTQ5MHww&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'beauty',
-      isFree: true,
-      isGifterListing: true,
-      location: 'Ghana',
-      condition: 'new',
-      shippingType: 'pickup-only',
-    },
-    {
-      id: 5,
-      name: 'Beaded Jewelry Set - Traditional African Design',
-      price: 35,
-      rating: 4.5,
-      reviews: 67,
-      seller: 'Beads & Beyond',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1515377905703-c4788e51af15?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxqZXdlbHJ5fGVufDF8fHx8MTc1ODEyMTQ5NXww&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'crafts',
-      location: 'South Africa',
-      condition: 'new',
-      shippingType: 'free',
-      estimatedDelivery: '3-5 business days',
-    },
-    {
-      id: 6,
-      name: 'Woven Basket - Multi-Purpose Storage',
-      price: 0,
-      rating: 4.4,
-      reviews: 45,
-      seller: 'Basket Weavers Co',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXNrZXR8ZW58MXx8fHwxNzU4MTIxNTAwfDA&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'home',
-      isFree: true,
-      isGifterListing: true,
-      location: 'Rwanda',
-      condition: 'like-new',
-      shippingType: 'paid',
-    },
-    {
-      id: 7,
-      name: 'Vintage African Print Fabric Collection',
-      price: 0,
-      rating: 4.8,
-      reviews: 32,
-      seller: 'Heritage Textiles',
-      sellerVerified: true,
-      image:
-        'https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxmYWJyaWN8ZW58MXx8fHwxNzU4MTIxNTA1fDA&ixlib=rb-4.1.0&q=80&w=1080',
-      category: 'crafts',
-      isFree: true,
-      isGifterListing: true,
-      location: 'Mali',
-      condition: 'good',
-      shippingType: 'pickup-only',
-    },
-  ];
 
   // Filter state
   const [filters, setFilters] = useState<FilterState>({

@@ -1,6 +1,6 @@
 'use client';
-import { useState } from 'react';
-import { ArrowLeft, Star, Heart, Share2, ShoppingCart, Shield, Truck, RotateCcw, MessageCircle, Plus, Minus, Info, Ship, MessageSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ArrowLeft, Star, Heart, Share2, ShoppingCart, Shield, Truck, RotateCcw, MessageCircle, Plus, Minus, Info, Ship, MessageSquare, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,80 +19,59 @@ interface ProductPageProps {
 export function ProductPageComponent({ productId, onNavigate, onAddToCart }: ProductPageProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [product, setProduct] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Mock product data - in a real app, this would be fetched based on productId
-  const product = {
-    id: productId,
-    name: "Traditional Kente Cloth - Authentic Ghanaian Design",
-    price: 125,
-    originalPrice: 145,
-    rating: 4.8,
-    reviews: 124,
-    sold: 89,
-    description: "This authentic Kente cloth is hand-woven by skilled artisans in Kumasi, Ghana. Each piece tells a story through its intricate patterns and vibrant colors. Made from high-quality cotton and silk blend, this traditional textile is perfect for special occasions, cultural celebrations, or as a stunning decorative piece.",
-    images: [
-      "https://images.unsplash.com/photo-1692689383138-c2df3476072c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzc8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwbWFya2V0cGxhY2UlMjBjb2xvcmZ1bCUyMHByb2R1Y3RzfGVufDF8fHx8MTc1ODEyMTQ3NXww&ixlib=rb-4.1.0&q=80&w=1080",
-      "https://images.unsplash.com/photo-1594736797933-d0501ba2fe65?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzc8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwZmFzaGlvbnxlbnwxfHx8fDE3NTgxMjE0ODV8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "https://images.unsplash.com/photo-1578662996442-48f60103fc96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzc8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwY3JhZnRzfGVufDF8fHx8MTc1ODEyMTQ4MHww&ixlib=rb-4.1.0&q=80&w=1080"
-    ],
-    seller: {
-      name: "Accra Crafts",
-      verified: true,
-      rating: 4.9,
-      totalSales: 2456,
-      memberSince: "2020",
-      avatar: "https://images.unsplash.com/photo-1655720357872-ce227e4164ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzc8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBlbnRyZXByZW5ldXIlMjBidXNpbmVzc3xlbnwxfHx8fDE3NTgxMjE0Nzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      location: "Accra, Ghana"
-    },
-    specifications: {
-      "Material": "Cotton and Silk Blend",
-      "Dimensions": "6 yards x 4 inches",
-      "Weight": "300g",
-      "Care Instructions": "Dry clean only",
-      "Origin": "Kumasi, Ghana",
-      "Artisan": "Master Weaver Kwaku Asante"
-    },
-    shipping: {
-      domestic: "£7 (3-5 business days)",
-      international: "£25 (7-14 business days)"
-    },
-    discount: 13,
-    inStock: true,
-    stockCount: 15
-  };
+  useEffect(() => {
+    // In a real app, you would fetch product data from an API using the productId
+    const fetchProduct = async () => {
+      setLoading(true);
+      // const response = await fetch(`/api/products/${productId}`);
+      // const data = await response.json();
+      // For demo, we'll return null to show the loading/empty state
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setProduct(null); 
+      setLoading(false);
+    };
 
-  const reviews = [
-    {
-      id: 1,
-      user: "Amina Hassan",
-      rating: 5,
-      date: "2 weeks ago",
-      comment: "Absolutely beautiful! The quality is exceptional and the colors are vibrant. Exactly as described.",
-      verified: true
-    },
-    {
-      id: 2,
-      user: "David Okonkwo",
-      rating: 5,
-      date: "1 month ago",
-      comment: "Perfect for my wedding ceremony. The craftsmanship is outstanding and delivery was fast.",
-      verified: true
-    },
-    {
-      id: 3,
-      user: "Sarah Mensah",
-      rating: 4,
-      date: "2 months ago",
-      comment: "Good quality but took longer to arrive than expected. Overall satisfied with the purchase.",
-      verified: true
-    }
-  ];
+    fetchProduct();
+  }, [productId]);
 
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <p className="ml-2">Loading product...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="text-center min-h-[60vh] flex flex-col items-center justify-center">
+        <h2 className="text-2xl font-bold mb-4">Product Not Found</h2>
+        <p className="text-muted-foreground mb-6">
+          Sorry, we couldn't find the product you're looking for.
+        </p>
+        <Button onClick={() => onNavigate('marketplace')}>
+          Back to Marketplace
+        </Button>
+      </div>
+    );
+  }
+  
   const formatPrice = (price: number) => `£${price.toLocaleString()}`;
 
   const handleAddToCart = () => {
     onAddToCart({ ...product, quantity });
   };
+  
+    // Mock reviews for display until API is connected
+  const reviews = [
+    { id: 1, user: "Amina H.", rating: 5, date: "2 weeks ago", comment: "Exceptional quality!", verified: true },
+    { id: 2, user: "David O.", rating: 5, date: "1 month ago", comment: "Perfect for my wedding.", verified: true },
+  ];
 
   return (
     <div className="container mx-auto px-4 py-4 md:py-6">
@@ -125,7 +104,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
             />
           </div>
           <div className="grid grid-cols-3 gap-2">
-              {product.images.map((image, index) => (
+              {product.images.map((image: string, index: number) => (
               <button
                 key={index}
                 onClick={() => setSelectedImageIndex(index)}
@@ -152,7 +131,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         >
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge>
+              {product.featured && <Badge className="bg-primary text-[10px] sm:text-xs">Featured</Badge>}
               {product.discount && (
                 <Badge variant="destructive" className="text-[10px] sm:text-xs">-{product.discount}%</Badge>
               )}
@@ -283,7 +262,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                     {Object.entries(product.specifications).map(([key, value]) => (
                       <div key={key} className="flex justify-between items-center py-2 border-b last:border-b-0 text-xs sm:text-sm">
                         <span className="font-medium text-foreground/80">{key}</span>
-                        <span className="text-muted-foreground text-right">{value}</span>
+                        <span className="text-muted-foreground text-right">{String(value)}</span>
                       </div>
                     ))}
                   </div>
