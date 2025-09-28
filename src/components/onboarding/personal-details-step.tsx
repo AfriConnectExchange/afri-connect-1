@@ -21,6 +21,7 @@ import { useEffect } from 'react';
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
   phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
+  location: z.string().min(2, 'Please enter a valid location').optional().or(z.literal('')),
 });
 
 type PersonalDetailsFormValues = z.infer<typeof formSchema>;
@@ -45,6 +46,7 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
       form.reset({
         fullName: user?.user_metadata.full_name || defaultValues.fullName || '',
         phoneNumber: user?.phone || defaultValues.phoneNumber || '',
+        location: user?.user_metadata.location || defaultValues.location || '',
       })
     }
     getUserMetadata();
@@ -95,6 +97,20 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
                   <FormMessage />
                 </FormItem>
               )}
+            />
+
+            <FormField
+                control={form.control}
+                name="location"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Location / Address</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., London, UK" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
             />
             
             <div className="flex justify-between items-center pt-4">
