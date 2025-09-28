@@ -31,7 +31,7 @@ export default function RootLayout({
       >
         <CartProvider>
           <div className="container mx-auto px-4">
-          {children}
+            {children}
           </div>
           <Toaster />
         </CartProvider>
