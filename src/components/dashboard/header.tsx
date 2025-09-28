@@ -32,14 +32,36 @@ interface HeaderProps {
 export function Header({ cartCount = 0 }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   
   useEffect(() => {
+    const fetchUserAndProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role_id')
+          .eq('id', user.id)
+          .single();
+        setProfile(profileData);
+      }
+    };
+    
+    fetchUserAndProfile();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
+      if(session?.user) {
+        fetchUserAndProfile();
+      } else {
+        setProfile(null);
+      }
     });
 
     return () => {
@@ -62,10 +84,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
   const notificationCount = 2;
 
+  const canAccessSellerFeatures = profile && [2, 3, 4, 5].includes(profile.role_id);
+
   const navigationItems = [
-    { id: '/marketplace', label: 'Marketplace', href: '/marketplace' },
-    { id: '/money-transfer', label: 'Send Money', href: '/money-transfer' },
-    { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts' },
+    { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
+    { id: '/money-transfer', label: 'Send Money', href: '/money-transfer', show: true },
+    { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts', show: canAccessSellerFeatures },
   ];
 
   const additionalItems = [
@@ -130,7 +154,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
                 <div className="flex-1 overflow-y-auto pr-2">
                   <div className="space-y-2">
-                    {navigationItems.map((item) => (
+                    {navigationItems.filter(item => item.show).map((item) => (
                       <Link key={item.id} href={item.href} passHref>
                         <Button
                           variant={pathname === item.href ? 'secondary' : 'ghost'}
@@ -241,7 +265,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden lg:flex items-center gap-2">
-              {navigationItems.map((item) => (
+              {navigationItems.filter(item => item.show).map((item) => (
                 <Link key={item.id} href={item.href} passHref>
                   <Button
                     variant="ghost"
