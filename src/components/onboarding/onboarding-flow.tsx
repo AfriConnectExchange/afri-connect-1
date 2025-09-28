@@ -17,50 +17,86 @@ export function OnboardingFlow() {
   const [user, setUser] = useState<User | null>(null);
 
   const [userData, setUserData] = useState({
-    role: '1', // Default role_id for 'buyer'
-    fullName: '',
+    role_id: '1', // Default role_id for 'buyer'
+    full_name: '',
     location: '',
-    phoneNumber: ''
+    phone: '',
+    onboarding_completed: false,
   });
-  
+
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
       setUser(user);
-      setUserData(prev => ({
+      setUserData((prev) => ({
         ...prev,
-        fullName: user?.user_metadata.full_name || user?.email || '',
-        phoneNumber: user?.phone || ''
+        full_name: user?.user_metadata.full_name || user?.email || '',
+        phone: user?.phone || '',
       }));
     };
     getUser();
   }, [supabase]);
 
-
   const handleNext = () => setCurrentStep((prev) => prev + 1);
   const handleBack = () => setCurrentStep((prev) => prev - 1);
-  
+
   const handleUpdateUserData = (data: Partial<typeof userData>) => {
-    setUserData(prev => ({ ...prev, ...data }));
+    setUserData((prev) => ({ ...prev, ...data }));
   };
 
   const handleOnboardingComplete = async () => {
     if (!user) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to complete onboarding.' });
-        return;
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in to complete onboarding.',
+      });
+      return;
     }
-    
-    // With Supabase, we would typically call an edge function to create the profile securely.
-    // For now, we simulate success and move to the final step.
-    console.log("Onboarding data to be saved:", userData);
-    handleNext();
-  }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        role_id: parseInt(userData.role_id, 10),
+        full_name: userData.full_name,
+        phone: userData.phone,
+        location: userData.location,
+        onboarding_completed: true,
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Save Profile',
+        description: error.message,
+      });
+    } else {
+      handleNext();
+    }
+  };
 
   const steps = [
     <WelcomeStep onNext={handleNext} />,
-    <RoleSelectionStep onNext={handleNext} onBack={handleBack} onUpdate={handleUpdateUserData} currentValue={userData.role} />,
-    <PersonalDetailsStep onNext={handleOnboardingComplete} onBack={handleBack} onUpdate={handleUpdateUserData} defaultValues={userData} />,
-    <FinalStep />
+    <RoleSelectionStep
+      onNext={handleNext}
+      onBack={handleBack}
+      onUpdate={(data) => handleUpdateUserData({ role_id: data.role })}
+      currentValue={userData.role_id}
+    />,
+    <PersonalDetailsStep
+      onNext={handleOnboardingComplete}
+      onBack={handleBack}
+      onUpdate={handleUpdateUserData}
+      defaultValues={{
+        fullName: userData.full_name,
+        phoneNumber: userData.phone,
+        location: userData.location,
+      }}
+    />,
+    <FinalStep />,
   ];
 
   const progressValue = (currentStep / (steps.length - 1)) * 100;

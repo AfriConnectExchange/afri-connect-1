@@ -5,8 +5,6 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { AnimatedButton } from '../ui/animated-button';
-import { Button } from '../ui/button';
-import Image from 'next/image';
 import { Separator } from '../ui/separator';
 
 type Props = any;
@@ -20,7 +18,6 @@ export default function SignUpCard({
   setShowConfirmPassword,
   isLoading,
   handleEmailRegistration,
-  handleGoogleLogin,
   onSwitch,
 }: Props) {
   return (
@@ -38,14 +35,10 @@ export default function SignUpCard({
         </p>
       </div>
       <div className="p-8">
-        <Button variant="outline" className="w-full mb-6" onClick={handleGoogleLogin} disabled={isLoading}>
-            <Image src="/google-logo.svg" alt="Google" width={20} height={20} className="mr-2"/>
-            Sign Up with Google
-        </Button>
         
         <div className="flex items-center my-6">
             <Separator className="flex-1" />
-            <span className="mx-4 text-xs text-muted-foreground">OR SIGN UP WITH EMAIL</span>
+            <span className="mx-4 text-xs text-muted-foreground">SIGN UP WITH EMAIL</span>
             <Separator className="flex-1" />
         </div>
 

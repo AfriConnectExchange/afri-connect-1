@@ -37,30 +37,46 @@ export default function Home() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const handleAuthChange = useCallback(
-    (event: string, session: Session | null) => {
+    async (event: string, session: Session | null) => {
       setUser(session?.user ?? null);
       setSession(session);
       setIsUserLoading(false);
 
       if (session?.user) {
         // If user is signed in, check if onboarding is complete
-        // In a real app, you'd fetch this from the 'profiles' table
-        const checkOnboarding = async () => {
-          // Mocking onboarding check for now.
-          // Replace with: const { data } = await supabase.from('profiles').select('onboarding_completed').single();
-          const onboardingCompleted = false; // Assume false for this example
-          
-          if (!onboardingCompleted) {
-            router.push('/onboarding');
-          } else {
-            router.push('/marketplace');
-          }
-        };
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('onboarding_completed')
+          .eq('id', session.user.id)
+          .single();
+        
+        // This error code means the row doesn't exist yet.
+        // This is expected for a brand new user right after email verification.
+        if (error && error.code === 'PGRST116') {
+          console.log('Profile not found for new user, redirecting to onboarding.');
+          router.push('/onboarding');
+          return;
+        }
+        
+        if (error) {
+            console.error("Error fetching profile:", error);
+            // Optional: show a toast to the user
+            toast({
+                variant: 'destructive',
+                title: 'Error Loading Profile',
+                description: 'Could not load your profile. Please try again.'
+            });
+            return;
+        }
 
-        checkOnboarding();
+        if (data && data.onboarding_completed) {
+          router.push('/marketplace');
+        } else {
+          router.push('/onboarding');
+        }
       }
     },
-    [router]
+    [router, supabase, toast]
   );
 
   useEffect(() => {
@@ -170,7 +186,6 @@ export default function Home() {
             setShowPassword={setShowPassword}
             isLoading={isLoading}
             handleEmailLogin={handleEmailLogin}
-            handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signup')}
           />
         );
@@ -185,7 +200,6 @@ export default function Home() {
             setShowConfirmPassword={setShowConfirmPassword}
             isLoading={isLoading}
             handleEmailRegistration={handleEmailRegistration}
-            handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
