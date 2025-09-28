@@ -23,27 +23,43 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import type { CartItem } from '@/components/cart/cart-page';
+import { createClient } from '@/lib/supabase/client';
 
 export interface Product {
-  id: number;
-  name: string;
+  id: string; // Changed to string for UUID
+  seller_id: string;
+  title: string;
+  description: string;
   price: number;
+  currency: string;
+  category_id: number;
+  listing_type: 'sale' | 'barter' | 'freebie';
+  status: 'active' | 'sold' | 'delisted';
+  images: string[]; // Assuming images are an array of URLs
+  location: any; // Or a more specific type for GeoJSON
+  created_at: string;
+  updated_at: string;
+  
+  // Properties from old interface, to be mapped or joined
+  name: string; // Will map from title
   originalPrice?: number;
-  rating: number;
-  reviews: number;
-  seller: string;
-  sellerVerified: boolean;
-  image: string;
-  category: string;
+  rating: number; // Will need a join or separate fetch
+  reviews: number; // Will need a join or separate fetch
+  seller: string; // Will need a join to profiles table
+  sellerVerified: boolean; // Will need a join to profiles table
+  image: string; // Will use the first image from the images array
+  category: string; // Will need a join to categories table
   featured?: boolean;
   discount?: number;
   isFree?: boolean;
-  isGifterListing?: boolean;
-  location?: string;
-  condition?: 'new' | 'like-new' | 'good' | 'fair';
-  shippingType?: 'free' | 'paid' | 'pickup-only';
-  estimatedDelivery?: string;
 }
+
+export interface Category {
+  id: number;
+  name: string;
+  count: number;
+}
+
 
 export interface FilterState {
   searchQuery: string;
@@ -59,9 +75,10 @@ export interface FilterState {
 export default function MarketplacePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const supabase = createClient();
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
-  const [loading, setLoading] = useState(true); // Set to true initially
+  const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchError, setSearchError] = useState('');
@@ -69,30 +86,60 @@ export default function MarketplacePage() {
   const [cartCount, setCartCount] = useState(0);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
-    // In a real app, this effect would fetch data from your API
-    // For now, it just sets loading to false after a delay
     const fetchData = async () => {
       setLoading(true);
-      // const productsResponse = await fetch('/api/products');
-      // const productsData = await productsResponse.json();
-      // setAllProducts(productsData);
       
-      // const categoriesResponse = await fetch('/api/categories');
-      // const categoriesData = await categoriesResponse.json();
-      // setCategories(categoriesData);
+      // Fetch Products
+      const { data: productsData, error: productsError } = await supabase
+        .from('products')
+        .select(`
+          *,
+          seller:profiles ( full_name, kyc_status ),
+          category:categories ( name )
+        `);
 
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setAllProducts([]); // Start with no products
-      setCategories([]); // Start with no categories
+      // Fetch Categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('id, name');
+
+      if (productsError || categoriesError) {
+        toast({
+          variant: 'destructive',
+          title: 'Error fetching data',
+          description: productsError?.message || categoriesError?.message,
+        });
+        setAllProducts([]);
+        setCategories([]);
+      } else {
+        // Map fetched data to the frontend Product interface
+        const mappedProducts = productsData.map((p: any) => ({
+          ...p,
+          name: p.title,
+          image: p.images?.[0] || 'https://placehold.co/400x300', // fallback image
+          seller: p.seller?.full_name || 'Unknown Seller',
+          sellerVerified: p.seller?.kyc_status === 'verified',
+          category: p.category?.name || 'Uncategorized',
+          isFree: p.listing_type === 'freebie' || p.price === 0,
+          // Mocking these for now, as they are not in the schema yet
+          rating: 4.5, 
+          reviews: 10,
+        }));
+        setAllProducts(mappedProducts);
+        
+        // We will need to get counts later
+        const mappedCategories = categoriesData.map((c: any) => ({...c, count: Math.floor(Math.random() * 200)}));
+        setCategories([{ id: 'all', name: 'All Categories', count: mappedProducts.length }, ...mappedCategories]);
+      }
+
       setLoading(false);
     };
 
     fetchData();
-  }, []);
+  }, [supabase, toast]);
 
 
   useEffect(() => {
@@ -103,7 +150,7 @@ export default function MarketplacePage() {
   }, [cart]);
 
 
-  const onNavigate = (page: string, productId?: number) => {
+  const onNavigate = (page: string, productId?: string) => {
     if (page === 'product' && productId) {
       router.push(`/product/${productId}`);
     } else {
@@ -124,6 +171,10 @@ export default function MarketplacePage() {
         return [...prevCart, { ...product, quantity: 1, inStock: true, shippingCost: 5.99 }]; // Add default values
       }
     });
+    toast({
+        title: "Added to cart!",
+        description: `${product.name} has been added to your cart.`,
+    })
   };
 
   // Filter state
@@ -222,9 +273,10 @@ export default function MarketplacePage() {
     }
 
     if (filters.freeShippingOnly) {
-      filtered = filtered.filter(
-        (product) => product.shippingType === 'free'
-      );
+      // 'shippingType' not in new schema, needs adjustment if required
+      // filtered = filtered.filter(
+      //   (product) => product.shippingType === 'free'
+      // );
     }
 
     return filtered;
@@ -250,7 +302,7 @@ export default function MarketplacePage() {
       case 'rating':
         return sorted.sort((a, b) => b.rating - a.rating);
       case 'newest':
-        return sorted.sort((a, b) => b.id - a.id);
+        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       default: // relevance
         return sorted.sort((a, b) => {
           // Featured items first
@@ -428,3 +480,5 @@ export default function MarketplacePage() {
     </>
   );
 }
+
+    

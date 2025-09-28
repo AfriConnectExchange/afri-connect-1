@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 
 interface ProductCardProps {
   product: Product;
-  onNavigate: (page: string, productId?: number) => void;
+  onNavigate: (page: string, productId?: string) => void;
   onAddToCart: (product: any) => void;
   animationDelay?: number;
   currency?: string;
@@ -143,3 +143,5 @@ export function ProductCard({
     </motion.div>
   );
 }
+
+    

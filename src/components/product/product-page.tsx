@@ -9,33 +9,87 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
+import { createClient } from '@/lib/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import type { Product } from '@/app/marketplace/page';
 
 interface ProductPageProps {
-  productId: number;
-  onNavigate: (page: string, productId?: number) => void;
+  productId: string;
+  onNavigate: (page: string, productId?: string) => void;
   onAddToCart: (product: any) => void;
 }
 
 export function ProductPageComponent({ productId, onNavigate, onAddToCart }: ProductPageProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [product, setProduct] = useState<any>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const supabase = createClient();
+  const { toast } = useToast();
 
   useEffect(() => {
-    // In a real app, you would fetch product data from an API using the productId
     const fetchProduct = async () => {
+      if (!productId) return;
       setLoading(true);
-      // const response = await fetch(`/api/products/${productId}`);
-      // const data = await response.json();
-      // For demo, we'll return null to show the loading/empty state
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      setProduct(null); 
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          seller:profiles ( full_name, kyc_status, avatar_url, location ),
+          category:categories ( name )
+        `)
+        .eq('id', productId)
+        .single();
+
+      if (error || !data) {
+        toast({
+          variant: 'destructive',
+          title: 'Error fetching product',
+          description: "This product could not be found.",
+        });
+        setProduct(null);
+      } else {
+        const mappedProduct = {
+          ...data,
+          name: data.title,
+          image: data.images?.[0] || 'https://placehold.co/600x600',
+          images: data.images?.length > 0 ? data.images : ['https://placehold.co/600x600'],
+          seller: data.seller?.full_name || 'Unknown Seller',
+          sellerVerified: data.seller?.kyc_status === 'verified',
+          category: data.category?.name || 'Uncategorized',
+          isFree: data.listing_type === 'freebie' || data.price === 0,
+          // Mocking these for now
+          rating: 4.5,
+          reviews: 10,
+          sold: 25,
+          stockCount: 50,
+          specifications: {
+              Material: "Cotton",
+              Origin: "Ghana",
+              Dimensions: "6 yards"
+          },
+          shipping: {
+              domestic: "3-5 business days",
+              international: "7-14 business days"
+          },
+          sellerDetails: { // Renaming for clarity
+            name: data.seller?.full_name || 'Unknown Seller',
+            avatar: data.seller?.avatar_url || '',
+            location: data.seller?.location || 'Unknown',
+            verified: data.seller?.kyc_status === 'verified',
+            rating: 4.8,
+            totalSales: 100,
+            memberSince: 'Jan 2023'
+          }
+        };
+        setProduct(mappedProduct as unknown as Product);
+      }
       setLoading(false);
     };
 
     fetchProduct();
-  }, [productId]);
+  }, [productId, supabase, toast]);
 
 
   if (loading) {
@@ -65,6 +119,10 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
   const handleAddToCart = () => {
     onAddToCart({ ...product, quantity });
+     toast({
+        title: "Added to cart!",
+        description: `${product.name} (x${quantity}) has been added to your cart.`,
+    })
   };
   
     // Mock reviews for display until API is connected
@@ -344,17 +402,17 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={product.seller.avatar} />
-                    <AvatarFallback>{product.seller.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={(product as any).sellerDetails.avatar} />
+                    <AvatarFallback>{(product as any).sellerDetails.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{product.seller.name}</span>
-                      {product.seller.verified && (
+                      <span className="font-medium text-sm">{(product as any).sellerDetails.name}</span>
+                      {(product as any).sellerDetails.verified && (
                         <Badge variant="secondary" className="text-[10px]">Verified</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{product.seller.location}</p>
+                    <p className="text-xs text-muted-foreground">{(product as any).sellerDetails.location}</p>
                   </div>
                 </div>
                 
@@ -363,16 +421,16 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                     <span className="text-muted-foreground">Rating</span>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{product.seller.rating}</span>
+                      <span>{(product as any).sellerDetails.rating}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Sales</span>
-                    <span>{product.seller.totalSales}</span>
+                    <span>{(product as any).sellerDetails.totalSales}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Joined</span>
-                    <span>{product.seller.memberSince}</span>
+                    <span>{(product as any).sellerDetails.memberSince}</span>
                   </div>
                 </div>
                 
@@ -388,3 +446,5 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     </div>
   );
 }
+
+    

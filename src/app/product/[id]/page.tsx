@@ -7,10 +7,10 @@ import { Header } from '@/components/dashboard/header';
 // This page now correctly handles the client-side nature of its operations.
 export default function ProductDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const productId = parseInt(params.id, 10);
+  const productId = params.id;
 
   // The router is now passed down correctly to the client component.
-  const handleNavigate = (page: string, newProductId?: number) => {
+  const handleNavigate = (page: string, newProductId?: string) => {
     if (page === 'product' && newProductId) {
       router.push(`/product/${newProductId}`);
     } else {
@@ -34,3 +34,5 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     </>
   );
 }
+
+    

@@ -8,7 +8,7 @@ import { Skeleton } from '../ui/skeleton';
 interface ProductGridProps {
   products: Product[];
   loading?: boolean;
-  onNavigate: (page: string, productId?: number) => void;
+  onNavigate: (page: string, productId?: string) => void;
   onAddToCart: (product: any) => void;
   onLoadMore?: () => void;
   hasMore?: boolean;
@@ -123,3 +123,5 @@ export function ProductGrid({
     </div>
   );
 }
+
+    
