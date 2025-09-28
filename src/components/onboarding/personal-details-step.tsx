@@ -29,7 +29,7 @@ type PersonalDetailsFormValues = z.infer<typeof formSchema>;
 interface PersonalDetailsStepProps {
   onNext: () => void;
   onBack: () => void;
-  onUpdate: (data: Partial<PersonalDetailsFormValues>) => void;
+  onUpdate: (data: { full_name: string; phone_number: string; location: string; }) => void;
   defaultValues: Partial<PersonalDetailsFormValues>;
 }
 
@@ -53,7 +53,11 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
   }, [supabase, form, defaultValues])
 
   const onSubmit = (values: PersonalDetailsFormValues) => {
-    onUpdate(values);
+    onUpdate({
+        full_name: values.fullName,
+        phone_number: values.phoneNumber || '',
+        location: values.location || '',
+    });
     onNext();
   };
 
