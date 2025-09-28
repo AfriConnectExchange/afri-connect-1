@@ -18,8 +18,6 @@ import {
   updateProfile,
   User
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
 
 type AuthMode = 'signin' | 'signup' | 'otp';
 
@@ -44,31 +42,14 @@ export default function Home() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const handleSuccessfulLogin = async (loggedInUser: User) => {
-    const profileRef = doc(firestore, "profiles", loggedInUser.uid);
-    const profileSnap = await getDoc(profileRef);
-
-    if (profileSnap.exists() && profileSnap.data().onboarding_completed) {
-        router.push('/marketplace');
-    } else {
-        // If profile doesn't exist (new Google user), create it
-        if (!profileSnap.exists()) {
-            await setDoc(profileRef, {
-                id: loggedInUser.uid,
-                full_name: loggedInUser.displayName || 'New User',
-                email: loggedInUser.email,
-                role_id: 1, // Default to buyer
-                onboarding_completed: false, 
-            });
-        }
-        router.push('/onboarding');
-    }
+    // For now, we will just redirect to onboarding.
+    // We will build the logic to check if onboarding is complete later.
+    router.push('/onboarding');
   };
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-        // The redirection logic is now fully handled inside handleSuccessfulLogin
-        // which is called from the login/signup handlers.
-    }
+    // This effect is intentionally left empty for now.
+    // All login/redirect logic is handled within the event handlers.
   }, [user, isUserLoading, router]);
 
 
@@ -107,20 +88,14 @@ export default function Home() {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       const user = userCredential.user;
 
-      // Update the user's profile with their name
+      // Update the user's profile with their name in Firebase Auth
       await updateProfile(user, { displayName: formData.name });
       
-      // Create a corresponding profile document in Firestore
-      await setDoc(doc(firestore, "profiles", user.uid), {
-          id: user.uid,
-          full_name: formData.name,
-          email: user.email,
-          role_id: 1, // Default role to 'buyer'
-          onboarding_completed: false, 
-      });
+      // The profile document in Cloud SQL will be created by a backend Cloud Function.
+      // For now, we just proceed to onboarding.
       
-      showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
-      handleSwitchMode('signin');
+      showAlert('default', 'Registration Successful!', 'Welcome to AfriConnect Exchange!');
+      await handleSuccessfulLogin(user);
       
     } catch (error: any) {
        showAlert('destructive', 'Registration Failed', error.message);
