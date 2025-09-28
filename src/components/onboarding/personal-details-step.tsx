@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { AnimatedButton } from '../ui/animated-button';
-import { Textarea } from '../ui/textarea';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { createClient } from '@/lib/supabase/client';
@@ -22,7 +21,6 @@ import { useEffect } from 'react';
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
   phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
-  location: z.string().min(10, 'Please enter a full address.').optional().or(z.literal('')),
 });
 
 type PersonalDetailsFormValues = z.infer<typeof formSchema>;
@@ -47,7 +45,6 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
       form.reset({
         fullName: user?.user_metadata.full_name || defaultValues.fullName || '',
         phoneNumber: user?.phone || defaultValues.phoneNumber || '',
-        location: defaultValues.location || ''
       })
     }
     getUserMetadata();
@@ -94,23 +91,6 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
                         defaultCountry="GB"
                         {...field}
                       />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="location"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Location / Address (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="123 Main St, London, UK"
-                      {...field}
-                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

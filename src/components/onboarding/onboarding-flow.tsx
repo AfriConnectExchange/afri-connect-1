@@ -19,7 +19,6 @@ export function OnboardingFlow() {
   const [userData, setUserData] = useState({
     role_id: '1', // Default role_id for 'buyer'
     full_name: '',
-    location: '',
     phone: '',
     onboarding_completed: false,
   });
@@ -62,7 +61,6 @@ export function OnboardingFlow() {
         role_id: parseInt(userData.role_id, 10),
         full_name: userData.full_name,
         phone: userData.phone,
-        location: userData.location,
         onboarding_completed: true,
       })
       .eq('id', user.id);
@@ -93,7 +91,6 @@ export function OnboardingFlow() {
       defaultValues={{
         fullName: userData.full_name,
         phoneNumber: userData.phone,
-        location: userData.location,
       }}
     />,
     <FinalStep />,
