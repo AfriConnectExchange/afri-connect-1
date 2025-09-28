@@ -27,23 +27,28 @@ import {
 } from '@/components/ui/confirmation-modal';
 import Image from 'next/image';
 import type { Product } from '@/app/marketplace/page';
+import type { CartItem } from '@/context/cart-context';
 
 // --- INTERFACES ---
-export interface CartItem extends Product {
-  quantity: number;
-}
-
 interface CartPageProps {
-  onNavigate: (page: string) => void;
   cartItems: CartItem[];
+  subtotal: number;
+  onNavigate: (page: string) => void;
   onUpdateCart: (items: CartItem[]) => void;
+  updateQuantity: (itemId: string, newQuantity: number) => void;
+  removeFromCart: (itemId: string) => void;
+  clearCart: () => void;
 }
 
 // --- MAIN COMPONENT ---
 export function CartPageComponent({
-  onNavigate,
   cartItems,
+  subtotal,
+  onNavigate,
   onUpdateCart,
+  updateQuantity,
+  removeFromCart,
+  clearCart
 }: CartPageProps) {
   // --- STATE AND LOGIC ---
   const [promoCode, setPromoCode] = useState('');
@@ -66,29 +71,12 @@ export function CartPageComponent({
 
   const formatPrice = (price: number) => `£${price.toFixed(2)}`;
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
-      const item = cartItems.find((item) => item.id === itemId);
-      if (item) {
-        handleRemoveItem(itemId, item.name);
-      }
-      return;
-    }
-    const updatedItems = cartItems.map((item) =>
-      item.id === itemId ? { ...item, quantity: newQuantity } : item
-    );
-    onUpdateCart(updatedItems);
-  };
-
   const handleRemoveItem = (itemId: string, itemName: string) => {
     setShowRemoveConfirm({ isOpen: true, itemId, itemName });
   };
 
   const confirmRemoveItem = () => {
-    const updatedItems = cartItems.filter(
-      (item) => item.id !== showRemoveConfirm.itemId
-    );
-    onUpdateCart(updatedItems);
+    removeFromCart(showRemoveConfirm.itemId);
     setShowRemoveConfirm({ isOpen: false, itemId: '', itemName: '' });
   };
 
@@ -97,7 +85,7 @@ export function CartPageComponent({
   };
 
   const confirmClearCart = () => {
-    onUpdateCart([]);
+    clearCart();
     setShowClearCartConfirm(false);
   };
 
@@ -115,9 +103,6 @@ export function CartPageComponent({
     }
   };
 
-  const calculateSubtotal = () =>
-    cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
-
   const calculateShipping = () => {
      // For simplicity, using a flat rate. This can be complex logic.
     const baseShipping = 5.99;
@@ -130,10 +115,10 @@ export function CartPageComponent({
     return baseShipping * shippingMultiplier;
   };
 
-  const calculateDiscount = () => calculateSubtotal() * promoDiscount;
+  const calculateDiscount = () => subtotal * promoDiscount;
 
   const calculateTotal = () =>
-    calculateSubtotal() + calculateShipping() - calculateDiscount();
+    subtotal + calculateShipping() - calculateDiscount();
 
   const getSellerName = (seller: any) => {
     if (!seller) return 'Unknown Seller';
@@ -350,7 +335,7 @@ export function CartPageComponent({
                 <CardContent className="space-y-4">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatPrice(calculateSubtotal())}</span>
+                    <span>{formatPrice(subtotal)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Shipping</span>

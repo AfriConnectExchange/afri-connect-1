@@ -22,8 +22,7 @@ import { SearchBar } from '@/components/marketplace/SearchBar';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
-import type { CartItem } from '@/components/cart/cart-page';
-import { createClient } from '@/lib/supabase/client';
+import { useCart } from '@/context/cart-context';
 
 export interface Product {
   id: string; // Changed to string for UUID
@@ -80,14 +79,13 @@ export interface FilterState {
 export default function MarketplacePage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { cart, addToCart, cartCount } = useCart();
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('relevance');
   const [currentPage, setCurrentPage] = useState(1);
   const [searchError, setSearchError] = useState('');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [cartCount, setCartCount] = useState(0);
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -128,38 +126,16 @@ export default function MarketplacePage() {
   }, [toast]);
 
 
-  useEffect(() => {
-    const count = cart.reduce((acc, item) => acc + item.quantity, 0);
-    setCartCount(count);
-  }, [cart]);
-
-
   const onNavigate = (page: string, productId?: string) => {
-    const cartQuery = cart.length > 0 ? `?cart=${encodeURIComponent(JSON.stringify(cart))}` : '';
     if (page === 'product' && productId) {
-      router.push(`/product/${productId}${cartQuery}`);
+      router.push(`/product/${productId}`);
     } else {
-        if (page === 'cart') {
-             router.push(`/cart${cartQuery}`);
-        } else {
-            router.push(`/${page}`);
-        }
+        router.push(`/${page}`);
     }
   };
 
   const onAddToCart = (product: Product) => {
-    setCart(prevCart => {
-      const existingItem = prevCart.find(item => item.id === product.id);
-      if (existingItem) {
-        return prevCart.map(item =>
-          item.id === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      } else {
-        return [...prevCart, { ...product, quantity: 1 }];
-      }
-    });
+    addToCart(product);
   };
 
   // Filter state
@@ -339,11 +315,9 @@ export default function MarketplacePage() {
     return 'No products match your current filters.';
   };
   
-  const cartQueryString = cart.length > 0 ? `?cart=${encodeURIComponent(JSON.stringify(cart))}` : '';
-
   return (
     <>
-    <Header cartCount={cartCount} cartQuery={cartQueryString}/>
+    <Header cartCount={cartCount} />
     <div className="container mx-auto px-0 sm:px-4 py-6 md:py-8 relative">
       {/* Page Header */}
       <div className="mb-6 md:mb-8 px-4 sm:px-0">

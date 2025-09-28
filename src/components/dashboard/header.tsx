@@ -27,10 +27,9 @@ import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface HeaderProps {
     cartCount?: number;
-    cartQuery?: string;
 }
 
-export function Header({ cartCount = 0, cartQuery = '' }: HeaderProps) {
+export function Header({ cartCount = 0 }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -106,8 +105,6 @@ export function Header({ cartCount = 0, cartQuery = '' }: HeaderProps) {
     setMobileMenuOpen(false);
   };
   
-  const cartHref = `/cart${cartQuery || ''}`;
-
   return (
     <header className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -283,7 +280,7 @@ export function Header({ cartCount = 0, cartQuery = '' }: HeaderProps) {
 
             {user ? (
               <div className="hidden md:flex items-center gap-2">
-                <Link href={cartHref} passHref>
+                <Link href="/cart" passHref>
                   <motion.div
                     animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}
                     transition={{ duration: 0.5 }}
@@ -332,7 +329,7 @@ export function Header({ cartCount = 0, cartQuery = '' }: HeaderProps) {
             )}
             
             <div className="flex md:hidden items-center gap-1">
-                <Link href={cartHref} passHref>
+                <Link href="/cart" passHref>
                   <motion.div
                       animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}
                       transition={{ duration: 0.5 }}

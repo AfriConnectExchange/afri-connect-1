@@ -12,19 +12,21 @@ import { BarterProposalForm } from '@/components/checkout/payments/BarterProposa
 import { PaymentConfirmation } from '@/components/checkout/payments/PaymentConfirmation';
 import { ArrowLeft, ShoppingCart, MapPin, Truck } from 'lucide-react';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import type { CartItem } from '@/components/cart/cart-page';
+import type { CartItem } from '@/context/cart-context';
 import Image from 'next/image';
 
 interface CheckoutPageProps {
   cartItems: CartItem[];
+  subtotal: number;
   onNavigate: (page: string) => void;
-  onUpdateCart: (items: CartItem[]) => void;
+  clearCart: () => void;
 }
 
 export function CheckoutPageComponent({
   cartItems,
+  subtotal,
   onNavigate,
-  onUpdateCart,
+  clearCart,
 }: CheckoutPageProps) {
   const [currentStep, setCurrentStep] = useState<
     'summary' | 'payment' | 'confirmation'
@@ -42,10 +44,6 @@ export function CheckoutPageComponent({
     },
   });
 
-  const subtotal = cartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
-    0
-  );
   const deliveryFee = subtotal > 50 ? 0 : 4.99;
   const total = subtotal + deliveryFee;
 
@@ -63,7 +61,7 @@ export function CheckoutPageComponent({
   const handlePaymentSubmit = (data: any) => {
     setPaymentData(data);
     setCurrentStep('confirmation');
-    onUpdateCart([]); // Clear cart after successful order
+    clearCart(); // Clear cart after successful order
   };
 
   const handleBackToPaymentSelection = () => {
@@ -93,7 +91,7 @@ export function CheckoutPageComponent({
         const targetProduct = {
           id: cartItems[0]?.id || 1,
           name: cartItems[0]?.name || 'Product',
-          seller: typeof cartItems[0]?.seller === 'string' ? cartItems[0]?.seller : cartItems[0]?.seller?.name || 'Seller',
+          seller: typeof cartItems[0]?.seller === 'string' ? cartItems[0]?.seller : 'Seller',
           estimatedValue: cartItems[0]?.price || total,
         };
         return <BarterProposalForm targetProduct={targetProduct} {...props} />;
