@@ -14,7 +14,8 @@ import {
   signInWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup,
-  UserCredential
+  User,
+  onAuthStateChanged
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -26,7 +27,18 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { user, auth, firestore, isUserLoading } = useFirebase();
+  const { auth, firestore, isUserLoading: isFirebaseLoading } = useFirebase();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setIsUserLoading(false);
+    });
+    return () => unsubscribe();
+  }, [auth]);
+
 
   const [formData, setFormData] = useState({
     name: '',
@@ -46,13 +58,12 @@ export default function Home() {
     if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
       router.push('/marketplace');
     } else {
-      // If the user is new from a social login, we might need to create their profile doc first.
       if (!profileDoc.exists()) {
           await setDoc(doc(firestore, "profiles", loggedInUser.uid), {
             id: loggedInUser.uid,
-            full_name: loggedInUser.displayName,
+            full_name: loggedInUser.displayName || 'New User',
             email: loggedInUser.email,
-            role_id: 1, // Default role to 'buyer'
+            role_id: 1, 
             onboarding_completed: false, 
         });
       }
@@ -134,7 +145,7 @@ export default function Home() {
   const handleEmailLogin = async () => {
     setIsLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      await signInWithEmailAndPassword(auth, formData.email, formData.password);
       // Let the useEffect handle the redirect after state update
     } catch (error: any) {
        showAlert('destructive', 'Login Failed', error.message);
@@ -158,10 +169,14 @@ export default function Home() {
     const provider = new GoogleAuthProvider();
     try {
         const userCredential = await signInWithPopup(auth, provider);
-        // Explicitly handle successful login here instead of relying on useEffect
         await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
-        showAlert('destructive', 'Google Login Failed', error.message);
+        // Only show an error if it's not the common "popup closed" error,
+        // which can happen if the user intentionally closes the popup.
+        if (error.code !== 'auth/popup-closed-by-user') {
+            showAlert('destructive', 'Google Login Failed', error.message);
+        }
+    } finally {
         setIsLoading(false);
     }
   }
