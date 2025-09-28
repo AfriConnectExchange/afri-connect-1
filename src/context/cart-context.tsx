@@ -39,11 +39,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         return [...prevCart, { ...item, quantity }];
       }
     });
-    toast({
-      title: 'Item Added to Cart',
-      description: `${item.name} has been added to your cart.`,
-    });
-  }, [toast]);
+  }, []);
 
   const removeFromCart = useCallback((itemId: string) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== itemId));
@@ -68,12 +64,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = useCallback(() => {
     setCart([]);
-    toast({
-        variant: 'destructive',
-        title: 'Cart Cleared',
-        description: `All items have been removed from your cart.`,
-    });
-  }, [toast]);
+  }, []);
 
   const cartCount = useMemo(() => {
     return cart.reduce((acc, item) => acc + item.quantity, 0);
