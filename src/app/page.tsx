@@ -8,19 +8,23 @@ import SignUpCard from '@/components/auth/SignUpCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
-import type { User } from '@supabase/supabase-js';
+import { useFirebase } from '@/firebase';
+import { 
+    createUserWithEmailAndPassword, 
+    signInWithEmailAndPassword, 
+    GoogleAuthProvider, 
+    signInWithPopup,
+    updateProfile
+} from 'firebase/auth';
 
 type AuthMode = 'signin' | 'signup';
 
 export default function Home() {
-  const supabase = createClient();
+  const { auth, user, isUserLoading } = useFirebase();
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -35,24 +39,10 @@ export default function Home() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (session?.user) {
-        if (event === 'SIGNED_IN') {
-           // For new users, Supabase doesn't immediately tell us if it's their first sign-in on the client.
-           // We'll handle redirection to onboarding after checking their profile status.
-           // For simplicity now, we redirect all signed-in users to the marketplace.
-           // A more robust solution would check a `onboarding_complete` flag in the user's profile.
-           router.push('/marketplace');
-        }
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
+    if (!isUserLoading && user) {
+        router.push('/marketplace');
+    }
+  }, [user, isUserLoading, router]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -84,49 +74,42 @@ export default function Home() {
     }
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          full_name: formData.name,
-        },
-      },
-    });
-
-    if (error) {
-      showAlert('destructive', 'Registration Failed', error.message);
-    } else if (data.user) {
-       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
-       // The onAuthStateChange listener will handle the redirect.
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        await updateProfile(userCredential.user, { displayName: formData.name });
+        
+        showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+        // The useFirebase hook will detect the new user and redirect.
+    } catch (error: any) {
+        showAlert('destructive', 'Registration Failed', error.message);
+    } finally {
+        setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error) {
-      showAlert('destructive', 'Login Failed', error.message);
-      setIsLoading(false);
+    try {
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        // The useFirebase hook will detect the new user and redirect.
+    } catch (error: any) {
+        showAlert('destructive', 'Login Failed', error.message);
+    } finally {
+        setIsLoading(false);
     }
-    // onAuthStateChange handles success
   };
   
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
-    // The user will be redirected to Google, and then back to our callback route.
-    // The onAuthStateChange listener will then pick up the new session.
+    const provider = new GoogleAuthProvider();
+    try {
+        await signInWithPopup(auth, provider);
+        // The useFirebase hook will detect the new user and redirect.
+    } catch (error: any) {
+        showAlert('destructive', 'Google Sign-In Failed', error.message);
+    } finally {
+        setIsLoading(false);
+    }
   };
 
   const renderAuthCard = () => {

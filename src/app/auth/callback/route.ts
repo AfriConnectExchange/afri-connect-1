@@ -1,21 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-
+// This route is not used in the Firebase Auth + Supabase DB setup.
+// It can be removed or left for future use with Supabase Auth.
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get('code');
-  // if "next" is in param, use it as the redirect URL
-  const next = searchParams.get('next') ?? '/';
-
-  if (code) {
-    const supabase = createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
-      // Redirect to the originally intended page or the marketplace
-      return NextResponse.redirect(`${origin}${next}`);
-    }
-  }
-
-  // return the user to an error page with instructions
-  return NextResponse.redirect(`${origin}/auth/auth-code-error`);
+  const { origin } = new URL(request.url);
+  return NextResponse.redirect(origin);
 }

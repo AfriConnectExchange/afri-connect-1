@@ -21,8 +21,8 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { createClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useFirebase } from '@/firebase';
+import { signOut } from 'firebase/auth';
 
 
 interface HeaderProps {
@@ -30,24 +30,11 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
-  const supabase = createClient();
+  const { auth, user } = useFirebase();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
-  
-  useEffect(() => {
-    const { data: authListener } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-      }
-    );
-
-    return () => {
-      authListener.subscription.unsubscribe();
-    };
-  }, [supabase]);
   
   useEffect(() => {
     if (cartCount > 0) {
@@ -58,7 +45,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
     router.push('/');
   }
 
