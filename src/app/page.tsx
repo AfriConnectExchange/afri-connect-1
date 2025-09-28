@@ -8,19 +8,15 @@ import SignUpCard from '@/components/auth/SignUpCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useFirebase } from '@/firebase';
-import { 
-    createUserWithEmailAndPassword, 
-    signInWithEmailAndPassword, 
-    GoogleAuthProvider, 
-    signInWithPopup,
-    updateProfile
-} from 'firebase/auth';
+import { createClient } from '@/lib/supabase/client';
+import { type User } from '@supabase/supabase-js';
 
 type AuthMode = 'signin' | 'signup';
 
 export default function Home() {
-  const { auth, user, isUserLoading } = useFirebase();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
@@ -39,10 +35,22 @@ export default function Home() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-        router.push('/marketplace');
-    }
-  }, [user, isUserLoading, router]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+       if (session?.user) {
+        if(event === 'SIGNED_IN') {
+           router.push('/onboarding');
+        } else {
+           router.push('/marketplace');
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -74,43 +82,94 @@ export default function Home() {
     }
     setIsLoading(true);
 
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
-        await updateProfile(userCredential.user, { displayName: formData.name });
-        
-        showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
-        // The useFirebase hook will detect the new user and redirect.
-    } catch (error: any) {
-        showAlert('destructive', 'Registration Failed', error.message);
-    } finally {
-        setIsLoading(false);
+    const { error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+      options: {
+        data: {
+          full_name: formData.name,
+        },
+      },
+    });
+
+    if (error) {
+      showAlert('destructive', 'Registration Failed', error.message);
+    } else {
+      showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+      // The onAuthStateChange listener will handle the redirect.
     }
+    setIsLoading(false);
   };
 
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    try {
-        await signInWithEmailAndPassword(auth, formData.email, formData.password);
-        // The useFirebase hook will detect the new user and redirect.
-    } catch (error: any) {
-        showAlert('destructive', 'Login Failed', error.message);
-    } finally {
-        setIsLoading(false);
-    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) {
+      showAlert('destructive', 'Login Failed', error.message);
+    } 
+    // The onAuthStateChange listener will handle the redirect.
+    setIsLoading(false);
   };
   
   const handleGoogleLogin = async () => {
     setIsLoading(true);
-    const provider = new GoogleAuthProvider();
-    try {
-        await signInWithPopup(auth, provider);
-        // The useFirebase hook will detect the new user and redirect.
-    } catch (error: any) {
-        showAlert('destructive', 'Google Sign-In Failed', error.message);
-    } finally {
-        setIsLoading(false);
-    }
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${location.origin}/auth/callback`,
+      },
+    });
+    setIsLoading(false);
   };
+
+  const handlePhoneRegistration = async () => {
+    if (!formData.phone) {
+        showAlert('destructive', 'Error', 'Please enter a phone number.');
+        return;
+    }
+     if (!formData.acceptTerms) {
+      showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
+      return;
+    }
+    setIsLoading(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: formData.phone,
+       options: {
+        data: {
+          full_name: formData.name,
+        },
+      },
+    });
+     if (error) {
+      showAlert('destructive', 'Error', error.message);
+    } else {
+      showAlert('default', 'OTP Sent', 'Check your phone for the verification code.');
+      // You would typically navigate to an OTP entry page here.
+    }
+    setIsLoading(false);
+  }
+  
+  const handlePhoneLogin = async () => {
+    if (!formData.phone) {
+        showAlert('destructive', 'Error', 'Please enter a phone number.');
+        return;
+    }
+    setIsLoading(true);
+     const { error } = await supabase.auth.signInWithOtp({
+      phone: formData.phone,
+    });
+     if (error) {
+      showAlert('destructive', 'Error', error.message);
+    } else {
+      showAlert('default', 'OTP Sent', 'Check your phone for the verification code.');
+       // You would typically navigate to an OTP entry page here.
+    }
+    setIsLoading(false);
+  }
 
   const renderAuthCard = () => {
     if (isUserLoading || user) {
@@ -129,7 +188,7 @@ export default function Home() {
             handleEmailLogin={handleEmailLogin}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signup')}
-            handlePhoneLogin={() => {}} // Phone login not implemented with Supabase yet
+            handlePhoneLogin={handlePhoneLogin}
           />
         );
       case 'signup':
@@ -145,7 +204,7 @@ export default function Home() {
             handleEmailRegistration={handleEmailRegistration}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signin')}
-            handlePhoneRegistration={() => {}} // Phone registration not implemented with Supabase yet
+            handlePhoneRegistration={handlePhoneRegistration}
           />
         );
       default:

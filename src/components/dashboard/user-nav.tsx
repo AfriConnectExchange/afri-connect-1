@@ -15,18 +15,29 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { createClient } from '@/lib/supabase/client';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useState, useEffect } from 'react';
 
 export function UserNav() {
   const router = useRouter();
   const { toast } = useToast();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
-  const { user, auth } = useFirebase();
+  const supabase = createClient();
+  const [user, setUser] = useState<SupabaseUser | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+    }
+    getUser();
+  }, [supabase]);
+
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      await supabase.auth.signOut();
       toast({
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
@@ -46,7 +57,7 @@ export function UserNav() {
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-9 w-9">
-            {userAvatar && <AvatarImage src={user?.photoURL || userAvatar.imageUrl} alt="User avatar" data-ai-hint={userAvatar.imageHint}/>}
+            {userAvatar && <AvatarImage src={user?.user_metadata.avatar_url || userAvatar.imageUrl} alt="User avatar" data-ai-hint={userAvatar.imageHint}/>}
             <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
           </Avatar>
         </Button>
@@ -54,7 +65,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.displayName || 'User'}</p>
+            <p className="text-sm font-medium leading-none">{user?.user_metadata.full_name || 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user?.email || 'No email'}
             </p>

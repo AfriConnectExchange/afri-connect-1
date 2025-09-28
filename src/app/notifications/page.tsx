@@ -4,18 +4,31 @@ import { Header } from '@/components/dashboard/header';
 import { NotificationsPage } from '@/components/notifications/notifications-page';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useFirebase } from '@/firebase';
+import { createClient } from '@/lib/supabase/client';
+import { useState, useEffect } from 'react';
+import type { User } from '@supabase/supabase-js';
 
 export default function Notifications() {
-  const { user, isUserLoading } = useFirebase();
+  const supabase = createClient();
+  const [user, setUser] = useState<User | null>(null);
+  const [isUserLoading, setIsUserLoading] = useState(true);
   const router = useRouter();
 
-  if (isUserLoading) {
-    return <PageLoader />;
-  }
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setIsUserLoading(false);
+      if (!session?.user) {
+        router.push('/');
+      }
+    });
 
-  if (!user) {
-    router.push('/');
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [router, supabase]);
+
+  if (isUserLoading || !user) {
     return <PageLoader />;
   }
 
