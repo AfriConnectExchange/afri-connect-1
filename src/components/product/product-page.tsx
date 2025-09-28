@@ -59,11 +59,10 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           sellerVerified: data.seller?.kyc_status === 'verified',
           category: data.category?.name || 'Uncategorized',
           isFree: data.listing_type === 'freebie' || data.price === 0,
-          // Mocking these for now
           rating: 4.5,
           reviews: 10,
           sold: 25,
-          stockCount: 50,
+          stockCount: data.quantity_available || 1,
           specifications: {
               Material: "Cotton",
               Origin: "Ghana",
@@ -73,7 +72,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               domestic: "3-5 business days",
               international: "7-14 business days"
           },
-          sellerDetails: { // Renaming for clarity
+          sellerDetails: {
             name: data.seller?.full_name || 'Unknown Seller',
             avatar: data.seller?.avatar_url || '',
             location: data.seller?.location || 'Unknown',
@@ -119,13 +118,8 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
   const handleAddToCart = () => {
     onAddToCart({ ...product, quantity });
-     toast({
-        title: "Added to cart!",
-        description: `${product.name} (x${quantity}) has been added to your cart.`,
-    })
   };
   
-    // Mock reviews for display until API is connected
   const reviews = [
     { id: 1, user: "Amina H.", rating: 5, date: "2 weeks ago", comment: "Exceptional quality!", verified: true },
     { id: 2, user: "David O.", rating: 5, date: "1 month ago", comment: "Perfect for my wedding.", verified: true },
@@ -161,7 +155,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               className="w-full h-full object-cover"
             />
           </div>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-4 gap-2">
               {product.images.map((image: string, index: number) => (
               <button
                 key={index}
@@ -317,7 +311,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                 </CardHeader>
                 <CardContent className="text-sm">
                   <div className="space-y-3">
-                    {Object.entries(product.specifications).map(([key, value]) => (
+                    {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
                       <div key={key} className="flex justify-between items-center py-2 border-b last:border-b-0 text-xs sm:text-sm">
                         <span className="font-medium text-foreground/80">{key}</span>
                         <span className="text-muted-foreground text-right">{String(value)}</span>
@@ -368,20 +362,24 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                   <CardTitle className="text-base sm:text-lg">Shipping Options</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm space-y-4">
-                  <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                    <Truck className="w-5 h-5 text-primary mt-1" />
-                    <div>
-                      <h4 className="font-medium">Domestic Shipping</h4>
-                      <p className="text-muted-foreground">{product.shipping.domestic}</p>
-                    </div>
-                  </div>
-                   <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                    <Ship className="w-5 h-5 text-primary mt-1" />
-                    <div>
-                      <h4 className="font-medium">International Shipping</h4>
-                      <p className="text-muted-foreground">{product.shipping.international}</p>
-                    </div>
-                  </div>
+                    {product.shipping && (
+                        <>
+                            <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
+                                <Truck className="w-5 h-5 text-primary mt-1" />
+                                <div>
+                                <h4 className="font-medium">Domestic Shipping</h4>
+                                <p className="text-muted-foreground">{product.shipping.domestic}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
+                                <Ship className="w-5 h-5 text-primary mt-1" />
+                                <div>
+                                <h4 className="font-medium">International Shipping</h4>
+                                <p className="text-muted-foreground">{product.shipping.international}</p>
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -402,17 +400,17 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={(product as any).sellerDetails.avatar} />
-                    <AvatarFallback>{(product as any).sellerDetails.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={(product as any).sellerDetails?.avatar} />
+                    <AvatarFallback>{(product as any).sellerDetails?.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{(product as any).sellerDetails.name}</span>
-                      {(product as any).sellerDetails.verified && (
+                      <span className="font-medium text-sm">{(product as any).sellerDetails?.name}</span>
+                      {(product as any).sellerDetails?.verified && (
                         <Badge variant="secondary" className="text-[10px]">Verified</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{(product as any).sellerDetails.location}</p>
+                    <p className="text-xs text-muted-foreground">{(product as any).sellerDetails?.location}</p>
                   </div>
                 </div>
                 
@@ -421,16 +419,16 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                     <span className="text-muted-foreground">Rating</span>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{(product as any).sellerDetails.rating}</span>
+                      <span>{(product as any).sellerDetails?.rating}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Sales</span>
-                    <span>{(product as any).sellerDetails.totalSales}</span>
+                    <span>{(product as any).sellerDetails?.totalSales}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Joined</span>
-                    <span>{(product as any).sellerDetails.memberSince}</span>
+                    <span>{(product as any).sellerDetails?.memberSince}</span>
                   </div>
                 </div>
                 
@@ -446,5 +444,3 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     </div>
   );
 }
-
-    

@@ -39,6 +39,7 @@ export interface Product {
   location_text: string; 
   created_at: string;
   updated_at: string;
+  quantity_available: number;
   
   // Properties from old interface, to be mapped or joined
   name: string; // Will map from title
@@ -52,6 +53,10 @@ export interface Product {
   featured?: boolean;
   discount?: number;
   isFree?: boolean;
+  stockCount: number;
+  specifications: Record<string, any>;
+  shipping: Record<string, any>;
+  sellerDetails: Record<string, any>;
 }
 
 export interface Category {
@@ -152,10 +157,6 @@ export default function MarketplacePage() {
         return [...prevCart, { ...product, quantity: 1, inStock: true, shippingCost: 5.99 }]; // Add default values
       }
     });
-    toast({
-        title: "Added to cart!",
-        description: `${product.name} has been added to your cart.`,
-    })
   };
 
   // Filter state
