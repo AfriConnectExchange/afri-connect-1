@@ -6,14 +6,13 @@ import Image from 'next/image';
 import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
 import CheckEmailCard from '@/components/auth/CheckEmailCard';
-import OTPVerification from '@/components/auth/OTPVerification';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
 import { type User, type Session } from '@supabase/supabase-js';
 
-type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
+type AuthMode = 'signin' | 'signup' | 'awaiting-verification';
 
 export default function Home() {
   const supabase = createClient();
@@ -29,7 +28,6 @@ export default function Home() {
     password: '',
     confirmPassword: '',
     acceptTerms: false,
-    phone: '',
   });
 
   const [showPassword, setShowPassword] = useState(false);
@@ -71,7 +69,7 @@ export default function Home() {
     }));
   };
 
-  const handleEmailRegistration = async () => {
+  const handleRegistration = async () => {
     if (formData.password !== formData.confirmPassword) {
       showAlert('destructive', 'Error', 'Passwords do not match.');
       return;
@@ -101,57 +99,8 @@ export default function Home() {
     }
     setIsLoading(false);
   };
-  
-  const handlePhoneRegistration = async () => {
-    if (!formData.phone) {
-        showAlert('destructive', 'Error', 'Please enter a phone number.');
-        return;
-    }
-     if (!formData.acceptTerms) {
-      showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
-      return;
-    }
-    setIsLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-        phone: formData.phone,
-        password: formData.password,
-        options: {
-            data: {
-                full_name: formData.name,
-            }
-        }
-    });
-    
-    if (error) {
-        showAlert('destructive', 'Registration Failed', error.message);
-    } else {
-        setAuthMode('otp');
-    }
-    setIsLoading(false);
-  };
-  
-  const handleOTPComplete = async (otp: string) => {
-    if (otp.length < 6) return;
-    setIsLoading(true);
-    
-    const { error } = await supabase.auth.verifyOtp({
-        phone: formData.phone,
-        token: otp,
-        type: 'sms',
-    });
-    
-    if (error) {
-        showAlert('destructive', 'Verification Failed', error.message);
-    } else {
-        showAlert('default', 'Account Verified!', 'Your account has been successfully created.');
-        router.refresh();
-    }
-    setIsLoading(false);
-  };
-
-
-  const handleEmailLogin = async () => {
+  const handleLogin = async () => {
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
       email: formData.email,
@@ -172,17 +121,6 @@ export default function Home() {
        router.refresh();
     }
   };
-  
-  const handleGoogleLogin = async () => {
-    setIsLoading(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${location.origin}/auth/callback`,
-      },
-    });
-    setIsLoading(false);
-  };
 
   if (!isClient) {
     return <PageLoader />;
@@ -199,8 +137,7 @@ export default function Home() {
             showPassword={showPassword}
             setShowPassword={setShowPassword}
             isLoading={isLoading}
-            handleEmailLogin={handleEmailLogin}
-            handleGoogleLogin={handleGoogleLogin}
+            handleLogin={handleLogin}
             onSwitch={() => handleSwitchMode('signup')}
           />
         );
@@ -214,9 +151,7 @@ export default function Home() {
             showConfirmPassword={showConfirmPassword}
             setShowConfirmPassword={setShowConfirmPassword}
             isLoading={isLoading}
-            handleEmailRegistration={handleEmailRegistration}
-            handlePhoneRegistration={handlePhoneRegistration}
-            handleGoogleLogin={handleGoogleLogin}
+            handleRegistration={handleRegistration}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
@@ -226,16 +161,6 @@ export default function Home() {
             email={formData.email}
             onBack={() => setAuthMode('signin')}
             isVerifying={isLoading}
-          />
-        );
-       case 'otp':
-        return (
-          <OTPVerification
-            formData={formData}
-            handleOTPComplete={handleOTPComplete}
-            handleResendOTP={handlePhoneRegistration}
-            isLoading={isLoading}
-            onBack={() => setAuthMode('signup')}
           />
         );
       default:
@@ -272,8 +197,8 @@ export default function Home() {
             </blockquote>
           </div>
         </div>
-        <div className="lg:p-8 flex items-center justify-center">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
+        <div className="hidden lg:flex items-center justify-center p-8">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
             {renderAuthCard()}
           </div>
         </div>
