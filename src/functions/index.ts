@@ -16,11 +16,11 @@ const initDb = () => {
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_DATABASE,
-        host: process.env.DB_HOST,
+        host: process.env.DB_HOST || 'localhost',
+        port: process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432,
     };
 
-    // When running in a production Google Cloud environment, the `INSTANCE_CONNECTION_NAME`
-    // will be set, and we should use the socket path.
+    // For production, the host should point to the Cloud SQL socket directory.
     if (process.env.NODE_ENV === 'production' && process.env.INSTANCE_CONNECTION_NAME) {
         config.host = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
     }
@@ -42,7 +42,9 @@ export const createProfile = onUserCreate(async (event) => {
   };
 
   try {
-    await db.query(query);
+    const client = await db.connect();
+    await client.query(query);
+    client.release();
     logger.info(`Successfully created profile for user: ${uid}`);
   } catch (error) {
     logger.error(`Error creating profile for user: ${uid}`, error);
