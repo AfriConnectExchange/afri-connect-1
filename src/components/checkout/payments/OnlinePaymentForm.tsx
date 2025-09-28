@@ -13,7 +13,7 @@ import Image from 'next/image';
 
 interface OnlinePaymentFormProps {
   orderTotal: number;
-  paymentType: 'card' | 'wallet';
+  paymentType: 'card' | 'wallet' | 'flutterwave';
   onConfirm: (data: any) => void;
   onCancel: () => void;
 }
@@ -64,7 +64,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
       if (!formData.cardholderName) {
         newErrors.cardholderName = 'Please enter cardholder name';
       }
-    } else {
+    } else if (paymentType === 'wallet') {
       if (!formData.walletProvider) {
         newErrors.walletProvider = 'Please select a wallet provider';
       }
@@ -97,13 +97,13 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     
     if (success) {
       onConfirm({
-        paymentMethod: paymentType === 'card' ? 'online_card' : 'online_wallet',
+        paymentMethod: paymentType,
         paymentDetails: paymentType === 'card' ? {
           last4: '4242',
           cardType: 'Visa',
           saved: formData.savePaymentMethod
         } : {
-          provider: formData.walletProvider,
+          provider: formData.walletProvider || paymentType,
           email: formData.walletEmail
         },
         orderTotal,
@@ -122,16 +122,33 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
   const totalWithFees = orderTotal + processingFee;
   
   const isFormValid = formData.agreeTerms && 
-    (paymentType === 'card' ? formData.cardholderName : formData.walletProvider && formData.walletEmail) &&
+    (paymentType === 'card' ? formData.cardholderName : paymentType === 'wallet' ? formData.walletProvider && formData.walletEmail : true) &&
     formData.billingAddress.postcode;
 
+  const renderTitle = () => {
+    switch (paymentType) {
+      case 'card': return 'Card Payment';
+      case 'wallet': return 'Digital Wallet';
+      case 'flutterwave': return 'Pay with Flutterwave';
+      default: return 'Online Payment';
+    }
+  }
+
+  const renderIcon = () => {
+    switch(paymentType) {
+        case 'card': return <CreditCard className="w-5 h-5" />;
+        case 'wallet': return <Wallet className="w-5 h-5" />;
+        case 'flutterwave': return <Image src="/flutterwave.svg" alt="Flutterwave" width={20} height={20} />;
+        default: return <CreditCard className="w-5 h-5" />;
+    }
+  }
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center space-x-2">
-          {paymentType === 'card' ? <CreditCard className="w-5 h-5" /> : <Wallet className="w-5 h-5" />}
-          <span>{paymentType === 'card' ? 'Card Payment' : 'Digital Wallet'}</span>
+          {renderIcon()}
+          <span>{renderTitle()}</span>
           <Badge variant="secondary" className="text-xs">
             <Lock className="w-3 h-3 mr-1" />
             Secure
@@ -154,13 +171,13 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </div>
         </div>
 
-        {paymentType === 'card' ? (
+        {paymentType === 'card' && (
           <div className="space-y-4">
             <div className="flex items-center justify-end gap-2 h-6">
                 <Image src="/stripe.svg" alt="Stripe" width={50} height={20}/>
-                <Image src="/paypal.svg" alt="PayPal" width={60} height={20}/>
             </div>
-
+            
+            {/* SECURE PAYMENT ELEMENT PLACEHOLDER */}
             <div className="space-y-2">
               <Label>Card Information</Label>
               <div className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background flex items-center justify-between text-muted-foreground">
@@ -181,7 +198,9 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
               {errors.cardholderName && <p className="text-destructive text-sm mt-1">{errors.cardholderName}</p>}
             </div>
           </div>
-        ) : (
+        )}
+
+        {paymentType === 'wallet' && (
           <div className="space-y-4">
             <div>
               <Label htmlFor="walletProvider">Wallet Provider *</Label>
@@ -215,6 +234,13 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
               {errors.walletEmail && <p className="text-destructive text-sm mt-1">{errors.walletEmail}</p>}
             </div>
           </div>
+        )}
+
+        {paymentType === 'flutterwave' && (
+            <div className="p-4 border rounded-lg bg-muted/50 text-center space-y-3">
+                <p>You will be redirected to Flutterwave to complete your payment securely.</p>
+                <Button>Proceed to Flutterwave</Button>
+            </div>
         )}
 
         <div className="space-y-4">

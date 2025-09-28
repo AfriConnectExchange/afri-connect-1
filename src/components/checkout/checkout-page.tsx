@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +9,6 @@ import { CashOnDeliveryForm } from '@/components/checkout/payments/CashOnDeliver
 import { OnlinePaymentForm } from '@/components/checkout/payments/OnlinePaymentForm';
 import { EscrowPaymentForm } from '@/components/checkout/payments/EscrowPaymentForm';
 import { BarterProposalForm } from '@/components/checkout/payments/BarterProposalForm';
-import { PaymentConfirmation } from '@/components/checkout/payments/PaymentConfirmation';
 import { ArrowLeft, ShoppingCart, MapPin, Truck } from 'lucide-react';
 import type { CartItem } from '@/context/cart-context';
 import Image from 'next/image';
@@ -18,67 +17,51 @@ interface CheckoutPageProps {
   cartItems: CartItem[];
   subtotal: number;
   onNavigate: (page: string) => void;
-  clearCart: () => void;
+  onPaymentSuccess: (data: any) => void; // Callback for successful payment
+  checkoutStep: 'summary' | 'payment' | 'confirmation';
+  setCheckoutStep: (step: 'summary' | 'payment' | 'confirmation') => void;
+  selectedPaymentMethod: any;
+  setSelectedPaymentMethod: (method: any) => void;
 }
 
 export function CheckoutPageComponent({
   cartItems,
   subtotal,
   onNavigate,
-  clearCart,
+  onPaymentSuccess,
+  checkoutStep,
+  setCheckoutStep,
+  selectedPaymentMethod,
+  setSelectedPaymentMethod,
 }: CheckoutPageProps) {
-  const [currentStep, setCurrentStep] = useState<
-    'summary' | 'payment' | 'confirmation'
-  >('summary');
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
-  const [paymentData, setPaymentData] = useState<any>(null);
-  const [orderData, setOrderData] = useState({
+  
+  const orderData = {
     deliveryAddress: {
       street: '123 Example Street',
       city: 'London',
       postcode: 'SW1A 1AA',
       phone: '+44 7700 900123',
     },
-    // We will store the final successful order details here
-    confirmedOrderItems: [] as CartItem[],
-    confirmedOrderTotal: 0,
-  });
+  };
 
   const deliveryFee = subtotal > 50 ? 0 : 4.99;
   const total = subtotal + deliveryFee;
 
   useEffect(() => {
-    // If the user lands on the checkout page with an empty cart (and not for confirmation), redirect them.
-    if (cartItems.length === 0 && currentStep !== 'confirmation') {
+    // If the user lands on the checkout page with an empty cart redirect them.
+    if (cartItems.length === 0 && checkoutStep !== 'confirmation') {
       onNavigate('cart');
     }
-  }, [cartItems, onNavigate, currentStep]);
+  }, [cartItems, onNavigate, checkoutStep]);
 
   const handlePaymentMethodSelect = (method: any) => {
     setSelectedPaymentMethod(method);
-    setCurrentStep('payment');
+    setCheckoutStep('payment');
   };
 
-  const handlePaymentSubmit = (data: any) => {
-    // This is the successful payment callback
-    // 1. Store the successful order details for the confirmation page
-    setOrderData(prev => ({
-        ...prev,
-        confirmedOrderItems: cartItems,
-        confirmedOrderTotal: total,
-    }));
-    setPaymentData(data);
-    
-    // 2. NOW it's safe to clear the cart
-    clearCart();
-
-    // 3. Move to the final confirmation screen
-    setCurrentStep('confirmation');
-  };
-
-  const handleBackToPaymentSelection = () => {
+  const handleBackToSummary = () => {
     setSelectedPaymentMethod(null);
-    setCurrentStep('summary');
+    setCheckoutStep('summary');
   };
 
   const renderPaymentForm = () => {
@@ -86,8 +69,8 @@ export function CheckoutPageComponent({
 
     const props = {
       orderTotal: total,
-      onConfirm: handlePaymentSubmit, // This is the success callback
-      onCancel: handleBackToPaymentSelection,
+      onConfirm: onPaymentSuccess, // This is the success callback
+      onCancel: handleBackToSummary,
     };
 
     switch (selectedPaymentMethod.id) {
@@ -95,9 +78,9 @@ export function CheckoutPageComponent({
         return <CashOnDeliveryForm {...props} />;
       case 'card':
         return <OnlinePaymentForm {...props} paymentType="card" />;
-      case 'wallet':
-        return <OnlinePaymentForm {...props} paymentType="wallet" />;
        case 'flutterwave':
+        return <OnlinePaymentForm {...props} paymentType="flutterwave" />;
+      case 'wallet':
         return <OnlinePaymentForm {...props} paymentType="wallet" />;
       case 'escrow':
         return <EscrowPaymentForm {...props} />;
@@ -114,21 +97,6 @@ export function CheckoutPageComponent({
     }
   };
 
-  if (currentStep === 'confirmation' && paymentData) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <PaymentConfirmation
-            paymentData={paymentData}
-            orderItems={orderData.confirmedOrderItems}
-            orderTotal={orderData.confirmedOrderTotal}
-            onNavigate={onNavigate}
-          />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -136,17 +104,17 @@ export function CheckoutPageComponent({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => currentStep === 'payment' ? handleBackToPaymentSelection() : onNavigate('cart')}
+              onClick={() => checkoutStep === 'payment' ? handleBackToSummary() : onNavigate('cart')}
               className="flex items-center space-x-2"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>{currentStep === 'payment' ? 'Back to Payment Selection' : 'Back to Cart'}</span>
+              <span>{checkoutStep === 'payment' ? 'Back to Payment Selection' : 'Back to Cart'}</span>
             </Button>
             <h1 className="text-2xl font-bold mt-2">Checkout</h1>
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            {currentStep === 'summary' && (
+            {checkoutStep === 'summary' && (
               <>
                 <Card>
                   <CardHeader>
@@ -215,7 +183,7 @@ export function CheckoutPageComponent({
               </>
             )}
 
-            {currentStep === 'payment' && renderPaymentForm()}
+            {checkoutStep === 'payment' && renderPaymentForm()}
           </div>
 
           <div className="lg:col-span-1">
