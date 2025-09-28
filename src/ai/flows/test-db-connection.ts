@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A flow to test the database connection.
@@ -20,8 +21,8 @@ const initDb = () => {
   };
 
   // When running in a production Google Cloud environment, the `INSTANCE_CONNECTION_NAME`
-  // will be set. In this case, we need to connect via a Unix socket.
-  if (process.env.INSTANCE_CONNECTION_NAME) {
+  // will be set, and we should use the socket path.
+  if (process.env.NODE_ENV === 'production' && process.env.INSTANCE_CONNECTION_NAME) {
     config.host = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
   }
 
