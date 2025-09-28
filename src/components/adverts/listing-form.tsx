@@ -28,6 +28,7 @@ import { Progress } from '@/components/ui/progress';
 import { Product } from '@/app/marketplace/page';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
+import { createClient } from '@/lib/supabase/client';
 
 const listingFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -64,9 +65,11 @@ const steps = [
 ];
 
 export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormProps) {
+  const supabase = createClient();
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
-  const [images, setImages] = useState<string[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
 
@@ -107,29 +110,30 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
         quantity_available: product.quantity_available || 1,
         images: product.images,
       });
-      setImages(product.images || []);
+      setImagePreviews(product.images || []);
+      setImageFiles([]);
     } else {
       form.reset();
-      setImages([]);
+      setImagePreviews([]);
+      setImageFiles([]);
     }
   }, [product, form, isOpen]);
 
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
-    if (images.length + files.length > 4) {
+    if (imagePreviews.length + files.length > 4) {
       toast({ variant: 'destructive', title: 'Upload Error', description: 'You can upload a maximum of 4 images.' });
       return;
     }
+    setImageFiles(prev => [...prev, ...files]);
     const newImageUrls = files.map(file => URL.createObjectURL(file));
-    setImages(prev => [...prev, ...newImageUrls]);
-    form.setValue('images', [...images, ...newImageUrls]);
+    setImagePreviews(prev => [...prev, ...newImageUrls]);
   };
   
   const removeImage = (index: number) => {
-    const newImages = images.filter((_, i) => i !== index);
-    setImages(newImages);
-    form.setValue('images', newImages);
+    setImagePreviews(prev => prev.filter((_, i) => i !== index));
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   }
   
   const nextStep = async () => {
@@ -151,13 +155,42 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
 
   const onSubmit = async (data: ListingFormValues) => {
     setIsSaving(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    const finalData = { ...product, ...data, images };
-    onSave(finalData);
 
-    setIsSaving(false);
-    setCurrentStep(0);
+    try {
+        const {data: {user}} = await supabase.auth.getUser();
+        if(!user) throw new Error("You must be logged in to create a listing.");
+
+        const uploadedImageUrls = [];
+
+        for (const file of imageFiles) {
+            const filePath = `${user.id}/${Date.now()}_${file.name}`;
+            const { error: uploadError } = await supabase.storage
+                .from('product_images')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                throw new Error(`Failed to upload ${file.name}: ${uploadError.message}`);
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('product_images')
+                .getPublicUrl(filePath);
+
+            uploadedImageUrls.push(publicUrl);
+        }
+        
+        const finalData = { 
+            ...product, 
+            ...data, 
+            images: [...(product?.images || []), ...uploadedImageUrls] 
+        };
+        onSave(finalData);
+
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+    } finally {
+        setIsSaving(false);
+    }
   };
   
   const progress = ((currentStep + 1) / steps.length) * 100;
@@ -272,7 +305,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                 <div>
                     <FormLabel>Product Images (up to 4)</FormLabel>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                        {images.map((url, index) => (
+                        {imagePreviews.map((url, index) => (
                             <div key={index} className="relative aspect-square">
                                 <Image src={url} alt={`upload-preview-${index}`} layout="fill" className="rounded-md object-cover" />
                                 <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removeImage(index)}>
@@ -280,7 +313,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                                 </Button>
                             </div>
                         ))}
-                        {images.length < 4 && (
+                        {imagePreviews.length < 4 && (
                             <label htmlFor="image-upload" className="cursor-pointer aspect-square flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 hover:bg-muted">
                                 <Upload className="h-8 w-8 text-muted-foreground" />
                                 <span className="mt-2 text-sm text-muted-foreground">Upload</span>

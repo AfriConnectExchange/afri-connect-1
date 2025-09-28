@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { PlusCircle, MoreHorizontal, Search, ListFilter, X, Package } from 'lucide-react';
+import { PlusCircle, MoreHorizontal, Search, ListFilter, Package, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -33,28 +33,35 @@ export function AdvertsPageComponent() {
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchUserProducts = async () => {
+  const fetchUserProducts = async () => {
       setIsLoading(true);
-      // In a real app, this would fetch only the user's products
-      // Simulating an empty list for now to show the empty state
-      // const res = await fetch('/api/adverts/list');
-      // if (res.ok) {
-      //   setProducts(await res.json());
-      // } else {
-      //   toast({
-      //     variant: 'destructive',
-      //     title: 'Error',
-      //     description: 'Failed to fetch your products.',
-      //   });
-      // }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      setProducts([]); // Start with an empty array
-      setIsLoading(false);
+      try {
+        const res = await fetch('/api/adverts/list');
+        if (res.ok) {
+            const data = await res.json();
+            setProducts(data);
+        } else {
+            const errorData = await res.json();
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: errorData.error || 'Failed to fetch your products.',
+            });
+        }
+      } catch (error) {
+          toast({
+                variant: 'destructive',
+                title: 'Network Error',
+                description: 'Could not connect to the server.',
+            });
+      } finally {
+        setIsLoading(false);
+      }
     };
 
+  useEffect(() => {
     fetchUserProducts();
-  }, [toast]);
+  }, []);
 
   const handleCreateNew = () => {
     setSelectedProduct(null);
@@ -72,47 +79,37 @@ export function AdvertsPageComponent() {
     toast({ title: 'Success', description: 'Product deleted successfully.' });
   }
 
-  const handleFormSave = (productData: Partial<Product>) => {
-    // This function creates a more complete product object for the UI
-    const createFullProduct = (data: Partial<Product>): Product => {
-        const categoryName = 'Uncategorized'; // Placeholder
-        const newProduct: Product = {
-            id: data.id || `prod_${Date.now()}`,
-            seller_id: 'current_user',
-            title: data.title || '',
-            description: data.description || '',
-            price: data.price || 0,
-            currency: 'GBP',
-            category_id: data.category_id || 0,
-            listing_type: data.listing_type || 'sale',
-            status: data.status || 'active',
-            images: data.images || ['https://placehold.co/400x300'],
-            location_text: data.location_text || '',
-            created_at: data.created_at || new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            name: data.title || '',
-            image: data.images?.[0] || 'https://placehold.co/400x300',
-            seller: 'Current User',
-            sellerVerified: true,
-            category: categoryName,
-            rating: data.rating || 0,
-            reviews: data.reviews || 0,
-            stockCount: data.quantity_available || 1,
-            quantity_available: data.quantity_available || 1,
-        };
-        return newProduct;
-    };
+  const handleFormSave = async (productData: Partial<Product>) => {
+    const isEditing = !!selectedProduct;
+    const endpoint = isEditing ? '/api/adverts/edit' : '/api/adverts/create';
     
-    const newProduct = createFullProduct(productData);
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(productData),
+        });
 
-    if (selectedProduct) {
-        setProducts(products.map((p) => (p.id === newProduct.id ? newProduct : p)));
-        toast({ title: 'Success', description: 'Product updated successfully.' });
-    } else {
-        setProducts([newProduct, ...products]);
-        toast({ title: 'Success', description: 'Product created successfully.' });
+        const result = await response.json();
+
+        if (!response.ok) {
+            throw new Error(result.error || 'Something went wrong');
+        }
+
+        toast({
+            title: 'Success',
+            description: `Product ${isEditing ? 'updated' : 'created'} successfully.`,
+        });
+        
+        setIsFormOpen(false);
+        fetchUserProducts(); // Refresh the list
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: error.message,
+        });
     }
-    setIsFormOpen(false);
   };
 
   const getStatusVariant = (status: string) => {
