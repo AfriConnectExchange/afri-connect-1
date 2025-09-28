@@ -26,10 +26,18 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'User registered successfully.',
-      user: user,
+      user: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+      },
     }, { status: 201 });
 
   } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 400 });
+    console.error("Registration Error:", error);
+    // Ensure that even in case of an error, a valid JSON response is sent.
+    const errorMessage = error.message || 'An unknown error occurred.';
+    const errorCode = error.code || 'UNKNOWN_ERROR';
+    return NextResponse.json({ message: errorMessage, code: errorCode }, { status: 400 });
   }
 }

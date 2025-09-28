@@ -64,7 +64,8 @@ export default function Home() {
 
   useEffect(() => {
     if (!isUserLoading && user) {
-        handleSuccessfulLogin(user);
+        // The redirection logic is now fully handled inside handleSuccessfulLogin
+        // which is called from the login/signup handlers.
     }
   }, [user, isUserLoading, router]);
 
@@ -114,6 +115,7 @@ export default function Home() {
       const result = await response.json();
 
       if (!response.ok) {
+        // Use the error message from the JSON response
         throw new Error(result.message || 'Registration failed.');
       }
       
@@ -122,9 +124,9 @@ export default function Home() {
       
     } catch (error: any) {
        showAlert('destructive', 'Registration Failed', error.message);
+    } finally {
+       setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
   
   const handlePhoneRegistration = async () => {
@@ -137,7 +139,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      // The useEffect will handle the redirect
+      await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
        showAlert('destructive', 'Login Failed', error.message);
        setIsLoading(false);
@@ -159,8 +161,8 @@ export default function Home() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-        await signInWithPopup(auth, provider);
-        // The useEffect will handle the redirect
+        const userCredential = await signInWithPopup(auth, provider);
+        await handleSuccessfulLogin(userCredential.user);
     } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
             showAlert('destructive', 'Google Login Failed', error.message);
