@@ -80,7 +80,7 @@ export function OnboardingFlow() {
       await supabase.auth.updateUser({
         data: {
             full_name: dataToSave.full_name,
-            phone_number: dataToSave.phone_number,
+            phone: dataToSave.phone_number,
             location: dataToSave.location,
         }
       });

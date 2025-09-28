@@ -45,12 +45,24 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // In a real app, you would fetch profile data from your 'profiles' table in Supabase
-      // For now, we use user metadata
-      setUserProfile(user.user_metadata);
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching profile:', error);
+        setUserProfile(user.user_metadata);
+      } else {
+        setUserProfile(profile);
+      }
     };
-    fetchProfile();
-  }, [user]);
+
+    if(user) {
+      fetchProfile();
+    }
+  }, [user, supabase]);
 
   const handleSignOut = async () => {
     try {
@@ -101,10 +113,10 @@ export function ProfileSummaryCard({ user, onNavigate, activeTab, setActiveTab }
                   <span className="truncate">{user.email}</span>
                 </div>
               )}
-              {userProfile?.phone && (
+              {userProfile?.phone_number && (
                 <div className="flex items-center justify-center gap-2">
                   <Phone className="w-4 h-4" />
-                  <span>{userProfile.phone}</span>
+                  <span>{userProfile.phone_number}</span>
                 </div>
               )}
               {userProfile?.location && (
