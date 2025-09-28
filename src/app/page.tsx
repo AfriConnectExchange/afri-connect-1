@@ -11,9 +11,11 @@ import { PageLoader } from '@/components/ui/loader';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { useFirebase } from '@/firebase';
 import { 
+  createUserWithEmailAndPassword,
   signInWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup,
+  updateProfile,
   User
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -102,22 +104,20 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
-          name: formData.name,
-        }),
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      const user = userCredential.user;
+
+      // Update the user's profile with their name
+      await updateProfile(user, { displayName: formData.name });
+      
+      // Create a corresponding profile document in Firestore
+      await setDoc(doc(firestore, "profiles", user.uid), {
+          id: user.uid,
+          full_name: formData.name,
+          email: user.email,
+          role_id: 1, // Default role to 'buyer'
+          onboarding_completed: false, 
       });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        // Use the error message from the JSON response
-        throw new Error(result.message || 'Registration failed.');
-      }
       
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       handleSwitchMode('signin');
