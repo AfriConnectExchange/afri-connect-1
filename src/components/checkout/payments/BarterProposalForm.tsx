@@ -12,7 +12,7 @@ import { Handshake, Package, User, AlertCircle, CheckCircle, X } from 'lucide-re
 
 interface BarterProposalFormProps {
   targetProduct: {
-    id: number;
+    id: any;
     name: string;
     seller: string;
     estimatedValue: number;
