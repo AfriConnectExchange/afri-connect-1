@@ -3,11 +3,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
+// This schema now includes seller_id, which is crucial for the order_items table
 const orderItemSchema = z.object({
   id: z.string(),
   quantity: z.number().int().positive(),
   price: z.number(),
-  // Add other product fields if needed for validation, but keep it minimal
+  seller_id: z.string(), // Added seller_id
 });
 
 const createOrderSchema = z.object({
@@ -67,6 +68,7 @@ export async function POST(request: Request) {
       product_id: item.id,
       quantity: item.quantity,
       price_at_purchase: item.price,
+      seller_id: item.seller_id, // Including seller_id as per schema
     }));
     
     const { error: orderItemsError } = await supabase

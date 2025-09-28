@@ -32,7 +32,12 @@ export default function CheckoutPage() {
     
     // Create the order in the database
     const orderPayload = {
-      cartItems: cart,
+      cartItems: cart.map(item => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+        seller_id: item.seller_id, // Pass seller_id to the API
+      })),
       subtotal,
       deliveryFee,
       total,
