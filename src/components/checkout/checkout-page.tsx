@@ -97,6 +97,8 @@ export function CheckoutPageComponent({
         return <OnlinePaymentForm {...props} paymentType="card" />;
       case 'wallet':
         return <OnlinePaymentForm {...props} paymentType="wallet" />;
+       case 'flutterwave':
+        return <OnlinePaymentForm {...props} paymentType="wallet" />;
       case 'escrow':
         return <EscrowPaymentForm {...props} />;
       case 'barter':
