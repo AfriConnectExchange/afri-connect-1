@@ -1,21 +1,23 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Logo } from '@/components/logo';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
 import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
+import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { type User, type Session } from '@supabase/supabase-js';
 
-type AuthMode = 'signin' | 'signup';
+type AuthMode = 'signin' | 'signup' | 'awaiting-verification';
 
 export default function Home() {
   const supabase = createClient();
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isUserLoading, setIsUserLoading] = useState(true);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
@@ -33,24 +35,44 @@ export default function Home() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  const handleAuthChange = useCallback(
+    (event: string, session: Session | null) => {
+      setUser(session?.user ?? null);
+      setSession(session);
+      setIsUserLoading(false);
+
+      if (session?.user) {
+        // If user is signed in, check if onboarding is complete
+        // In a real app, you'd fetch this from the 'profiles' table
+        const checkOnboarding = async () => {
+          // Mocking onboarding check for now.
+          // Replace with: const { data } = await supabase.from('profiles').select('onboarding_completed').single();
+          const onboardingCompleted = false; // Assume false for this example
+          
+          if (!onboardingCompleted) {
+            router.push('/onboarding');
+          } else {
+            router.push('/marketplace');
+          }
+        };
+
+        checkOnboarding();
+      }
+    },
+    [router]
+  );
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-       if (session?.user) {
-        if(event === 'SIGNED_IN') {
-           router.push('/onboarding');
-        } else {
-           router.push('/marketplace');
-        }
-      }
-    });
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(handleAuthChange);
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [router, supabase]);
+  }, [supabase, handleAuthChange]);
+
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -89,6 +111,7 @@ export default function Home() {
         data: {
           full_name: formData.name,
         },
+        emailRedirectTo: `${location.origin}/auth/callback`,
       },
     });
 
@@ -96,7 +119,7 @@ export default function Home() {
       showAlert('destructive', 'Registration Failed', error.message);
     } else {
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
-      // The onAuthStateChange listener will handle the redirect.
+      setAuthMode('awaiting-verification');
     }
     setIsLoading(false);
   };
@@ -109,9 +132,14 @@ export default function Home() {
     });
 
     if (error) {
-      showAlert('destructive', 'Login Failed', error.message);
+        if (error.message === 'Email not confirmed') {
+            setAuthMode('awaiting-verification');
+             showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
+        } else {
+            showAlert('destructive', 'Login Failed', error.message);
+        }
     } 
-    // The onAuthStateChange listener will handle the redirect.
+    // The onAuthStateChange listener will handle the redirect on success.
     setIsLoading(false);
   };
   
@@ -126,53 +154,9 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  const handlePhoneRegistration = async () => {
-    if (!formData.phone) {
-        showAlert('destructive', 'Error', 'Please enter a phone number.');
-        return;
-    }
-     if (!formData.acceptTerms) {
-      showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
-      return;
-    }
-    setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: formData.phone,
-       options: {
-        data: {
-          full_name: formData.name,
-        },
-      },
-    });
-     if (error) {
-      showAlert('destructive', 'Error', error.message);
-    } else {
-      showAlert('default', 'OTP Sent', 'Check your phone for the verification code.');
-      // You would typically navigate to an OTP entry page here.
-    }
-    setIsLoading(false);
-  }
-  
-  const handlePhoneLogin = async () => {
-    if (!formData.phone) {
-        showAlert('destructive', 'Error', 'Please enter a phone number.');
-        return;
-    }
-    setIsLoading(true);
-     const { error } = await supabase.auth.signInWithOtp({
-      phone: formData.phone,
-    });
-     if (error) {
-      showAlert('destructive', 'Error', error.message);
-    } else {
-      showAlert('default', 'OTP Sent', 'Check your phone for the verification code.');
-       // You would typically navigate to an OTP entry page here.
-    }
-    setIsLoading(false);
-  }
 
   const renderAuthCard = () => {
-    if (isUserLoading || user) {
+    if (isUserLoading || session?.user) {
       return <PageLoader />;
     }
 
@@ -188,7 +172,6 @@ export default function Home() {
             handleEmailLogin={handleEmailLogin}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signup')}
-            handlePhoneLogin={handlePhoneLogin}
           />
         );
       case 'signup':
@@ -204,7 +187,14 @@ export default function Home() {
             handleEmailRegistration={handleEmailRegistration}
             handleGoogleLogin={handleGoogleLogin}
             onSwitch={() => handleSwitchMode('signin')}
-            handlePhoneRegistration={handlePhoneRegistration}
+          />
+        );
+       case 'awaiting-verification':
+        return (
+          <CheckEmailCard
+            email={formData.email}
+            onBack={() => setAuthMode('signin')}
+            isVerifying={false} // This component is now just for display
           />
         );
       default:

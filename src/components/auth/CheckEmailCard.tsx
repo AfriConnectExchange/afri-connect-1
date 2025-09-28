@@ -26,16 +26,9 @@ export default function CheckEmailCard({ email, onBack, isVerifying }: CheckEmai
           check your inbox and follow the link to activate your account.
         </p>
 
-        {isVerifying ? (
-           <div className="flex flex-col items-center justify-center space-y-4 my-6">
-              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              <p className="text-muted-foreground text-sm">Waiting for verification...</p>
-           </div>
-        ) : (
-            <p className="text-xs text-muted-foreground mb-6">
-            This page will automatically redirect after you verify your email.
-            </p>
-        )}
+        <p className="text-xs text-muted-foreground mb-6">
+        This page will automatically redirect after you verify your email.
+        </p>
         
         <AnimatedButton
           onClick={onBack}
