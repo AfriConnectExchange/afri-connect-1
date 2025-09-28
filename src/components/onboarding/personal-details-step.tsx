@@ -27,13 +27,12 @@ const formSchema = z.object({
 type PersonalDetailsFormValues = z.infer<typeof formSchema>;
 
 interface PersonalDetailsStepProps {
-  onNext: () => void;
+  onNext: (data: { full_name: string; phone_number: string; location: string; }) => void;
   onBack: () => void;
-  onUpdate: (data: { full_name: string; phone_number: string; location: string; }) => void;
   defaultValues: Partial<PersonalDetailsFormValues>;
 }
 
-export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }: PersonalDetailsStepProps) {
+export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
   const supabase = createClient();
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
@@ -53,12 +52,11 @@ export function PersonalDetailsStep({ onNext, onBack, onUpdate, defaultValues }:
   }, [supabase, form, defaultValues])
 
   const onSubmit = (values: PersonalDetailsFormValues) => {
-    onUpdate({
+    onNext({
         full_name: values.fullName,
         phone_number: values.phoneNumber || '',
         location: values.location || '',
     });
-    onNext();
   };
 
   return (

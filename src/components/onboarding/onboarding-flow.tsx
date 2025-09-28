@@ -33,7 +33,7 @@ export function OnboardingFlow() {
       setUserData((prev) => ({
         ...prev,
         full_name: user?.user_metadata.full_name || user?.email || '',
-        phone_number: user?.user_metadata.phone_number || '',
+        phone_number: user?.phone || '',
         location: user?.user_metadata.location || '',
       }));
     };
@@ -47,7 +47,7 @@ export function OnboardingFlow() {
     setUserData((prev) => ({ ...prev, ...data }));
   };
 
-  const handleOnboardingComplete = async () => {
+  const handleOnboardingComplete = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -56,16 +56,17 @@ export function OnboardingFlow() {
       });
       return;
     }
+    
+    // Combine role from state with final data from the form
+    const dataToSave = {
+      ...finalData,
+      role_id: parseInt(userData.role_id, 10),
+      onboarding_completed: true,
+    };
 
     const { error } = await supabase
       .from('profiles')
-      .update({
-        role_id: parseInt(userData.role_id, 10),
-        full_name: userData.full_name,
-        phone_number: userData.phone_number,
-        location: userData.location,
-        onboarding_completed: true,
-      })
+      .update(dataToSave)
       .eq('id', user.id);
 
     if (error) {
@@ -75,6 +76,14 @@ export function OnboardingFlow() {
         description: error.message,
       });
     } else {
+      // Also update the auth user's metadata as a fallback/sync
+      await supabase.auth.updateUser({
+        data: {
+            full_name: dataToSave.full_name,
+            phone_number: dataToSave.phone_number,
+            location: dataToSave.location,
+        }
+      });
       handleNext();
     }
   };
@@ -90,7 +99,6 @@ export function OnboardingFlow() {
     <PersonalDetailsStep
       onNext={handleOnboardingComplete}
       onBack={handleBack}
-      onUpdate={handleUpdateUserData}
       defaultValues={{
         fullName: userData.full_name,
         phoneNumber: userData.phone_number,
