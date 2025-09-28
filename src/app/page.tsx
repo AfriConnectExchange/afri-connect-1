@@ -198,6 +198,21 @@ export default function Home() {
     }
   };
 
+  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+    setIsLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+            redirectTo: `${location.origin}/auth/callback`,
+        },
+    });
+
+    if (error) {
+        showAlert('destructive', 'Login Failed', error.message);
+        setIsLoading(false);
+    }
+  }
+
 
   if (!isClient) {
     return <PageLoader />;
@@ -216,6 +231,8 @@ export default function Home() {
             isLoading={isLoading}
             handleEmailLogin={handleEmailLogin}
             handlePhoneLogin={handlePhoneLogin}
+            handleGoogleLogin={() => handleSocialLogin('google')}
+            handleFacebookLogin={() => handleSocialLogin('facebook')}
             onSwitch={() => handleSwitchMode('signup')}
           />
         );
@@ -231,6 +248,8 @@ export default function Home() {
             isLoading={isLoading}
             handleEmailRegistration={handleEmailRegistration}
             handlePhoneRegistration={handlePhoneRegistration}
+            handleGoogleLogin={() => handleSocialLogin('google')}
+            handleFacebookLogin={() => handleSocialLogin('facebook')}
             onSwitch={() => handleSwitchMode('signin')}
           />
         );

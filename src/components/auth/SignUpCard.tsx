@@ -8,7 +8,9 @@ import { Checkbox } from '../ui/checkbox';
 import { AnimatedButton } from '../ui/animated-button';
 import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import { PasswordStrength } from './PasswordStrength';
 
 type Props = any;
 
@@ -18,6 +20,12 @@ const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
         <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" />
         <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.222,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" />
         <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.574l6.19,5.238C39.99,34.556,44,28.718,44,24C44,22.659,43.862,21.35,43.611,20.083z" />
+    </svg>
+);
+
+const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
+    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
     </svg>
 );
 
@@ -32,6 +40,7 @@ export default function SignUpCard({
   handleEmailRegistration,
   handlePhoneRegistration,
   handleGoogleLogin,
+  handleFacebookLogin,
   onSwitch,
 }: Props) {
     const [signupMethod, setSignupMethod] = useState('email');
@@ -60,15 +69,26 @@ export default function SignUpCard({
         </p>
       </div>
       <div className="p-8">
-        <AnimatedButton
-            variant="outline"
-            className="w-full"
-            onClick={handleGoogleLogin}
-            isLoading={isLoading}
-        >
-            <GoogleIcon className="mr-2" />
-            Sign up with Google
-        </AnimatedButton>
+        <div className="flex flex-col sm:flex-row gap-2">
+            <AnimatedButton
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleLogin}
+                isLoading={isLoading}
+            >
+                <GoogleIcon className="mr-2" />
+                Google
+            </AnimatedButton>
+            <AnimatedButton
+                variant="outline"
+                className="w-full"
+                onClick={handleFacebookLogin}
+                isLoading={isLoading}
+            >
+                <FacebookIcon className="mr-2 text-[#1877F2]" />
+                Facebook
+            </AnimatedButton>
+        </div>
 
         <div className="flex items-center my-6">
             <Separator className="flex-1" />
@@ -162,6 +182,7 @@ export default function SignUpCard({
                 )}
               </button>
             </div>
+             <PasswordStrength password={formData.password} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
