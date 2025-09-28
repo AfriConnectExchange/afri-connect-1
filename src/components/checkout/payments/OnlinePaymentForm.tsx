@@ -21,9 +21,6 @@ interface OnlinePaymentFormProps {
 export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel }: OnlinePaymentFormProps) {
   const [formData, setFormData] = useState({
     // Card details
-    cardNumber: '',
-    expiryDate: '',
-    cvv: '',
     cardholderName: '',
     
     // Wallet details
@@ -67,15 +64,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     const newErrors: Record<string, string> = {};
 
     if (paymentType === 'card') {
-      if (!formData.cardNumber || formData.cardNumber.replace(/\s/g, '').length < 16) {
-        newErrors.cardNumber = 'Please enter a valid card number';
-      }
-      if (!formData.expiryDate || !/^\d{2}\/\d{2}$/.test(formData.expiryDate)) {
-        newErrors.expiryDate = 'Please enter expiry date (MM/YY)';
-      }
-      if (!formData.cvv || formData.cvv.length < 3) {
-        newErrors.cvv = 'Please enter a valid CVV';
-      }
       if (!formData.cardholderName) {
         newErrors.cardholderName = 'Please enter cardholder name';
       }
@@ -100,37 +88,12 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     return Object.keys(newErrors).length === 0;
   };
 
-  const formatCardNumber = (value: string) => {
-    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-    const matches = v.match(/\d{4,16}/g);
-    const match = matches && matches[0] || '';
-    const parts = [];
-    for (let i = 0, len = match.length; i < len; i += 4) {
-      parts.push(match.substring(i, i + 4));
-    }
-    if (parts.length) {
-      return parts.join(' ');
-    } else {
-      return v;
-    }
-  };
-
-  const formatExpiryDate = (value: string) => {
-    const v = value.replace(/\D/g, '');
-    if (v.length >= 2) {
-      return v.substring(0, 2) + '/' + v.substring(2, 4);
-    }
-    return v;
-  };
-
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
     setIsProcessing(true);
 
-    // TODO: Add actual payment processing logic here with Stripe, PayPal, etc.
-    // This is where you would call the server to create a payment intent.
-
+    // In a real app, you would get a token from the Payment Element and send it to your server
     setTimeout(() => {
       const success = Math.random() > 0.1;
       
@@ -138,7 +101,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
         onConfirm({
           paymentMethod: paymentType === 'card' ? 'online_card' : 'online_wallet',
           paymentDetails: paymentType === 'card' ? {
-            last4: formData.cardNumber.slice(-4),
+            last4: '4242', // Mock data from token
             cardType: 'Visa', // This would come from a card detection library
             saved: formData.savePaymentMethod
           } : {
@@ -197,42 +160,15 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
                 <Image src="/stripe.svg" alt="Stripe" width={50} height={20}/>
                 <Image src="/paypal.svg" alt="PayPal" width={60} height={20}/>
             </div>
-            <div>
-              <Label htmlFor="cardNumber">Card Number *</Label>
-              <Input
-                id="cardNumber"
-                placeholder="1234 5678 9012 3456"
-                value={formData.cardNumber}
-                onChange={(e) => handleInputChange('cardNumber', formatCardNumber(e.target.value))}
-                maxLength={19}
-              />
-              {errors.cardNumber && <p className="text-destructive text-sm mt-1">{errors.cardNumber}</p>}
-            </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="expiryDate">Expiry Date *</Label>
-                <Input
-                  id="expiryDate"
-                  placeholder="MM/YY"
-                  value={formData.expiryDate}
-                  onChange={(e) => handleInputChange('expiryDate', formatExpiryDate(e.target.value))}
-                  maxLength={5}
-                />
-                {errors.expiryDate && <p className="text-destructive text-sm mt-1">{errors.expiryDate}</p>}
+            {/* SECURE PAYMENT ELEMENT PLACEHOLDER */}
+            <div className="space-y-2">
+              <Label>Card Information</Label>
+              <div className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background flex items-center justify-between text-muted-foreground">
+                <span>Card Number, Expiry, CVV</span>
+                <Lock className="w-4 h-4" />
               </div>
-
-              <div>
-                <Label htmlFor="cvv">CVV *</Label>
-                <Input
-                  id="cvv"
-                  placeholder="123"
-                  value={formData.cvv}
-                  onChange={(e) => handleInputChange('cvv', e.target.value.replace(/\D/g, ''))}
-                  maxLength={4}
-                />
-                {errors.cvv && <p className="text-destructive text-sm mt-1">{errors.cvv}</p>}
-              </div>
+              <p className="text-xs text-muted-foreground">Your card details are securely handled by our payment partner.</p>
             </div>
 
             <div>
