@@ -16,7 +16,8 @@ import {
   GoogleAuthProvider, 
   signInWithPopup,
   updateProfile,
-  User
+  User,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 
 type AuthMode = 'signin' | 'signup' | 'otp';
@@ -41,15 +42,24 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
-  const handleSuccessfulLogin = async (loggedInUser: User) => {
-    // For now, we will just redirect to onboarding.
-    // We will build the logic to check if onboarding is complete later.
-    router.push('/onboarding');
+  const handleSuccessfulLogin = async (user: User, isNewUser = false) => {
+    if (isNewUser) {
+        // The onUserCreate Cloud Function will handle profile creation.
+        // We just need to redirect to onboarding.
+        router.push('/onboarding');
+    } else {
+        // For existing users, check if onboarding is complete.
+        // This check can be done on the client or via a backend call.
+        // For now, we will redirect all existing users to the marketplace.
+        router.push('/marketplace');
+    }
   };
 
   useEffect(() => {
-    // This effect is intentionally left empty for now.
-    // All login/redirect logic is handled within the event handlers.
+    if (!isUserLoading && user) {
+        // If there's an authenticated user, redirect them away from the login page.
+        router.push('/marketplace');
+    }
   }, [user, isUserLoading, router]);
 
 
@@ -91,11 +101,10 @@ export default function Home() {
       // Update the user's profile with their name in Firebase Auth
       await updateProfile(user, { displayName: formData.name });
       
-      // The profile document in Cloud SQL will be created by a backend Cloud Function.
-      // For now, we just proceed to onboarding.
+      // The onUserCreate Cloud Function will now handle creating the profile in Cloud SQL.
       
       showAlert('default', 'Registration Successful!', 'Welcome to AfriConnect Exchange!');
-      await handleSuccessfulLogin(user);
+      await handleSuccessfulLogin(user, true); // Pass true for isNewUser
       
     } catch (error: any) {
        showAlert('destructive', 'Registration Failed', error.message);
@@ -136,8 +145,9 @@ export default function Home() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-        const userCredential = await signInWithPopup(auth, provider);
-        await handleSuccessfulLogin(userCredential.user);
+        const result = await signInWithPopup(auth, provider);
+        const additionalInfo = getAdditionalUserInfo(result);
+        await handleSuccessfulLogin(result.user, additionalInfo?.isNewUser);
     } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
             showAlert('destructive', 'Google Login Failed', error.message);
