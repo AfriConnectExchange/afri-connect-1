@@ -154,7 +154,7 @@ export default function MarketplacePage() {
             : item
         );
       } else {
-        return [...prevCart, { ...product, quantity: 1, inStock: true, shippingCost: 5.99 }]; // Add default values
+        return [...prevCart, { ...product, quantity: 1 }];
       }
     });
   };

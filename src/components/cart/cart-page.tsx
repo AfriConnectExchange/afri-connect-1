@@ -24,23 +24,13 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   ConfirmationModal,
-  DeleteConfirmation,
 } from '@/components/ui/confirmation-modal';
 import Image from 'next/image';
+import type { Product } from '@/app/marketplace/page';
 
 // --- INTERFACES ---
-export interface CartItem {
-  id: number;
-  name: string;
-  price: number;
-  originalPrice?: number;
-  image: string;
-  seller: string | { name?: string; [key: string]: any };
+export interface CartItem extends Product {
   quantity: number;
-  inStock: boolean;
-  category: string;
-  shippingCost?: number;
-  estimatedDelivery?: string;
 }
 
 interface CartPageProps {
@@ -63,11 +53,11 @@ export function CartPageComponent({
   const [agreeToTerms, setAgreeToTerms] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState<{
     isOpen: boolean;
-    itemId: number;
+    itemId: string;
     itemName: string;
   }>({
     isOpen: false,
-    itemId: 0,
+    itemId: '',
     itemName: '',
   });
   const [showClearCartConfirm, setShowClearCartConfirm] = useState(false);
@@ -76,7 +66,7 @@ export function CartPageComponent({
 
   const formatPrice = (price: number) => `£${price.toFixed(2)}`;
 
-  const updateQuantity = (itemId: number, newQuantity: number) => {
+  const updateQuantity = (itemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       const item = cartItems.find((item) => item.id === itemId);
       if (item) {
@@ -90,7 +80,7 @@ export function CartPageComponent({
     onUpdateCart(updatedItems);
   };
 
-  const handleRemoveItem = (itemId: number, itemName: string) => {
+  const handleRemoveItem = (itemId: string, itemName: string) => {
     setShowRemoveConfirm({ isOpen: true, itemId, itemName });
   };
 
@@ -99,7 +89,7 @@ export function CartPageComponent({
       (item) => item.id !== showRemoveConfirm.itemId
     );
     onUpdateCart(updatedItems);
-    setShowRemoveConfirm({ isOpen: false, itemId: 0, itemName: '' });
+    setShowRemoveConfirm({ isOpen: false, itemId: '', itemName: '' });
   };
 
   const handleClearCart = () => {
@@ -129,10 +119,8 @@ export function CartPageComponent({
     cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const calculateShipping = () => {
-    const baseShipping = cartItems.reduce(
-      (sum, item) => sum + (item.shippingCost || 0),
-      0
-    );
+     // For simplicity, using a flat rate. This can be complex logic.
+    const baseShipping = 5.99;
     const shippingMultiplier =
       selectedShipping === 'express'
         ? 1.5
@@ -160,7 +148,7 @@ export function CartPageComponent({
       alert('Please accept the terms and conditions to proceed');
       return;
     }
-    if (cartItems.some((item) => !item.inStock)) {
+    if (cartItems.some((item) => item.stockCount < item.quantity)) {
       alert(
         'Some items in your cart are out of stock. Please remove them to continue.'
       );
@@ -211,7 +199,7 @@ export function CartPageComponent({
         className="w-full font-semibold"
         size="lg"
         onClick={handleProceedToCheckout}
-        disabled={!agreeToTerms || cartItems.some((item) => !item.inStock)}
+        disabled={!agreeToTerms || cartItems.some((item) => item.stockCount < item.quantity)}
       >
         Proceed to Checkout
       </Button>
@@ -328,7 +316,7 @@ export function CartPageComponent({
                             <Badge variant="outline" className="text-xs mt-1">
                               {item.category}
                             </Badge>
-                             {!item.inStock && (
+                             {item.stockCount < item.quantity && (
                                 <p className="text-xs text-destructive font-semibold mt-1">Out of Stock</p>
                             )}
                           </div>
@@ -434,7 +422,7 @@ export function CartPageComponent({
                     size="lg"
                     onClick={handleProceedToCheckout}
                     disabled={
-                      !agreeToTerms || cartItems.some((item) => !item.inStock)
+                      !agreeToTerms || cartItems.some((item) => item.stockCount < item.quantity)
                     }
                   >
                     Proceed to Checkout
@@ -450,7 +438,7 @@ export function CartPageComponent({
       <ConfirmationModal
         isOpen={showRemoveConfirm.isOpen}
         onClose={() =>
-          setShowRemoveConfirm({ isOpen: false, itemId: 0, itemName: '' })
+          setShowRemoveConfirm({ isOpen: false, itemId: '', itemName: '' })
         }
         title="Remove Item"
         description={`Are you sure you want to remove "${showRemoveConfirm.itemName}" from your cart?`}
