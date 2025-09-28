@@ -413,11 +413,10 @@ export default function MarketplacePage() {
       {/* Page Header */}
       <div className="mb-6 md:mb-8 px-4 sm:px-0">
         <h1 className="mb-1 text-2xl md:text-3xl font-bold tracking-tight">
-          African Marketplace
+          Marketplace
         </h1>
         <p className="text-muted-foreground text-sm md:text-base">
-          Discover authentic African products from verified sellers across the
-          continent
+          Discover authentic products from the African diaspora in the UK
         </p>
       </div>
 
