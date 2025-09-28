@@ -129,18 +129,21 @@ export default function MarketplacePage() {
 
 
   useEffect(() => {
-    // In a real app, you'd fetch the cart from a global state or API
-    // For now, we just calculate the count from local state
     const count = cart.reduce((acc, item) => acc + item.quantity, 0);
     setCartCount(count);
   }, [cart]);
 
 
   const onNavigate = (page: string, productId?: string) => {
+    const cartQuery = cart.length > 0 ? `?cart=${encodeURIComponent(JSON.stringify(cart))}` : '';
     if (page === 'product' && productId) {
-      router.push(`/product/${productId}`);
+      router.push(`/product/${productId}${cartQuery}`);
     } else {
-      router.push(`/${page}`);
+        if (page === 'cart') {
+             router.push(`/cart${cartQuery}`);
+        } else {
+            router.push(`/${page}`);
+        }
     }
   };
 
@@ -156,10 +159,6 @@ export default function MarketplacePage() {
       } else {
         return [...prevCart, { ...product, quantity: 1 }];
       }
-    });
-    toast({
-        title: "Added to Cart",
-        description: `${product.name} has been added to your cart.`,
     });
   };
 
@@ -339,10 +338,12 @@ export default function MarketplacePage() {
     }
     return 'No products match your current filters.';
   };
+  
+  const cartQueryString = cart.length > 0 ? `?cart=${encodeURIComponent(JSON.stringify(cart))}` : '';
 
   return (
     <>
-    <Header cartCount={cartCount}/>
+    <Header cartCount={cartCount} cartQuery={cartQueryString}/>
     <div className="container mx-auto px-0 sm:px-4 py-6 md:py-8 relative">
       {/* Page Header */}
       <div className="mb-6 md:mb-8 px-4 sm:px-0">
