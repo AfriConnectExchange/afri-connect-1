@@ -11,7 +11,6 @@ import { EscrowPaymentForm } from '@/components/checkout/payments/EscrowPaymentF
 import { BarterProposalForm } from '@/components/checkout/payments/BarterProposalForm';
 import { PaymentConfirmation } from '@/components/checkout/payments/PaymentConfirmation';
 import { ArrowLeft, ShoppingCart, MapPin, Truck } from 'lucide-react';
-import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import type { CartItem } from '@/context/cart-context';
 import Image from 'next/image';
 
@@ -33,8 +32,6 @@ export function CheckoutPageComponent({
   >('summary');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<any>(null);
   const [paymentData, setPaymentData] = useState<any>(null);
-  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [orderData, setOrderData] = useState({
     deliveryAddress: {
       street: '123 Example Street',
@@ -42,12 +39,16 @@ export function CheckoutPageComponent({
       postcode: 'SW1A 1AA',
       phone: '+44 7700 900123',
     },
+    // We will store the final successful order details here
+    confirmedOrderItems: [] as CartItem[],
+    confirmedOrderTotal: 0,
   });
 
   const deliveryFee = subtotal > 50 ? 0 : 4.99;
   const total = subtotal + deliveryFee;
 
   useEffect(() => {
+    // If the user lands on the checkout page with an empty cart (and not for confirmation), redirect them.
     if (cartItems.length === 0 && currentStep !== 'confirmation') {
       onNavigate('cart');
     }
@@ -59,9 +60,20 @@ export function CheckoutPageComponent({
   };
 
   const handlePaymentSubmit = (data: any) => {
+    // This is the successful payment callback
+    // 1. Store the successful order details for the confirmation page
+    setOrderData(prev => ({
+        ...prev,
+        confirmedOrderItems: cartItems,
+        confirmedOrderTotal: total,
+    }));
     setPaymentData(data);
+    
+    // 2. NOW it's safe to clear the cart
+    clearCart();
+
+    // 3. Move to the final confirmation screen
     setCurrentStep('confirmation');
-    clearCart(); // Clear cart after successful order
   };
 
   const handleBackToPaymentSelection = () => {
@@ -74,7 +86,7 @@ export function CheckoutPageComponent({
 
     const props = {
       orderTotal: total,
-      onConfirm: handlePaymentSubmit,
+      onConfirm: handlePaymentSubmit, // This is the success callback
       onCancel: handleBackToPaymentSelection,
     };
 
@@ -106,8 +118,8 @@ export function CheckoutPageComponent({
         <div className="container mx-auto px-4 py-8">
           <PaymentConfirmation
             paymentData={paymentData}
-            orderItems={cartItems}
-            orderTotal={total}
+            orderItems={orderData.confirmedOrderItems}
+            orderTotal={orderData.confirmedOrderTotal}
             onNavigate={onNavigate}
           />
         </div>
@@ -270,24 +282,6 @@ export function CheckoutPageComponent({
             </Card>
           </div>
         </div>
-
-        <ConfirmationModal
-          isOpen={showPaymentConfirm}
-          onClose={() => setShowPaymentConfirm(false)}
-          onConfirm={() => {
-            setIsProcessingPayment(true);
-            // Simulate payment processing
-            setTimeout(() => {
-                handlePaymentSubmit(paymentData)
-                setIsProcessingPayment(false);
-                setShowPaymentConfirm(false);
-            }, 2000)
-          }}
-          title="Confirm Payment"
-          description={`Are you sure you want to proceed with the payment of £${total.toFixed(2)}?`}
-          isLoading={isProcessingPayment}
-          type="warning"
-        />
       </div>
     </div>
   );

@@ -8,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CreditCard, Wallet, Shield, Lock, AlertTriangle } from 'lucide-react';
+import { CreditCard, Wallet, Shield, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 
 interface OnlinePaymentFormProps {
@@ -20,19 +20,13 @@ interface OnlinePaymentFormProps {
 
 export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel }: OnlinePaymentFormProps) {
   const [formData, setFormData] = useState({
-    // Card details
     cardholderName: '',
-    
-    // Wallet details
     walletProvider: '',
     walletEmail: '',
-    
-    // Billing
     billingAddress: {
       postcode: '',
       country: 'UK'
     },
-    
     savePaymentMethod: false,
     agreeTerms: false
   });
@@ -48,8 +42,8 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    if (errors[field] || errors.payment) {
+      setErrors(prev => ({ ...prev, [field]: '', payment: '' }));
     }
   };
 
@@ -58,6 +52,9 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
       ...prev,
       billingAddress: { ...prev.billingAddress, [field]: value }
     }));
+    if (errors.postcode) {
+      setErrors(prev => ({ ...prev, postcode: '' }));
+    }
   };
 
   const validateForm = () => {
@@ -92,37 +89,42 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     if (!validateForm()) return;
 
     setIsProcessing(true);
-
-    // In a real app, you would get a token from the Payment Element and send it to your server
-    setTimeout(() => {
-      const success = Math.random() > 0.1;
-      
-      if (success) {
-        onConfirm({
-          paymentMethod: paymentType === 'card' ? 'online_card' : 'online_wallet',
-          paymentDetails: paymentType === 'card' ? {
-            last4: '4242', // Mock data from token
-            cardType: 'Visa', // This would come from a card detection library
-            saved: formData.savePaymentMethod
-          } : {
-            provider: formData.walletProvider,
-            email: formData.walletEmail
-          },
-          orderTotal,
-          status: 'Paid',
-          transactionId: `TXN${Date.now()}`,
-          processingTime: new Date().toISOString()
-        });
-      } else {
-        setErrors({ payment: 'Payment failed. Please try again or use another method.' });
-      }
-      
-      setIsProcessing(false);
-    }, 2000);
+    
+    // Simulate API call with a chance of failure
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const success = Math.random() > 0.2; // 80% success rate for simulation
+    
+    if (success) {
+      onConfirm({
+        paymentMethod: paymentType === 'card' ? 'online_card' : 'online_wallet',
+        paymentDetails: paymentType === 'card' ? {
+          last4: '4242',
+          cardType: 'Visa',
+          saved: formData.savePaymentMethod
+        } : {
+          provider: formData.walletProvider,
+          email: formData.walletEmail
+        },
+        orderTotal,
+        status: 'Paid',
+        transactionId: `TXN${Date.now()}`,
+        processingTime: new Date().toISOString()
+      });
+    } else {
+      setErrors({ payment: 'Payment failed. Please check your details and try again.' });
+    }
+    
+    setIsProcessing(false);
   };
 
   const processingFee = orderTotal * 0.029 + 0.30;
   const totalWithFees = orderTotal + processingFee;
+  
+  const isFormValid = formData.agreeTerms && 
+    (paymentType === 'card' ? formData.cardholderName : formData.walletProvider && formData.walletEmail) &&
+    formData.billingAddress.postcode;
+
 
   return (
     <Card>
@@ -137,7 +139,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Order Summary */}
         <div className="bg-muted/50 rounded-lg p-4 space-y-2">
           <div className="flex justify-between">
             <span>Order Total:</span>
@@ -153,7 +154,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </div>
         </div>
 
-        {/* Payment Form */}
         {paymentType === 'card' ? (
           <div className="space-y-4">
             <div className="flex items-center justify-end gap-2 h-6">
@@ -161,11 +161,10 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
                 <Image src="/paypal.svg" alt="PayPal" width={60} height={20}/>
             </div>
 
-            {/* SECURE PAYMENT ELEMENT PLACEHOLDER */}
             <div className="space-y-2">
               <Label>Card Information</Label>
               <div className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background flex items-center justify-between text-muted-foreground">
-                <span>Card Number, Expiry, CVV</span>
+                <span>[ Secure Payment Element ]</span>
                 <Lock className="w-4 h-4" />
               </div>
               <p className="text-xs text-muted-foreground">Your card details are securely handled by our payment partner.</p>
@@ -218,7 +217,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </div>
         )}
 
-        {/* Billing Address */}
         <div className="space-y-4">
           <Label className="text-base">Billing Address</Label>
           <div className="grid grid-cols-2 gap-4">
@@ -242,14 +240,12 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
                 <SelectContent>
                   <SelectItem value="UK">United Kingdom</SelectItem>
                   <SelectItem value="IE">Ireland</SelectItem>
-                  {/* Add more countries as needed */}
                 </SelectContent>
               </Select>
             </div>
           </div>
         </div>
 
-        {/* Options */}
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -275,15 +271,13 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           {errors.agreeTerms && <p className="text-destructive text-sm">{errors.agreeTerms}</p>}
         </div>
 
-        {/* Security Notice */}
         <Alert>
           <Shield className="h-4 w-4" />
           <AlertDescription>
-            Your payment information is encrypted and secure. We never store your full card details.
+            Your payment information is encrypted and secure. We never store your sensitive payment details.
           </AlertDescription>
         </Alert>
 
-        {/* Error Display */}
         {errors.payment && (
           <Alert variant="destructive">
             <AlertTriangle className="h-4 w-4" />
@@ -291,7 +285,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </Alert>
         )}
 
-        {/* Action Buttons */}
         <div className="flex flex-col md:flex-row gap-3 pt-4">
           <Button
             variant="outline"
@@ -303,10 +296,11 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isProcessing || !formData.agreeTerms}
+            disabled={isProcessing || !isFormValid}
             className="flex-1"
           >
-            {isProcessing ? 'Processing Payment...' : `Pay £${totalWithFees.toFixed(2)}`}
+            {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isProcessing ? 'Processing...' : `Pay £${totalWithFees.toFixed(2)}`}
           </Button>
         </div>
       </CardContent>
