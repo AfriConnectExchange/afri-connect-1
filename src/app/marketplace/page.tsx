@@ -416,7 +416,7 @@ export default function MarketplacePage() {
           Marketplace
         </h1>
         <p className="text-muted-foreground text-sm md:text-base">
-          Discover authentic products from the African diaspora in the UK
+          Discover authentic products from sellers in the UK
         </p>
       </div>
 
