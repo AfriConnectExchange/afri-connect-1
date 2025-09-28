@@ -10,16 +10,19 @@ dotenv.config();
 let db: Pool;
 
 const initDb = () => {
+    if (db) return;
+    
     const config = {
         user: process.env.DB_USER,
         password: process.env.DB_PASSWORD,
         database: process.env.DB_DATABASE,
-        host: `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`, // Use this for Cloud Functions
+        host: process.env.DB_HOST,
     };
-    
-    // For local development, you might connect differently, e.g., via TCP
-    if (!process.env.INSTANCE_CONNECTION_NAME) {
-        config.host = 'localhost';
+
+    // When running in a production Google Cloud environment, the `INSTANCE_CONNECTION_NAME`
+    // will be set. In this case, we need to connect via a Unix socket.
+    if (process.env.INSTANCE_CONNECTION_NAME) {
+        config.host = `/cloudsql/${process.env.INSTANCE_CONNECTION_NAME}`;
     }
 
     db = new Pool(config);
