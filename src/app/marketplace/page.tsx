@@ -55,7 +55,7 @@ export interface Product {
 }
 
 export interface Category {
-  id: number;
+  id: string;
   name: string;
   count: number;
 }
@@ -75,7 +75,6 @@ export interface FilterState {
 export default function MarketplacePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const supabase = createClient();
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -91,55 +90,37 @@ export default function MarketplacePage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      
-      // Fetch Products
-      const { data: productsData, error: productsError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          seller:profiles ( full_name, kyc_status ),
-          category:categories ( name )
-        `);
+      try {
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories'),
+        ]);
 
-      // Fetch Categories
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('id, name');
+        if (!productsRes.ok || !categoriesRes.ok) {
+          throw new Error('Failed to fetch data');
+        }
 
-      if (productsError || categoriesError) {
+        const productsData = await productsRes.json();
+        const categoriesData = await categoriesRes.json();
+        
+        setAllProducts(productsData);
+        setCategories(categoriesData);
+
+      } catch (error) {
         toast({
           variant: 'destructive',
           title: 'Error fetching data',
-          description: productsError?.message || categoriesError?.message,
+          description: (error as Error).message,
         });
         setAllProducts([]);
         setCategories([]);
-      } else {
-        // Map fetched data to the frontend Product interface
-        const mappedProducts = productsData.map((p: any) => ({
-          ...p,
-          name: p.title,
-          image: p.images?.[0] || 'https://placehold.co/400x300', // fallback image
-          seller: p.seller?.full_name || 'Unknown Seller',
-          sellerVerified: p.seller?.kyc_status === 'verified',
-          category: p.category?.name || 'Uncategorized',
-          isFree: p.listing_type === 'freebie' || p.price === 0,
-          // Mocking these for now, as they are not in the schema yet
-          rating: 4.5, 
-          reviews: 10,
-        }));
-        setAllProducts(mappedProducts);
-        
-        // We will need to get counts later
-        const mappedCategories = categoriesData.map((c: any) => ({...c, count: Math.floor(Math.random() * 200)}));
-        setCategories([{ id: 'all', name: 'All Categories', count: mappedProducts.length }, ...mappedCategories]);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchData();
-  }, [supabase, toast]);
+  }, [toast]);
 
 
   useEffect(() => {
@@ -236,8 +217,9 @@ export default function MarketplacePage() {
       filters.selectedCategories.length > 0 &&
       !filters.selectedCategories.includes('all')
     ) {
-      filtered = filtered.filter((product) =>
-        filters.selectedCategories.includes(product.category)
+       const selectedCategoryNames = filters.selectedCategories.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
+       filtered = filtered.filter((product) =>
+        selectedCategoryNames.includes(product.category)
       );
     }
 
@@ -280,7 +262,7 @@ export default function MarketplacePage() {
     }
 
     return filtered;
-  }, [filters, allProducts]);
+  }, [filters, allProducts, categories]);
 
   // Sort products
   const sortedProducts = useMemo(() => {
@@ -480,5 +462,3 @@ export default function MarketplacePage() {
     </>
   );
 }
-
-    

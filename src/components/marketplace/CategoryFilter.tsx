@@ -2,12 +2,8 @@
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
+import type { Category } from '@/app/marketplace/page';
 
-interface Category {
-  id: string;
-  name: string;
-  count: number;
-}
 
 interface CategoryFilterProps {
   categories: Category[];
