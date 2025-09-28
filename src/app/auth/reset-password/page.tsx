@@ -1,0 +1,26 @@
+import { ResetPasswordForm } from '@/components/auth/reset-password-form';
+import { Logo } from '@/components/logo';
+import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+
+export default function ResetPasswordPage() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        <div className="flex justify-center">
+          <Logo />
+        </div>
+        <ResetPasswordForm />
+         <div className="text-center text-sm">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-primary"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back to Login
+          </Link>
+        </div>
+      </div>
+    </main>
+  );
+}
