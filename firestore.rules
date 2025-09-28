@@ -1,0 +1,14 @@
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /profiles/{userId} {
+      // A user can create their own profile document.
+      // They can also update their own profile document.
+      allow read, create, update: if request.auth != null && request.auth.uid == userId;
+      // Nobody is allowed to delete a profile document.
+      allow delete: if false;
+    }
+  }
+}
