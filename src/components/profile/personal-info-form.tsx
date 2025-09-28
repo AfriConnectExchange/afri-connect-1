@@ -17,10 +17,11 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
 import { createClient } from '@/lib/supabase/client';
+import PhoneInput from 'react-phone-number-input';
 
 const formSchema = z.object({
   full_name: z.string().min(2, 'Full name must be at least 2 characters.'),
-  phone: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
+  phone_number: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
   location: z.string().optional(),
 });
 
@@ -39,7 +40,7 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       full_name: '',
-      phone: '',
+      phone_number: '',
       location: '',
     },
   });
@@ -50,13 +51,19 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
       const { data: { user } } = await supabase.auth.getUser();
 
       if (user) {
-        // In a real app, you'd fetch this from your 'profiles' table.
-        // For now, we use the auth user metadata.
-        form.reset({
-          full_name: user.user_metadata.full_name || user.email || '',
-          phone: user.phone || '',
-          location: user.user_metadata.location || '',
-        });
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('full_name, phone_number, location')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile) {
+            form.reset({
+              full_name: profile.full_name || '',
+              phone_number: profile.phone_number || '',
+              location: profile.location || '',
+            });
+        }
       }
       setIsLoading(false);
     };
@@ -72,13 +79,14 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
         return;
     }
 
-    // Do not update phone number here. It requires a separate verification flow.
-    const { error } = await supabase.auth.updateUser({
-        data: { 
+    const { error } = await supabase
+        .from('profiles')
+        .update({ 
             full_name: values.full_name,
             location: values.location,
-        }
-    });
+            phone_number: values.phone_number,
+        })
+        .eq('id', user.id);
     
     if (error) {
         onFeedback('error', error.message);
@@ -128,12 +136,18 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
             />
             <FormField
               control={form.control}
-              name="phone"
+              name="phone_number"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="+44 123 456 7890" {...field} />
+                    <PhoneInput
+                        id="phone"
+                        placeholder="Enter phone number"
+                        international
+                        defaultCountry="GB"
+                        {...field}
+                      />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
