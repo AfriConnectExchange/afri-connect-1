@@ -273,7 +273,7 @@ export default function Home() {
           </div>
         </div>
         <div className="lg:p-8 flex items-center justify-center">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
             {renderAuthCard()}
           </div>
         </div>
