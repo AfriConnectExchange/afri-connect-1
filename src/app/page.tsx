@@ -14,8 +14,7 @@ import {
   signInWithEmailAndPassword, 
   GoogleAuthProvider, 
   signInWithPopup,
-  User,
-  onAuthStateChanged
+  User
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
@@ -27,18 +26,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { auth, firestore, isUserLoading: isFirebaseLoading } = useFirebase();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsUserLoading(false);
-    });
-    return () => unsubscribe();
-  }, [auth]);
-
+  const { auth, firestore, user, isUserLoading } = useFirebase();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -75,13 +63,10 @@ export default function Home() {
   };
 
   useEffect(() => {
-    // This effect can handle redirects for users who are already logged in
-    // when they visit the root page. The direct login handling is now in
-    // handleGoogleLogin and handleEmailLogin.
     if (!isUserLoading && user) {
         handleSuccessfulLogin(user);
     }
-  }, [user, isUserLoading]);
+  }, [user, isUserLoading, router]);
 
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
@@ -152,7 +137,7 @@ export default function Home() {
     setIsLoading(true);
     try {
       const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      await handleSuccessfulLogin(userCredential.user);
+      // The useEffect will handle the redirect
     } catch (error: any) {
        showAlert('destructive', 'Login Failed', error.message);
        setIsLoading(false);
@@ -174,8 +159,8 @@ export default function Home() {
     setIsLoading(true);
     const provider = new GoogleAuthProvider();
     try {
-        const userCredential = await signInWithPopup(auth, provider);
-        await handleSuccessfulLogin(userCredential.user);
+        await signInWithPopup(auth, provider);
+        // The useEffect will handle the redirect
     } catch (error: any) {
         if (error.code !== 'auth/popup-closed-by-user') {
             showAlert('destructive', 'Google Login Failed', error.message);

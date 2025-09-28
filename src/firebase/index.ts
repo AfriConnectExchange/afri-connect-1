@@ -4,18 +4,17 @@ import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, Firestore, doc, getDoc } from 'firebase/firestore';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { FirebaseContext } from './provider';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;
     try {
-      firebaseApp = initializeApp();
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
+      console.warn('Initialization with environment variables failed. Falling back to firebase config object.', e);
       firebaseApp = initializeApp(firebaseConfig);
     }
 
@@ -33,29 +32,15 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-export interface UseFirebaseResult {
-    user: User | null;
-    auth: Auth;
-    firestore: Firestore;
-    firebaseApp: FirebaseApp;
-    isUserLoading: boolean;
-}
 
-export function useFirebase(): UseFirebaseResult {
+export function useFirebase() {
+  const context = useContext(FirebaseContext);
+  if (context === undefined) {
+    throw new Error('useFirebase must be used within a FirebaseProvider');
+  }
+  const { user, isUserLoading } = context;
   const { auth, firestore, firebaseApp } = initializeFirebase();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
-
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setIsUserLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [auth]);
-
-  return { user, auth, firestore, firebaseApp, isUserLoading };
+  return { user, isUserLoading, auth, firestore, firebaseApp };
 }
 
 export * from './provider';
