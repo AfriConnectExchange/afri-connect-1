@@ -50,4 +50,3 @@ export const createProfile = onUserCreate(async (event) => {
     // or handle it gracefully.
   }
 });
-
