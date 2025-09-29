@@ -101,7 +101,6 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
   const navigationItems = [
     { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
-    { id: '/money-transfer', label: 'Send Money', href: '/money-transfer', show: true },
     { id: '/sales', label: 'My Sales', icon: TrendingUp, href: '/sales', show: canAccessSellerFeatures },
     { id: '/adverts', label: 'My Listings', icon: Package, href: '/adverts', show: canAccessSellerFeatures },
   ];
