@@ -281,6 +281,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                   </Button>
                 </Link>
               ))}
+              {isSellerOrSME && (
+                 <>
+                    <Link href="/sales" passHref><Button variant="ghost" size="sm" className={pathname === '/sales' ? 'bg-accent' : ''}>My Sales</Button></Link>
+                    <Link href="/adverts" passHref><Button variant="ghost" size="sm" className={pathname === '/adverts' ? 'bg-accent' : ''}>My Listings</Button></Link>
+                 </>
+              )}
             </div>
 
             {user ? (
