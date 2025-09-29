@@ -10,7 +10,6 @@ import {
 import { OrderDetails as OrderDetailsType } from './order-tracking-page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { TrackingTimeline } from './tracking-timeline';
 import { OrderItemsCard } from './order-items-card';
@@ -30,6 +29,7 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
     status: OrderDetailsType['status']
   ): { color: string; progress: number; label: string } => {
     switch (status) {
+      case 'pending':
       case 'processing':
         return {
           color: 'bg-gray-500',
@@ -142,12 +142,12 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
           <div className="text-sm">
             <span className="font-semibold">Tracking Number: </span>
             <div className="inline-flex items-center gap-2">
-              <span className="font-mono">{order.trackingNumber}</span>
+              <span className="font-mono">{order.tracking_number}</span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => copyToClipboard(order.trackingNumber)}
+                onClick={() => copyToClipboard(order.tracking_number)}
               >
                 <ClipboardCopy className="h-4 w-4" />
               </Button>

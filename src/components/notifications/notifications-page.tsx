@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Settings, Check, Trash2, Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { NotificationSettings } from './notification-settings';
 import { NotificationItem, type Notification } from './notification-item';
 import { EmptyState } from './empty-state';
-import { mockNotifications } from './mock-data';
+import { PageLoader } from '../ui/loader';
 
 interface NotificationsPageProps {
   onNavigate: (page: string) => void;
@@ -18,11 +18,35 @@ interface NotificationsPageProps {
 
 export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
   const [notifications, setNotifications] =
-    useState<Notification[]>(mockNotifications);
+    useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetch('/api/notifications/list');
+        if (!response.ok) {
+          throw new Error('Failed to fetch notifications');
+        }
+        const data = await response.json();
+        setNotifications(data);
+      } catch (error) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: (error as Error).message,
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchNotifications();
+  }, [toast]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -207,7 +231,11 @@ export function NotificationsPage({ onNavigate }: NotificationsPageProps) {
             </div>
 
             <TabsContent value={activeTab} className="mt-6">
-              {filteredNotifications.length === 0 ? (
+              {isLoading ? (
+                <div className="h-64 flex items-center justify-center">
+                  <PageLoader />
+                </div>
+              ) : filteredNotifications.length === 0 ? (
                 <EmptyState searchQuery={searchQuery} activeTab={activeTab} />
               ) : (
                 <AnimatePresence>
