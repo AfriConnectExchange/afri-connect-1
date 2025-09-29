@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
 
@@ -23,6 +23,25 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const { toast } = useToast();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedCart = localStorage.getItem('cartItems');
+      if (storedCart) {
+        setCart(JSON.parse(storedCart));
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      if (cart.length > 0) {
+        localStorage.setItem('cartItems', JSON.stringify(cart));
+      } else {
+        localStorage.removeItem('cartItems');
+      }
+    }
+  }, [cart]);
 
   const addToCart = useCallback((item: Product, quantity: number = 1) => {
     setCart((prevCart) => {
