@@ -5,10 +5,10 @@ import { z } from 'zod';
 
 // This schema now includes seller_id, which is crucial for the order_items table
 const orderItemSchema = z.object({
-  product_id: z.string().uuid(), // Corrected from 'id' to 'product_id' and added uuid validation
+  product_id: z.string().uuid(),
   quantity: z.number().int().positive(),
   price: z.number(),
-  seller_id: z.string().uuid(), // Added uuid validation
+  seller_id: z.string().uuid(),
 });
 
 const createOrderSchema = z.object({
@@ -65,10 +65,10 @@ export async function POST(request: Request) {
     // 2. Create 'order_items' records
     const orderItemsToInsert = cartItems.map(item => ({
       order_id: orderData.id,
-      product_id: item.product_id, // Use the corrected field
+      product_id: item.product_id,
       quantity: item.quantity,
       price_at_purchase: item.price,
-      seller_id: item.seller_id, // Including seller_id as per schema
+      seller_id: item.seller_id,
     }));
     
     const { error: orderItemsError } = await supabase
