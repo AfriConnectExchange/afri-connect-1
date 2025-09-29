@@ -1,5 +1,5 @@
 'use client';
-import { AdvertsPageComponent } from '@/components/adverts/adverts-page';
+import { SellerDashboard } from '@/components/adverts/seller-dashboard';
 import { Header } from '@/components/dashboard/header';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
@@ -87,11 +87,9 @@ export default function AdvertsPage() {
   }
   
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="flex-1 p-4 md:gap-8 md:p-8">
-        <AdvertsPageComponent />
-      </main>
+      <SellerDashboard />
     </div>
   );
 }
