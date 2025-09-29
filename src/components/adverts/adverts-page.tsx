@@ -23,8 +23,62 @@ import { ListingForm } from './listing-form';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
 import Image from 'next/image';
-import { PageLoader } from '../ui/loader';
+import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
+
+function ListingsSkeleton() {
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <Skeleton className="h-10 flex-1" />
+                <Skeleton className="h-10 w-10" />
+            </div>
+             {/* Mobile Skeleton */}
+            <div className="sm:hidden space-y-3">
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                        <CardContent className="p-4 flex gap-4">
+                            <Skeleton className="h-20 w-20 rounded-md" />
+                            <div className="flex-1 space-y-2">
+                                <Skeleton className="h-4 w-3/4" />
+                                <Skeleton className="h-4 w-1/4" />
+                                <Skeleton className="h-5 w-20" />
+                            </div>
+                            <Skeleton className="h-6 w-6" />
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
+            {/* Desktop Skeleton */}
+            <Card className="hidden sm:block">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-[100px]"><Skeleton className="h-5 w-full" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-3/4" /></TableHead>
+                            <TableHead><Skeleton className="h-5 w-1/2" /></TableHead>
+                            <TableHead className="hidden md:table-cell"><Skeleton className="h-5 w-1/2" /></TableHead>
+                            <TableHead className="hidden md:table-cell"><Skeleton className="h-5 w-1/2" /></TableHead>
+                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {[...Array(3)].map((_, i) => (
+                            <TableRow key={i}>
+                                <TableCell><Skeleton className="h-16 w-16 rounded-md" /></TableCell>
+                                <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                                <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-1/2" /></TableCell>
+                                <TableCell className="hidden md:table-cell"><Skeleton className="h-5 w-1/2" /></TableCell>
+                                <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </Card>
+        </div>
+    )
+}
 
 export function AdvertsPageComponent() {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -137,9 +191,7 @@ export function AdvertsPageComponent() {
       </div>
 
       {isLoading ? (
-        <div className="h-64 flex items-center justify-center">
-          <PageLoader />
-        </div>
+        <ListingsSkeleton />
       ) : products.length > 0 ? (
         <>
             <div className="flex items-center gap-2">
