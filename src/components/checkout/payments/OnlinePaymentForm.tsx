@@ -10,6 +10,9 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CreditCard, Wallet, Shield, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
+import { useCart } from '@/context/cart-context';
+import { useToast } from '@/hooks/use-toast';
+
 
 interface OnlinePaymentFormProps {
   orderTotal: number;
@@ -19,6 +22,8 @@ interface OnlinePaymentFormProps {
 }
 
 export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel }: OnlinePaymentFormProps) {
+  const { cart } = useCart();
+  const { toast } = useToast();
   const [formData, setFormData] = useState({
     cardholderName: '',
     walletProvider: '',
@@ -60,23 +65,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (paymentType === 'card') {
-      if (!formData.cardholderName) {
-        newErrors.cardholderName = 'Please enter cardholder name';
-      }
-    } else if (paymentType === 'wallet') {
-      if (!formData.walletProvider) {
-        newErrors.walletProvider = 'Please select a wallet provider';
-      }
-      if (!formData.walletEmail) {
-        newErrors.walletEmail = 'Please enter your wallet email';
-      }
-    }
-
-    if (!formData.billingAddress.postcode) {
-      newErrors.postcode = 'Please enter billing postcode';
-    }
-
     if (!formData.agreeTerms) {
       newErrors.agreeTerms = 'Please agree to the terms and conditions';
     }
@@ -85,45 +73,51 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async () => {
+  const handleStripeCheckout = async () => {
     if (!validateForm()) return;
-
     setIsProcessing(true);
-    
-    // Simulate API call with a chance of failure
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const success = Math.random() > 0.2; // 80% success rate for simulation
-    
-    if (success) {
-      onConfirm({
-        paymentMethod: paymentType,
-        paymentDetails: paymentType === 'card' ? {
-          last4: '4242',
-          cardType: 'Visa',
-          saved: formData.savePaymentMethod
-        } : {
-          provider: formData.walletProvider || paymentType,
-          email: formData.walletEmail
-        },
-        orderTotal,
-        status: 'Paid',
-        transactionId: `TXN${Date.now()}`,
-        processingTime: new Date().toISOString()
-      });
-    } else {
-      setErrors({ payment: 'Payment failed. Please check your details and try again.' });
+
+    try {
+        const response = await fetch('/api/stripe/checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cartItems: cart })
+        });
+        
+        const { url, error } = await response.json();
+
+        if (error) {
+            throw new Error(error);
+        }
+
+        if (url) {
+            window.location.href = url;
+        }
+
+    } catch (err: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Checkout Error',
+            description: err.message
+        });
+        setIsProcessing(false);
     }
-    
-    setIsProcessing(false);
   };
+  
+  const handleSubmit = async () => {
+    if (paymentType === 'card') {
+      await handleStripeCheckout();
+    } else {
+      // Handle other payment types
+      onConfirm({}); // Placeholder for other online payments
+    }
+  }
+
 
   const processingFee = orderTotal * 0.029 + 0.30;
   const totalWithFees = orderTotal + processingFee;
   
-  const isFormValid = formData.agreeTerms && 
-    (paymentType === 'card' ? formData.cardholderName : paymentType === 'wallet' ? formData.walletProvider && formData.walletEmail : true) &&
-    formData.billingAddress.postcode;
+  const isFormValid = formData.agreeTerms;
 
   const renderTitle = () => {
     switch (paymentType) {
@@ -161,129 +155,41 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
             <span>Order Total:</span>
             <span>£{orderTotal.toFixed(2)}</span>
           </div>
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Processing Fee:</span>
-            <span>£{processingFee.toFixed(2)}</span>
-          </div>
-          <div className="border-t pt-2 flex justify-between font-semibold">
-            <span>Total to Pay:</span>
-            <span>£{totalWithFees.toFixed(2)}</span>
-          </div>
         </div>
 
         {paymentType === 'card' && (
           <div className="space-y-4">
             <div className="flex items-center justify-end gap-2 h-6">
+                <p className="text-xs text-muted-foreground">Powered by</p>
                 <Image src="/stripe.svg" alt="Stripe" width={50} height={20}/>
             </div>
             
-            {/* SECURE PAYMENT ELEMENT PLACEHOLDER */}
-            <div className="space-y-2">
-              <Label>Card Information</Label>
-              <div className="h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background flex items-center justify-between text-muted-foreground">
-                <span>[ Secure Payment Element ]</span>
-                <Lock className="w-4 h-4" />
-              </div>
-              <p className="text-xs text-muted-foreground">Your card details are securely handled by our payment partner.</p>
-            </div>
-
-            <div>
-              <Label htmlFor="cardholderName">Cardholder Name *</Label>
-              <Input
-                id="cardholderName"
-                placeholder="John Smith"
-                value={formData.cardholderName}
-                onChange={(e) => handleInputChange('cardholderName', e.target.value)}
-              />
-              {errors.cardholderName && <p className="text-destructive text-sm mt-1">{errors.cardholderName}</p>}
-            </div>
+            <Alert>
+                <Shield className="h-4 w-4" />
+                <AlertDescription>
+                    You will be redirected to our secure payment partner, Stripe, to complete your purchase. Your payment details are never stored on our servers.
+                </AlertDescription>
+            </Alert>
           </div>
         )}
 
         {paymentType === 'wallet' && (
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="walletProvider">Wallet Provider *</Label>
-              <Select onValueChange={(value) => handleInputChange('walletProvider', value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your wallet provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  {walletProviders.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      <div className="flex items-center space-x-2">
-                        {provider.icon}
-                        <span>{provider.name}</span>
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.walletProvider && <p className="text-destructive text-sm mt-1">{errors.walletProvider}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="walletEmail">Email Address *</Label>
-              <Input
-                id="walletEmail"
-                type="email"
-                placeholder="your.email@example.com"
-                value={formData.walletEmail}
-                onChange={(e) => handleInputChange('walletEmail', e.target.value)}
-              />
-              {errors.walletEmail && <p className="text-destructive text-sm mt-1">{errors.walletEmail}</p>}
-            </div>
-          </div>
+           <Alert>
+            <AlertDescription>
+                Digital wallet payments are not yet supported. Please choose another payment method.
+            </AlertDescription>
+          </Alert>
         )}
 
         {paymentType === 'flutterwave' && (
-            <div className="p-4 border rounded-lg bg-muted/50 text-center space-y-3">
-                <p>You will be redirected to Flutterwave to complete your payment securely.</p>
-                <Button>Proceed to Flutterwave</Button>
-            </div>
+            <Alert>
+                <AlertDescription>
+                   Flutterwave payments are not yet supported. Please choose another payment method.
+                </AlertDescription>
+            </Alert>
         )}
 
-        <div className="space-y-4">
-          <Label className="text-base">Billing Address</Label>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="postcode">Postcode *</Label>
-              <Input
-                id="postcode"
-                placeholder="SW1A 1AA"
-                value={formData.billingAddress.postcode}
-                onChange={(e) => handleBillingChange('postcode', e.target.value)}
-              />
-              {errors.postcode && <p className="text-destructive text-sm mt-1">{errors.postcode}</p>}
-            </div>
-
-            <div>
-              <Label htmlFor="country">Country</Label>
-              <Select value={formData.billingAddress.country} onValueChange={(value) => handleBillingChange('country', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UK">United Kingdom</SelectItem>
-                  <SelectItem value="IE">Ireland</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
-
         <div className="space-y-3">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="savePayment"
-              checked={formData.savePaymentMethod}
-              onCheckedChange={(checked) => handleInputChange('savePaymentMethod', !!checked)}
-            />
-            <Label htmlFor="savePayment" className="text-sm">
-              Save this payment method for future purchases
-            </Label>
-          </div>
-
           <div className="flex items-start space-x-2">
             <Checkbox
               id="agreeTerms"
@@ -296,13 +202,6 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </div>
           {errors.agreeTerms && <p className="text-destructive text-sm">{errors.agreeTerms}</p>}
         </div>
-
-        <Alert>
-          <Shield className="h-4 w-4" />
-          <AlertDescription>
-            Your payment information is encrypted and secure. We never store your sensitive payment details.
-          </AlertDescription>
-        </Alert>
 
         {errors.payment && (
           <Alert variant="destructive">
@@ -322,11 +221,11 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isProcessing || !isFormValid}
+            disabled={isProcessing || !isFormValid || paymentType !== 'card'}
             className="flex-1"
           >
             {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-            {isProcessing ? 'Processing...' : `Pay £${totalWithFees.toFixed(2)}`}
+            {isProcessing ? 'Redirecting...' : `Proceed to Secure Payment`}
           </Button>
         </div>
       </CardContent>
