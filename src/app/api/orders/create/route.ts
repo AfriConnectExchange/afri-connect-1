@@ -62,7 +62,7 @@ export async function POST(request: Request) {
         currency: 'GBP', // Assuming GBP for now
         status: 'processing', // Default status
         payment_method: paymentMethod,
-        shipping_address: shippingAddress as any, // Store address in metadata
+        shipping_address: shippingAddress, // Store address object directly now
       })
       .select()
       .single();

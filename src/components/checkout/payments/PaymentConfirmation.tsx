@@ -32,6 +32,7 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
             'Payment will be collected by our delivery partner'
           ]
         };
+      case 'card':
       case 'online_card':
       case 'online_wallet':
         return {
@@ -84,6 +85,8 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
   };
 
   const statusInfo = getStatusInfo();
+  
+  const transactionId = paymentData.id || paymentData.transactionId;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -103,9 +106,9 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
             >
               {statusInfo.status}
             </Badge>
-            {paymentData.transactionId && (
+            {transactionId && (
               <span className="text-sm text-muted-foreground">
-                ID: {paymentData.transactionId}
+                ID: {transactionId}
               </span>
             )}
           </div>
@@ -196,14 +199,14 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
             }
 
 
-            {/* Delivery Address (for cash on delivery) */}
-            {paymentData.deliveryAddress && (
+            {/* Delivery Address */}
+            {paymentData.shipping_address && (
               <div className="space-y-2">
                 <h4 className="font-medium">Delivery Address</h4>
                 <div className="text-sm">
-                  <p>{paymentData.deliveryAddress.street}</p>
-                  <p>{paymentData.deliveryAddress.city}, {paymentData.deliveryAddress.postcode}</p>
-                  <p>{paymentData.deliveryAddress.phone}</p>
+                  <p>{paymentData.shipping_address.street}</p>
+                  <p>{paymentData.shipping_address.city}, {paymentData.shipping_address.postcode}</p>
+                  <p>{paymentData.shipping_address.phone}</p>
                 </div>
               </div>
             )}
@@ -259,7 +262,7 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
         <Button 
           variant="outline" 
           className="flex-1 flex items-center justify-center space-x-2"
-          onClick={() => navigator.share && navigator.share({ title: 'My AfriConnect Order', text: `I just placed an order on AfriConnect! Transaction ID: ${paymentData.transactionId}`})}
+          onClick={() => navigator.share && navigator.share({ title: 'My AfriConnect Order', text: `I just placed an order on AfriConnect! Transaction ID: ${transactionId}`})}
         >
           <Share className="w-4 h-4" />
           <span>Share Order</span>

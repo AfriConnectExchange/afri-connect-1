@@ -73,7 +73,7 @@ function CheckoutPageContent() {
       });
 
       // Pass the successful API result to the confirmation page
-      setPaymentData({ ...result.order, ...paymentDetails });
+      setPaymentData({ ...result.order, ...paymentDetails, shipping_address: orderPayload.shippingAddress });
 
       // 2. NOW it's safe to clear the cart
       clearCart();
