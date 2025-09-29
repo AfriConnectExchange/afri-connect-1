@@ -15,7 +15,8 @@ if (!process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY) {
 
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
 
-export function EmbeddedCheckout() {
+// Changed function name from EmbeddedCheckout to CheckoutForm
+export function CheckoutForm() {
   const { toast } = useToast();
   const { cart } = useCart();
 
