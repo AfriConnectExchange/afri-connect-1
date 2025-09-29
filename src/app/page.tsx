@@ -95,7 +95,7 @@ export default function Home() {
 
     if (error) {
        if (error.message.includes('User already registered')) {
-         showAlert('destructive', 'Registration Failed', 'This email is already registered. Please sign in.');
+         showAlert('destructive', 'Registration Failed', 'This email is already registered. Please sign in or reset your password.');
        } else {
          showAlert('destructive', 'Registration Failed', error.message);
        }
@@ -121,44 +121,77 @@ export default function Home() {
     }
     setIsLoading(true);
     
-    // For phone-only signup, Supabase requires an email. We can create a placeholder.
-    const placeholderEmail = `${formData.phone}@email.africonnect.placeholder`;
-
-    const { data, error } = await supabase.auth.signUp({
-        phone: formData.phone,
-        password: formData.password,
-        options: {
-            email: placeholderEmail, // Add placeholder email
-            data: {
-                full_name: formData.name,
-            }
-        }
+    // Step 1: Send OTP. We don't create the user here.
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      phone: formData.phone
     });
 
-    if (error) {
-        showAlert('destructive', 'Registration Failed', error.message);
-        setIsLoading(false);
+    if (otpError) {
+      showAlert('destructive', 'Failed to Send OTP', otpError.message);
     } else {
-        showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
-        setAuthMode('otp');
-        setIsLoading(false);
+      showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
+      setAuthMode('otp'); // Move to OTP entry screen
     }
+    setIsLoading(false);
   };
   
   const handleOtpVerification = async (otp: string) => {
     setIsLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({
+    
+    // For sign-in, just verify and log in.
+    if (authMode === 'otp' && formData.email === '') { // Simple check if it's a sign-in attempt
+        const { data, error } = await supabase.auth.verifyOtp({
+            phone: formData.phone,
+            token: otp,
+            type: 'sms',
+        });
+        if (error) {
+            showAlert('destructive', 'Verification Failed', error.message);
+        } else {
+            showAlert('default', 'Verification Successful!', 'You are now logged in.');
+            router.refresh();
+        }
+        setIsLoading(false);
+        return;
+    }
+
+    // For sign-up, create user *after* OTP is verified.
+    // This requires a multi-stage process that is complex on client-side.
+    // The simpler flow is to create user with placeholder email THEN verify.
+    // Let's use the signUp -> verifyOtp flow.
+    const placeholderEmail = `${formData.phone}@email.africonnect.placeholder`;
+
+    // First, sign up the user with phone and a placeholder email. This doesn't log them in.
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        phone: formData.phone,
+        password: formData.password,
+        options: {
+            data: {
+                full_name: formData.name,
+            },
+            email: placeholderEmail
+        }
+    });
+
+    if (signUpError && !signUpError.message.includes("user already exists")) {
+         showAlert('destructive', 'Registration Failed', signUpError.message);
+         setIsLoading(false);
+         return;
+    }
+    
+    // Now verify the OTP which will confirm the phone and log the user in.
+    const { data: verifyData, error: verifyError } = await supabase.auth.verifyOtp({
         phone: formData.phone,
         token: otp,
         type: 'sms',
     });
 
-    if (error) {
-        showAlert('destructive', 'Verification Failed', error.message);
+    if (verifyError) {
+        showAlert('destructive', 'Verification Failed', verifyError.message);
         setIsLoading(false);
     } else {
         showAlert('default', 'Verification Successful!', 'You are now logged in.');
-        router.refresh();
+        router.refresh(); // Redirects to onboarding/marketplace
     }
   }
 
@@ -201,6 +234,7 @@ export default function Home() {
         setIsLoading(false);
     } else {
         showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
+        setFormData(prev => ({...prev, email: ''})); // Clear email to distinguish login from signup
         setAuthMode('otp');
         setIsLoading(false);
     }
@@ -274,9 +308,9 @@ export default function Home() {
             <OTPVerification
                 formData={formData}
                 handleOTPComplete={handleOtpVerification}
-                handleResendOTP={handlePhoneLogin}
+                handleResendOTP={formData.email ? handlePhoneRegistration : handlePhoneLogin}
                 isLoading={isLoading}
-                onBack={() => setAuthMode('signin')}
+                onBack={() => setAuthMode(formData.email ? 'signup' : 'signin')}
             />
         )
       default:
