@@ -12,6 +12,7 @@ import { BarterProposalForm } from '@/components/checkout/payments/BarterProposa
 import { ArrowLeft, ShoppingCart, MapPin, Truck } from 'lucide-react';
 import type { CartItem } from '@/context/cart-context';
 import Image from 'next/image';
+import { CheckoutForm as EmbeddedCheckout } from './EmbeddedCheckout';
 
 interface CheckoutPageProps {
   cartItems: CartItem[];

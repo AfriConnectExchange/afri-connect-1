@@ -8,7 +8,7 @@ import { CreditCard, Wallet, Shield, Lock, AlertTriangle, Loader2 } from 'lucide
 import Image from 'next/image';
 import { useCart } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
-import { CheckoutForm } from '@/components/checkout/EmbeddedCheckout';
+import { CheckoutForm as EmbeddedCheckout } from '@/components/checkout/EmbeddedCheckout';
 
 interface OnlinePaymentFormProps {
   orderTotal: number;
@@ -56,7 +56,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
           </CardTitle>
         </CardHeader>
         <CardContent>
-           <CheckoutForm />
+           <EmbeddedCheckout />
         </CardContent>
       </Card>
     )
