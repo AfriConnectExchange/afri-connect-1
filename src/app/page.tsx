@@ -94,7 +94,11 @@ export default function Home() {
     });
 
     if (error) {
-      showAlert('destructive', 'Registration Failed', error.message);
+       if (error.message.includes('User already registered')) {
+         showAlert('destructive', 'Registration Failed', 'This email is already registered. Please sign in.');
+       } else {
+         showAlert('destructive', 'Registration Failed', error.message);
+       }
     } else {
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       setAuthMode('awaiting-verification');
@@ -117,10 +121,14 @@ export default function Home() {
     }
     setIsLoading(true);
     
+    // For phone-only signup, Supabase requires an email. We can create a placeholder.
+    const placeholderEmail = `${formData.phone}@email.africonnect.placeholder`;
+
     const { data, error } = await supabase.auth.signUp({
         phone: formData.phone,
         password: formData.password,
         options: {
+            email: placeholderEmail, // Add placeholder email
             data: {
                 full_name: formData.name,
             }
