@@ -48,7 +48,6 @@ export default function CheckoutPage() {
         postcode: 'SW1A 1AA',
         phone: '+44 7700 900123',
       },
-      paymentDetails,
     };
     
     try {
