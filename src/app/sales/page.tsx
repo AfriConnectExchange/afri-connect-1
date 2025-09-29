@@ -54,7 +54,7 @@ export default function SalesPage() {
     return <PageLoader />;
   }
 
-  const canAccess = profile && [2, 3, 4, 5].includes(profile.role_id);
+  const canAccess = profile && [2, 3].includes(profile.role_id);
 
   if (!canAccess) {
     return (
@@ -70,7 +70,7 @@ export default function SalesPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground mb-6">
-                            This page is only available for Sellers, SMEs, and Trainers. To access this feature, please update your role in your profile settings.
+                            This page is only available for Sellers and SMEs. To access this feature, please update your role in your profile settings.
                         </p>
                         <div className="flex gap-4">
                             <Button variant="outline" className="w-full" onClick={() => router.push('/marketplace')}>

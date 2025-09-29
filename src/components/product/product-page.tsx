@@ -59,6 +59,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           sellerVerified: data.seller?.kyc_status === 'verified',
           category: data.category?.name || 'Uncategorized',
           isFree: data.listing_type === 'freebie' || data.price === 0,
+          // Mocked data for now
           rating: 4.5,
           reviews: 10,
           sold: 25,
@@ -400,17 +401,17 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-10 h-10">
-                    <AvatarImage src={(product as any).sellerDetails?.avatar} />
-                    <AvatarFallback>{(product as any).sellerDetails?.name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={product.sellerDetails?.avatar} />
+                    <AvatarFallback>{product.sellerDetails?.name.charAt(0)}</AvatarFallback>
                   </Avatar>
                   <div>
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{(product as any).sellerDetails?.name}</span>
-                      {(product as any).sellerDetails?.verified && (
+                      <span className="font-medium text-sm">{product.sellerDetails?.name}</span>
+                      {product.sellerDetails?.verified && (
                         <Badge variant="secondary" className="text-[10px]">Verified</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground">{(product as any).sellerDetails?.location}</p>
+                    <p className="text-xs text-muted-foreground">{product.sellerDetails?.location}</p>
                   </div>
                 </div>
                 
@@ -419,16 +420,16 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                     <span className="text-muted-foreground">Rating</span>
                     <div className="flex items-center gap-1">
                       <Star className="w-3 h-3 fill-yellow-400 text-yellow-400" />
-                      <span>{(product as any).sellerDetails?.rating}</span>
+                      <span>{product.sellerDetails?.rating}</span>
                     </div>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Sales</span>
-                    <span>{(product as any).sellerDetails?.totalSales}</span>
+                    <span>{product.sellerDetails?.totalSales}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-muted-foreground">Joined</span>
-                    <span>{(product as any).sellerDetails?.memberSince}</span>
+                    <span>{product.sellerDetails?.memberSince}</span>
                   </div>
                 </div>
                 
