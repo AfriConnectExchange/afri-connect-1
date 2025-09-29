@@ -129,7 +129,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
       ];
     } else { // Buyer or default
        roleSpecificItems = [
-        { id: '/tracking', label: 'My Orders', href: '/tracking', show: true, icon: Package },
+        { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/courses', label: 'Learning', href: '/courses', show: true, icon: BookOpen },
       ];
     }
