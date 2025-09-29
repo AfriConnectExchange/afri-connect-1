@@ -33,17 +33,19 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
       {reviews.map((review) => (
         <Card key={review.id}>
           <CardContent className="pt-6">
-            <div className="flex items-start gap-3 sm:gap-4">
-              <Avatar className="w-8 h-8 sm:w-10 sm:h-10">
+            <div className="flex items-start gap-4">
+              <Avatar className="w-10 h-10">
                 <AvatarFallback>{review.user.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-x-2 gap-y-1 mb-2">
-                  <span className="font-medium text-sm sm:text-base">{review.user}</span>
-                  {review.verified && (
-                    <Badge variant="secondary" className="text-[10px] w-fit">Verified Purchase</Badge>
-                  )}
-                  <span className="text-xs sm:text-sm text-muted-foreground sm:ml-auto">{review.date}</span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-1 mb-2">
+                  <div className='flex items-center gap-2'>
+                    <span className="font-medium text-sm">{review.user}</span>
+                    {review.verified && (
+                      <Badge variant="secondary" className="text-[10px]">Verified Purchase</Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">{review.date}</span>
                 </div>
                 <div className="flex items-center gap-1 mb-2">
                   {[...Array(5)].map((_, i) => (
@@ -55,7 +57,7 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
                     />
                   ))}
                 </div>
-                <p className="text-muted-foreground text-sm">{review.comment}</p>
+                <p className="text-muted-foreground text-sm leading-relaxed">{review.comment}</p>
               </div>
             </div>
           </CardContent>

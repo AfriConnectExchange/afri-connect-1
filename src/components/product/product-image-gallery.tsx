@@ -13,8 +13,8 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   return (
-    <div className="space-y-3 md:space-y-4">
-      <div className="aspect-square overflow-hidden rounded-2xl shadow-lg bg-muted">
+    <div className="space-y-3">
+      <div className="aspect-square overflow-hidden rounded-lg shadow-md bg-muted">
         <Image
           src={images[selectedImageIndex]}
           alt={productName}
@@ -28,15 +28,15 @@ export function ProductImageGallery({ images, productName }: ProductImageGallery
           <button
             key={index}
             onClick={() => setSelectedImageIndex(index)}
-            className={`aspect-square overflow-hidden rounded-xl border-2 transition-colors ${
+            className={`aspect-square overflow-hidden rounded-md border-2 transition-colors ${
               selectedImageIndex === index ? 'border-primary' : 'border-transparent hover:border-primary/50'
             }`}
           >
             <Image
               src={image}
               alt={`${productName} ${index + 1}`}
-              width={200}
-              height={200}
+              width={150}
+              height={150}
               className="w-full h-full object-cover"
             />
           </button>
