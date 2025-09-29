@@ -37,7 +37,14 @@ export async function POST(request: Request) {
   const validation = createOrderSchema.safeParse(body);
 
   if (!validation.success) {
-    return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
+    // Return detailed validation errors
+    console.error('Order validation failed:', validation.error.flatten());
+    return NextResponse.json({
+        error: 'Invalid input data provided.',
+        details: validation.error.flatten().fieldErrors,
+      },
+      { status: 400 }
+    );
   }
 
   const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
@@ -60,7 +67,16 @@ export async function POST(request: Request) {
       .select()
       .single();
 
-    if (orderError) throw new Error(`Failed to create order: ${orderError.message}`);
+    if (orderError) {
+      console.error('Supabase order creation error:', orderError);
+      // Throw the detailed Supabase error to be caught by the catch block
+      throw new Error(`Order creation error: ${orderError.message} (Code: ${orderError.code})`);
+    }
+    
+    if (!orderData) {
+        throw new Error('Order creation did not return the expected data.');
+    }
+
 
     // 2. Create 'order_items' records
     const orderItemsToInsert = cartItems.map(item => ({
@@ -77,8 +93,9 @@ export async function POST(request: Request) {
 
     if (orderItemsError) {
         // Attempt to roll back the order creation if items fail
+        console.error('Supabase order items creation error:', orderItemsError);
         await supabase.from('orders').delete().eq('id', orderData.id);
-        throw new Error(`Failed to create order items: ${orderItemsError.message}`);
+        throw new Error(`Order items creation error: ${orderItemsError.message} (Code: ${orderItemsError.code})`);
     }
 
     // 3. Update product stock (decrement quantity_available)
@@ -107,7 +124,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, message: 'Order created successfully', orderId: orderData.id, order: orderData });
 
   } catch (error: any) {
-    console.error('Order creation failed:', error);
-    return NextResponse.json({ error: 'Order creation failed', details: error.message }, { status: 500 });
+    // This will now catch detailed errors from above
+    console.error('Full order creation failed:', error.message);
+    return NextResponse.json(
+      {
+        error: 'Order Creation Failed',
+        // Send the specific error message to the client
+        details: error.message,
+      },
+      { status: 500 }
+    );
   }
 }

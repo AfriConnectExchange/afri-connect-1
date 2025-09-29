@@ -62,7 +62,8 @@ function CheckoutPageContent() {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to create order.');
+        // Use the detailed error message from the API response
+        throw new Error(result.details || result.error || 'Failed to create order.');
       }
       
       // 1. Store the successful order details for the confirmation page
@@ -84,6 +85,7 @@ function CheckoutPageContent() {
         toast({
             variant: 'destructive',
             title: 'Order Creation Failed',
+            // Display the detailed error message in the toast
             description: error.message,
         });
         // Do not clear cart, allow user to retry
