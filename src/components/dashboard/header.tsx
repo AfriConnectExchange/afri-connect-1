@@ -97,7 +97,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
   const notificationCount = 2; // Mock
 
-  const canAccessSellerFeatures = profile && [2, 3, 4, 5].includes(profile.role_id);
+  const canAccessSellerFeatures = profile && [2, 3].includes(profile.role_id);
 
   const navigationItems = [
     { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
@@ -315,6 +315,20 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     </Button>
                   </motion.div>
                 </Link>
+                 <Link href="/notifications" passHref>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 relative"
+                  >
+                    <Bell className="w-5 h-5" />
+                     {notificationCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-destructive text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            {notificationCount}
+                        </span>
+                     )}
+                  </Button>
+                </Link>
                 
                  <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -344,7 +358,6 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                                 </>
                            )}
                            <Link href="/profile"><DropdownMenuItem><User className="mr-2 h-4 w-4" /><span>Profile</span></DropdownMenuItem></Link>
-                           <Link href="/notifications"><DropdownMenuItem><Bell className="mr-2 h-4 w-4" /><span>Notifications</span></DropdownMenuItem></Link>
                            <Link href="/profile?tab=settings"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
