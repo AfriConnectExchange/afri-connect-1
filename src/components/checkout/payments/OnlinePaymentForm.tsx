@@ -1,17 +1,14 @@
 'use client';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CreditCard, Wallet, Shield, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { useCart } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
+import { EmbeddedCheckout } from '../EmbeddedCheckout';
 
 
 interface OnlinePaymentFormProps {
@@ -24,100 +21,13 @@ interface OnlinePaymentFormProps {
 export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel }: OnlinePaymentFormProps) {
   const { cart } = useCart();
   const { toast } = useToast();
-  const [formData, setFormData] = useState({
-    cardholderName: '',
-    walletProvider: '',
-    walletEmail: '',
-    billingAddress: {
-      postcode: '',
-      country: 'UK'
-    },
-    savePaymentMethod: false,
-    agreeTerms: false
-  });
-
+  
   const [isProcessing, setIsProcessing] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showStripeForm, setShowStripeForm] = useState(false);
 
-  const walletProviders = [
-    { id: 'paypal', name: 'PayPal', icon: <Image src="/paypal-logo.svg" alt="PayPal" width={60} height={20} /> },
-    { id: 'applepay', name: 'Apple Pay', icon: <Image src="/apple-pay.svg" alt="Apple Pay" width={50} height={20} /> },
-    { id: 'googlepay', name: 'Google Pay', icon: <Image src="/google-pay.svg" alt="Google Pay" width={50} height={20} /> }
-  ];
-
-  const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field] || errors.payment) {
-      setErrors(prev => ({ ...prev, [field]: '', payment: '' }));
-    }
-  };
-
-  const handleBillingChange = (field: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      billingAddress: { ...prev.billingAddress, [field]: value }
-    }));
-    if (errors.postcode) {
-      setErrors(prev => ({ ...prev, postcode: '' }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.agreeTerms) {
-      newErrors.agreeTerms = 'Please agree to the terms and conditions';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleStripeCheckout = async () => {
-    if (!validateForm()) return;
-    setIsProcessing(true);
-
-    try {
-        const response = await fetch('/api/stripe/checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cartItems: cart })
-        });
-        
-        const { url, error } = await response.json();
-
-        if (error) {
-            throw new Error(error);
-        }
-
-        if (url) {
-            window.location.href = url;
-        }
-
-    } catch (err: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Checkout Error',
-            description: err.message
-        });
-        setIsProcessing(false);
-    }
-  };
-  
-  const handleSubmit = async () => {
-    if (paymentType === 'card') {
-      await handleStripeCheckout();
-    } else {
-      // Handle other payment types
-      onConfirm({}); // Placeholder for other online payments
-    }
+  const handleProceedToStripe = () => {
+    setShowStripeForm(true);
   }
-
-
-  const processingFee = orderTotal * 0.029 + 0.30;
-  const totalWithFees = orderTotal + processingFee;
-  
-  const isFormValid = formData.agreeTerms;
 
   const renderTitle = () => {
     switch (paymentType) {
@@ -135,6 +45,22 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
         case 'flutterwave': return <Image src="/flutterwave.svg" alt="Flutterwave" width={20} height={20} />;
         default: return <CreditCard className="w-5 h-5" />;
     }
+  }
+
+  if (showStripeForm) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            {renderIcon()}
+            <span>{renderTitle()}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+           <EmbeddedCheckout />
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -188,28 +114,7 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
                 </AlertDescription>
             </Alert>
         )}
-
-        <div className="space-y-3">
-          <div className="flex items-start space-x-2">
-            <Checkbox
-              id="agreeTerms"
-              checked={formData.agreeTerms}
-              onCheckedChange={(checked) => handleInputChange('agreeTerms', !!checked)}
-            />
-            <Label htmlFor="agreeTerms" className="text-sm">
-              I agree to the payment terms and authorize this transaction. *
-            </Label>
-          </div>
-          {errors.agreeTerms && <p className="text-destructive text-sm">{errors.agreeTerms}</p>}
-        </div>
-
-        {errors.payment && (
-          <Alert variant="destructive">
-            <AlertTriangle className="h-4 w-4" />
-            <AlertDescription>{errors.payment}</AlertDescription>
-          </Alert>
-        )}
-
+        
         <div className="flex flex-col md:flex-row gap-3 pt-4">
           <Button
             variant="outline"
@@ -220,8 +125,8 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
             Change Payment Method
           </Button>
           <Button
-            onClick={handleSubmit}
-            disabled={isProcessing || !isFormValid || paymentType !== 'card'}
+            onClick={handleProceedToStripe}
+            disabled={isProcessing || paymentType !== 'card'}
             className="flex-1"
           >
             {isProcessing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

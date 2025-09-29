@@ -1,17 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { CheckoutPageComponent } from '@/components/checkout/checkout-page';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useCart } from '@/context/cart-context';
 import { PaymentConfirmation } from '@/components/checkout/payments/PaymentConfirmation';
 import type { CartItem } from '@/context/cart-context';
 import { useToast } from '@/hooks/use-toast';
+import { PageLoader } from '@/components/ui/loader';
 
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const { cart, cartCount, subtotal, clearCart } = useCart();
   
@@ -27,7 +29,7 @@ export default function CheckoutPage() {
   const deliveryFee = subtotal > 50 ? 0 : 4.99;
   const total = subtotal + deliveryFee;
 
-  const handlePaymentSuccess = async (paymentDetails: any) => {
+  const handlePaymentSuccess = async (paymentDetails: any = {}) => {
     // This is the successful payment callback
     
     // Create the order in the database
@@ -41,7 +43,7 @@ export default function CheckoutPage() {
       subtotal,
       deliveryFee,
       total,
-      paymentMethod: selectedPaymentMethod.id,
+      paymentMethod: selectedPaymentMethod?.id || 'card',
       shippingAddress: {
         street: '123 Example Street',
         city: 'London',
@@ -93,11 +95,22 @@ export default function CheckoutPage() {
   };
   
    useEffect(() => {
+    const sessionId = searchParams.get('session_id');
+    if (sessionId) {
+        handlePaymentSuccess({ stripeSessionId: sessionId });
+    }
+  }, [searchParams]);
+
+   useEffect(() => {
     // If the user lands on the checkout page with an empty cart and it's not a confirmation, redirect them.
-    if (cart.length === 0 && checkoutStep !== 'confirmation') {
+    if (cart.length === 0 && checkoutStep !== 'confirmation' && !searchParams.get('session_id')) {
       router.push('/cart');
     }
-  }, [cart, router, checkoutStep]);
+  }, [cart, router, checkoutStep, searchParams]);
+
+  if (searchParams.get('session_id') && checkoutStep !== 'confirmation') {
+    return <PageLoader />;
+  }
 
   if (checkoutStep === 'confirmation' && paymentData) {
     return (
@@ -132,4 +145,12 @@ export default function CheckoutPage() {
       />
     </>
   );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <CheckoutPageContent />
+    </Suspense>
+  )
 }

@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
   if (!process.env.STRIPE_SECRET_KEY) {
     console.error('Stripe secret key is not set.');
-    return NextResponse.json({ error: 'Server configuration error.' }, { status: 500 });
+    return NextResponse.json({ error: 'Server configuration error: Stripe secret key is missing.' }, { status: 500 });
   }
 
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -39,14 +39,14 @@ export async function POST(req: NextRequest) {
     });
 
     const session = await stripe.checkout.sessions.create({
+      ui_mode: 'embedded',
       payment_method_types: ['card'],
       line_items: line_items,
       mode: 'payment',
-      success_url: `${origin}/checkout?status=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/checkout?status=cancelled`,
+       return_url: `${origin}/checkout?session_id={CHECKOUT_SESSION_ID}`,
     });
 
-    return NextResponse.json({ sessionId: session.id, url: session.url });
+    return NextResponse.json({ clientSecret: session.client_secret });
   } catch (err: any) {
     console.error('Stripe Error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
