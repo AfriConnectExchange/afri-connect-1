@@ -15,6 +15,7 @@ import {
   BarChart2,
   Megaphone,
   User,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -266,50 +267,84 @@ export function SellerDashboard() {
             </Card>
 
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                     <div>
                         <CardTitle>Your Listings</CardTitle>
                         <CardDescription>Manage your active and pending listings.</CardDescription>
                     </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline"><Flame className="w-4 h-4 mr-2" />Boost listings</Button>
-                        <Button onClick={handleCreateNew}><Pencil className="w-4 h-4 mr-2" />Create new listing</Button>
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                            <Input placeholder="Search listings..." className="pl-10"/>
+                        </div>
+                        <Button variant="outline" size="icon"><ListFilter className="w-4 h-4" /></Button>
                     </div>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-center">
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">Needs attention</p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">{products.filter(p => p.status === 'active').length}</p>
-                        <p className="text-sm text-muted-foreground">Active & pending</p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">{products.filter(p => p.status === 'sold').length}</p>
-                        <p className="text-sm text-muted-foreground">Sold & out of stock</p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">Drafts</p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">To renew</p>
-                    </div>
-                    <div className="p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold">0</p>
-                        <p className="text-sm text-muted-foreground">To delete & relist</p>
-                    </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Marketplace Insights</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">Analytics will be displayed here.</p>
+                    {isLoading ? (
+                      <ListingsSkeleton />
+                    ) : products.length > 0 ? (
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="hidden w-[100px] sm:table-cell">
+                                    <span className="sr-only">Image</span>
+                                </TableHead>
+                                <TableHead>Name</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="hidden md:table-cell">Price</TableHead>
+                                <TableHead className="hidden md:table-cell">Stock</TableHead>
+                                <TableHead>
+                                    <span className="sr-only">Actions</span>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {products.map((product) => (
+                                <TableRow key={product.id}>
+                                    <TableCell className="hidden sm:table-cell">
+                                        <Image
+                                            alt="Product image"
+                                            className="aspect-square rounded-md object-cover"
+                                            height="64"
+                                            src={product.image}
+                                            width="64"
+                                        />
+                                    </TableCell>
+                                    <TableCell className="font-medium">{product.name}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={getStatusVariant(product.status)} className="capitalize">{product.status}</Badge>
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">£{product.price.toFixed(2)}</TableCell>
+                                    <TableCell className="hidden md:table-cell">{product.stockCount}</TableCell>
+                                    <TableCell>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button aria-haspopup="true" size="icon" variant="ghost">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                    <span className="sr-only">Toggle menu</span>
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onSelect={() => handleEdit(product)}>Edit</DropdownMenuItem>
+                                                <DropdownMenuItem>Boost Listing</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onSelect={() => handleDelete(product.id)}>Delete</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    ) : (
+                         <div className="text-center py-10 border-2 border-dashed rounded-lg">
+                            <p className="text-muted-foreground">You have no listings yet.</p>
+                             <Button onClick={handleCreateNew} className="mt-4">
+                                <PlusCircle className="mr-2 h-4 w-4" /> Create First Listing
+                            </Button>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </main>
