@@ -39,7 +39,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         .from('products')
         .select(`
           *,
-          seller:profiles ( full_name, kyc_status, avatar_url, location ),
+          seller:profiles ( id, full_name, kyc_status, avatar_url, location, created_at ),
           category:categories ( name )
         `)
         .eq('id', productId)
@@ -62,11 +62,20 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           sellerVerified: data.seller?.kyc_status === 'verified',
           category: data.category?.name || 'Uncategorized',
           isFree: data.listing_type === 'freebie' || data.price === 0,
-          // Mocked data for now
           rating: data.average_rating || 4.5,
           reviews: data.review_count || 10,
           sold: data.sold_count || 25,
           stockCount: data.quantity_available || 1,
+          sellerDetails: {
+            name: data.seller?.full_name || 'Unknown Seller',
+            avatar: data.seller?.avatar_url || '',
+            location: data.seller?.location || 'Unknown',
+            verified: data.seller?.kyc_status === 'verified',
+            rating: 4.8, // Mock
+            totalSales: 100, // Mock
+            memberSince: data.seller?.created_at ? new Date(data.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
+          },
+          // Mocks that could be real if columns existed
           specifications: {
               Material: "Cotton",
               Origin: "Ghana",
@@ -76,15 +85,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
               domestic: "3-5 business days",
               international: "7-14 business days"
           },
-          sellerDetails: {
-            name: data.seller?.full_name || 'Unknown Seller',
-            avatar: data.seller?.avatar_url || '',
-            location: data.seller?.location || 'Unknown',
-            verified: data.seller?.kyc_status === 'verified',
-            rating: 4.8,
-            totalSales: 100,
-            memberSince: 'Jan 2023'
-          }
         };
         setProduct(mappedProduct as unknown as Product);
       }
@@ -134,6 +134,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     onAddToCart({ ...product, quantity });
   };
   
+  // MOCK DATA - This should be fetched from a reviews table
   const reviews = [
     { id: 1, user: "Amina H.", rating: 5, date: "2 weeks ago", comment: "Exceptional quality!", verified: true },
     { id: 2, user: "David O.", rating: 5, date: "1 month ago", comment: "Perfect for my wedding.", verified: true },

@@ -37,7 +37,7 @@ const listingFormSchema = z.object({
     (a) => parseFloat(String(a) || '0'),
     z.number().min(0, 'Price must be a positive number.')
   ),
-  category_id: z.string().min(1, 'Please select a category.'),
+  category_id: z.coerce.number().int().positive('Please select a category.'),
   listing_type: z.enum(['sale', 'barter', 'freebie']),
   location_text: z.string().min(3, 'Please provide a location.'),
   quantity_available: z.preprocess(
@@ -90,12 +90,13 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
       title: '',
       description: '',
       price: 0,
-      category_id: '',
+      category_id: 0,
       listing_type: 'sale',
       location_text: '',
       quantity_available: 1,
       images: [],
     },
+    mode: 'onChange'
   });
 
   useEffect(() => {
@@ -104,7 +105,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
         title: product.title,
         description: product.description,
         price: product.price,
-        category_id: String(product.category_id),
+        category_id: product.category_id,
         listing_type: product.listing_type,
         location_text: product.location_text,
         quantity_available: product.quantity_available || 1,
@@ -113,7 +114,16 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
       setImagePreviews(product.images || []);
       setImageFiles([]);
     } else {
-      form.reset();
+      form.reset({
+        title: '',
+        description: '',
+        price: 0,
+        category_id: 0,
+        listing_type: 'sale',
+        location_text: '',
+        quantity_available: 1,
+        images: [],
+      });
       setImagePreviews([]);
       setImageFiles([]);
     }
@@ -133,12 +143,18 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
   
   const removeImage = (index: number) => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
-    setImageFiles(prev => prev.filter((_, i) => i !== index));
+    // This logic needs to be improved if we mix pre-existing and new files
+    // For now, it assumes we only remove newly added files if editing
+    setImageFiles(prev => prev.filter((_, i) => {
+        // This is a simplified logic, a more robust solution would track file objects
+        const url = URL.createObjectURL(prev[i]);
+        return imagePreviews[index] !== url;
+    }));
   }
   
   const nextStep = async () => {
     const fields = steps[currentStep].fields;
-    const output = await form.trigger(fields as any, { shouldFocus: true });
+    const output = await form.trigger(fields as (keyof ListingFormValues)[], { shouldFocus: true });
 
     if (!output) return;
     
@@ -160,7 +176,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
         const {data: {user}} = await supabase.auth.getUser();
         if(!user) throw new Error("You must be logged in to create a listing.");
 
-        const uploadedImageUrls = [];
+        const uploadedImageUrls = [...(product?.images || [])];
 
         for (const file of imageFiles) {
             const filePath = `${user.id}/${Date.now()}_${file.name}`;
@@ -182,7 +198,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
         const finalData = { 
             ...product, 
             ...data, 
-            images: [...(product?.images || []), ...uploadedImageUrls] 
+            images: uploadedImageUrls 
         };
         onSave(finalData);
 
@@ -211,7 +227,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
             {currentStep === 0 && (
-                <div className="space-y-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     <FormField
                     control={form.control}
                     name="title"
@@ -234,11 +250,11 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                         </FormItem>
                     )}
                     />
-                </div>
+                </motion.div>
             )}
             
             {currentStep === 1 && (
-                <div className="space-y-4">
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                      <FormField
                         control={form.control}
                         name="listing_type"
@@ -263,7 +279,7 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                         render={({ field }) => (
                             <FormItem>
                             <FormLabel>Category</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
                                 <SelectContent>{categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent>
                             </Select>
@@ -271,11 +287,11 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                             </FormItem>
                         )}
                     />
-                </div>
+                </motion.div>
             )}
 
             {currentStep === 2 && (
-                 <div className="space-y-4">
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                     <FormField
                         control={form.control}
                         name="price"
@@ -298,11 +314,11 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                             </FormItem>
                         )}
                     />
-                </div>
+                </motion.div>
             )}
 
             {currentStep === 3 && (
-                <div>
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                     <FormLabel>Product Images (up to 4)</FormLabel>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
                         {imagePreviews.map((url, index) => (
@@ -321,24 +337,26 @@ export function ListingForm({ isOpen, onClose, onSave, product }: ListingFormPro
                             </label>
                         )}
                     </div>
-                </div>
+                </motion.div>
             )}
             
             {currentStep === 4 && (
-                 <FormField
-                    control={form.control}
-                    name="location_text"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Item Location</FormLabel>
-                        <FormControl><Input placeholder="e.g., London, UK" {...field} /></FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                 <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                    <FormField
+                        control={form.control}
+                        name="location_text"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Item Location</FormLabel>
+                            <FormControl><Input placeholder="e.g., London, UK" {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </motion.div>
             )}
             
-             <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-6 px-6 -mx-6 flex-row justify-between">
+             <DialogFooter className="sticky bottom-0 bg-background pt-4 pb-6 px-6 -mx-6 flex-row justify-between border-t">
                 <Button type="button" variant="outline" onClick={prevStep} disabled={currentStep === 0 || isSaving}>
                     <ArrowLeft className="mr-2 h-4 w-4" />
                     Back
