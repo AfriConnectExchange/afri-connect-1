@@ -48,6 +48,7 @@ import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
+import { useRouter } from 'next/navigation';
 
 function ListingsSkeleton() {
   return (
@@ -116,6 +117,7 @@ export function SellerDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const router = useRouter();
 
   const fetchUserProducts = async () => {
     setIsLoading(true);
@@ -213,7 +215,7 @@ export function SellerDashboard() {
 
   const Sidebar = () => (
     <div className="hidden lg:block w-64 border-r bg-muted/40 p-4">
-        <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground">
+        <Button variant="ghost" size="sm" className="mb-4 text-muted-foreground" onClick={() => router.push('/marketplace')}>
             <ArrowLeft className="w-4 h-4 mr-2" /> Marketplace
         </Button>
         <h2 className="text-2xl font-bold mb-4">Selling</h2>
@@ -224,16 +226,13 @@ export function SellerDashboard() {
             <Button variant="secondary" className="w-full justify-start">
                 <BarChart2 className="w-4 h-4 mr-2" /> Seller dashboard
             </Button>
-            <Button variant="ghost" className="w-full justify-start">
-                <Package className="w-4 h-4 mr-2" /> Your listings
-            </Button>
-             <Button variant="ghost" className="w-full justify-start">
-                <Megaphone className="w-4 h-4 mr-2" /> Announcements
+             <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/sales')}>
+                <Package className="w-4 h-4 mr-2" /> My Sales
             </Button>
              <Button variant="ghost" className="w-full justify-start">
                 <BarChart2 className="w-4 h-4 mr-2" /> Insights
             </Button>
-             <Button variant="ghost" className="w-full justify-start">
+             <Button variant="ghost" className="w-full justify-start" onClick={() => router.push('/profile')}>
                 <User className="w-4 h-4 mr-2" /> Marketplace profile
             </Button>
         </nav>
