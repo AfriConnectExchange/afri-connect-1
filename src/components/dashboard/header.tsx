@@ -13,6 +13,8 @@ import {
   LogOut,
   Package,
   Settings,
+  Shield,
+  BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -97,22 +99,53 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
   const notificationCount = 2; // Mock
 
-  const canAccessSellerFeatures = profile && [2, 3].includes(profile.role_id);
+  const roleId = profile?.role_id;
+  const isSellerOrSME = roleId === 2 || roleId === 3;
+  const isTrainer = roleId === 4;
+  const isAdmin = roleId === 5;
+  // Diaspora user role TBD
 
-  const navigationItems = [
-    { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
-    { id: '/sales', label: 'My Sales', icon: TrendingUp, href: '/sales', show: canAccessSellerFeatures },
-    { id: '/adverts', label: 'My Listings', icon: Package, href: '/adverts', show: canAccessSellerFeatures },
-  ];
+  const getMenuItems = () => {
+    const baseItems = [
+      { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true, icon: null },
+      { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
+      { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
+      { id: '/support', label: 'Support', href: '/support', show: true, icon: HelpCircle },
+    ];
 
-  const additionalItems = [
-    { id: '/tracking', label: 'Track Orders', href: '/tracking' },
-    { id: '/analytics', label: 'Analytics', href: '/analytics' },
-    { id: '/reviews', label: 'Reviews', href: '/reviews' },
-    { id: '/admin', label: 'Admin Panel', href: '/admin' },
-    { id: '/help', label: 'Help Center', href: '/help', icon: HelpCircle },
-    { id: '/support', label: 'Support', href: '/support', icon: HelpCircle },
-  ];
+    if (isSellerOrSME) {
+      return [
+        ...baseItems,
+        { id: '/adverts', label: 'My Listings', href: '/adverts', show: true, icon: Package },
+        { id: '/sales', label: 'My Orders', href: '/sales', show: true, icon: TrendingUp },
+        { id: '/analytics', label: 'Dashboard / Insights', href: '/analytics', show: true, icon: TrendingUp },
+      ];
+    }
+    
+    if (isTrainer) {
+       return [
+        ...baseItems,
+        { id: '/courses', label: 'My Courses', href: '/courses', show: true, icon: BookOpen },
+        { id: '/analytics', label: 'Student Analytics', href: '/analytics', show: true, icon: TrendingUp },
+       ];
+    }
+
+    if(isAdmin) {
+      return [
+        ...baseItems,
+        { id: '/admin', label: 'Admin Dashboard', href: '/admin', show: true, icon: Shield },
+      ]
+    }
+
+    // Default Buyer
+    return [
+      ...baseItems,
+      { id: '/tracking', label: 'My Orders', href: '/tracking', show: true, icon: Package },
+      { id: '/courses', label: 'Learning (LMS)', href: '/courses', show: true, icon: BookOpen },
+    ];
+  }
+  
+  const menuItems = getMenuItems();
 
   const handleMobileLinkClick = () => {
     setMobileMenuOpen(false);
@@ -167,7 +200,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
                 <div className="flex-1 overflow-y-auto pr-2">
                   <div className="space-y-2">
-                    {navigationItems.filter(item => item.show).map((item) => (
+                    {menuItems.filter(item => item.show).map((item) => (
                       <Link key={item.id} href={item.href} passHref>
                         <Button
                           variant={pathname === item.href ? 'secondary' : 'ghost'}
@@ -180,61 +213,19 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                       </Link>
                     ))}
                   </div>
-
-                  <div className="border-t my-4"></div>
-
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-2 px-3">
-                      More Features
-                    </p>
-                    <div className="space-y-1">
-                      {additionalItems.map((item) => (
-                        <Link key={item.id} href={item.href} passHref>
-                          <Button
-                            variant={pathname === item.href ? 'secondary' : 'ghost'}
-                            className="w-full justify-start"
-                            onClick={handleMobileLinkClick}
-                          >
-                           {item.icon && <item.icon className="w-4 h-4 mr-2" />}
-                            {item.label}
-                          </Button>
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
                 </div>
 
                 <div className="border-t mt-4 pt-4">
                     {user ? (
                         <>
-                         <Link href="/notifications" passHref>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={handleMobileLinkClick}
-                            >
-                                <Bell className="w-4 h-4 mr-2" />
-                                Notifications
-                            </Button>
-                            </Link>
-                            <Link href="/profile" passHref>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start"
-                                onClick={handleMobileLinkClick}
-                            >
-                                <User className="w-4 h-4 mr-2" />
-                                Account
-                            </Button>
-                            </Link>
-                            <Button
-                                variant="ghost"
-                                className="w-full justify-start text-destructive hover:text-destructive"
-                                onClick={() => { handleLogout(); handleMobileLinkClick(); }}
-                            >
-                                <LogOut className="w-4 h-4 mr-2" />
-                                Sign Out
-                            </Button>
+                          <Button
+                              variant="ghost"
+                              className="w-full justify-start text-destructive hover:text-destructive"
+                              onClick={() => { handleLogout(); handleMobileLinkClick(); }}
+                          >
+                              <LogOut className="w-4 h-4 mr-2" />
+                              Sign Out
+                          </Button>
                         </>
                     ) : (
                          <Link href="/" passHref>
@@ -279,7 +270,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden lg:flex items-center gap-2">
-              {navigationItems.filter(item => item.show && !item.icon).map((item) => (
+               {menuItems.filter(item => item.show && !item.icon).map((item) => (
                 <Link key={item.id} href={item.href} passHref>
                   <Button
                     variant="ghost"
@@ -349,14 +340,9 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                           {canAccessSellerFeatures && (
-                                <>
-                                 <Link href="/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
-                                 <Link href="/adverts"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
-                                 <DropdownMenuSeparator />
-                                </>
-                           )}
-                           <Link href="/profile"><DropdownMenuItem><User className="mr-2 h-4 w-4" /><span>Profile</span></DropdownMenuItem></Link>
+                          {menuItems.filter(item => item.show && item.icon).map((item) => (
+                             <Link key={item.id} href={item.href}><DropdownMenuItem><item.icon className="mr-2 h-4 w-4" /><span>{item.label}</span></DropdownMenuItem></Link>
+                          ))}
                            <Link href="/profile?tab=settings"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
