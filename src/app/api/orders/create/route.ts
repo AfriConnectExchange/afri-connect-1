@@ -119,6 +119,29 @@ export async function POST(request: Request) {
         status: 'completed', // Assuming payment was successful before calling this API
         provider: paymentMethod,
     });
+    
+    // 5. Create notifications for seller(s)
+    const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
+    for (const sellerId of sellerIds) {
+        if (sellerId === user.id) continue; // Don't notify user of their own purchase from themself
+        
+        await supabase.from('notifications').insert({
+            user_id: sellerId,
+            type: 'order',
+            title: 'New Sale!',
+            message: `You have a new order #${orderData.id.substring(0, 8)} from ${user.user_metadata.full_name || 'a buyer'}.`,
+            link_url: '/sales'
+        });
+    }
+    
+    // 6. Create notification for buyer
+    await supabase.from('notifications').insert({
+        user_id: user.id,
+        type: 'order',
+        title: 'Order Confirmed!',
+        message: `Your order #${orderData.id.substring(0, 8)} for £${total.toFixed(2)} has been confirmed.`,
+        link_url: `/tracking?orderId=${orderData.id}`
+    });
 
 
     return NextResponse.json({ success: true, message: 'Order created successfully', orderId: orderData.id, order: orderData });

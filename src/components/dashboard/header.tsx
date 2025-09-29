@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -10,6 +11,7 @@ import {
   TrendingUp,
   HelpCircle,
   LogOut,
+  Package,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,7 +91,8 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const navigationItems = [
     { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
     { id: '/money-transfer', label: 'Send Money', href: '/money-transfer', show: true },
-    { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts', show: canAccessSellerFeatures },
+    { id: '/sales', label: 'My Sales', icon: TrendingUp, href: '/sales', show: canAccessSellerFeatures },
+    { id: '/adverts', label: 'My Listings', icon: Package, href: '/adverts', show: canAccessSellerFeatures },
   ];
 
   const additionalItems = [

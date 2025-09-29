@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,6 +7,8 @@ import {
   Truck,
   ClipboardCopy,
   RefreshCw,
+  CheckCircle,
+  Loader2,
 } from 'lucide-react';
 import { OrderDetails as OrderDetailsType } from './order-tracking-page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,6 +18,7 @@ import { TrackingTimeline } from './tracking-timeline';
 import { OrderItemsCard } from './order-items-card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
+import { ConfirmationModal } from '../ui/confirmation-modal';
 
 interface TrackingDetailsProps {
   order: OrderDetailsType;
@@ -24,7 +28,10 @@ interface TrackingDetailsProps {
 export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
   const { toast } = useToast();
   const [isRefreshing, setIsRefreshing] = useState(false);
-
+  const [isConfirming, setIsConfirming] = useState(false);
+  const [currentOrder, setCurrentOrder] = useState(order);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  
   const getStatusInfo = (
     status: OrderDetailsType['status']
   ): { color: string; progress: number; label: string } => {
@@ -71,8 +78,8 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
     }
   };
 
-  const statusInfo = getStatusInfo(order.status);
-  const estimatedDate = new Date(order.estimatedDelivery);
+  const statusInfo = getStatusInfo(currentOrder.status);
+  const estimatedDate = new Date(currentOrder.estimatedDelivery);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -82,18 +89,61 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
     });
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
-      setIsRefreshing(false);
-      toast({
-        title: 'Tracking Updated',
-        description: 'Latest tracking details have been fetched.',
-      });
-    }, 1500);
+    try {
+        const response = await fetch(`/api/orders/track?orderId=${currentOrder.id}`);
+        if(response.ok) {
+            const data = await response.json();
+            setCurrentOrder(data);
+            toast({
+                title: 'Tracking Updated',
+                description: 'Latest tracking details have been fetched.',
+            });
+        } else {
+             toast({ variant: 'destructive', title: 'Error', description: 'Failed to refresh tracking details.' });
+        }
+    } catch (error) {
+         toast({ variant: 'destructive', title: 'Error', description: 'Could not connect to server.' });
+    } finally {
+        setIsRefreshing(false);
+    }
+  };
+  
+  const handleConfirmReceipt = async () => {
+    setShowConfirmModal(false);
+    setIsConfirming(true);
+     try {
+        const response = await fetch('/api/orders/confirm-receipt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderId: currentOrder.id }),
+        });
+
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Failed to confirm receipt.');
+        }
+
+        toast({
+            title: 'Order Completed',
+            description: `Thank you for confirming receipt of order ${currentOrder.id}.`,
+        });
+        
+        handleRefresh(); // Refresh to get the final 'delivered' state
+    } catch (error: any) {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: error.message,
+        });
+    } finally {
+        setIsConfirming(false);
+    }
   };
 
   return (
+    <>
     <div className="space-y-6">
       <Button variant="ghost" onClick={onClear} className="pl-0">
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -112,7 +162,7 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
                   {statusInfo.label}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground">
-                  {order.courierName}
+                  {currentOrder.courierName}
                 </p>
               </div>
             </div>
@@ -142,12 +192,12 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
           <div className="text-sm">
             <span className="font-semibold">Tracking Number: </span>
             <div className="inline-flex items-center gap-2">
-              <span className="font-mono">{order.tracking_number}</span>
+              <span className="font-mono">{currentOrder.tracking_number}</span>
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => copyToClipboard(order.tracking_number)}
+                onClick={() => copyToClipboard(currentOrder.tracking_number)}
               >
                 <ClipboardCopy className="h-4 w-4" />
               </Button>
@@ -155,13 +205,13 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
           </div>
           <div className="p-4 bg-muted/50 rounded-lg text-center">
             <p className="text-sm text-muted-foreground">
-              {order.status === 'delivered'
+              {currentOrder.status === 'delivered'
                 ? 'Delivered On'
                 : 'Estimated Delivery'}
             </p>
             <p className="font-bold text-lg">
-              {order.status === 'delivered' && order.actualDelivery
-                ? new Date(order.actualDelivery).toLocaleDateString('en-US', {
+              {currentOrder.status === 'delivered' && currentOrder.actualDelivery
+                ? new Date(currentOrder.actualDelivery).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
@@ -175,6 +225,21 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
                   })}
             </p>
           </div>
+           {currentOrder.status === 'in-transit' || currentOrder.status === 'out-for-delivery' ? (
+                <Button 
+                    className="w-full"
+                    onClick={() => setShowConfirmModal(true)}
+                    disabled={isConfirming}
+                >
+                    {isConfirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Confirm Receipt of Goods
+                </Button>
+            ) : currentOrder.status === 'delivered' ? (
+                <div className="flex items-center justify-center gap-2 text-green-600 p-2 bg-green-50 border border-green-200 rounded-md">
+                   <CheckCircle className="h-4 w-4" />
+                   <p className="text-sm font-medium">This order has been completed.</p>
+                </div>
+            ) : null}
         </CardContent>
       </Card>
 
@@ -189,14 +254,29 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
               <CardTitle>Shipment History</CardTitle>
             </CardHeader>
             <CardContent>
-              <TrackingTimeline events={order.events} />
+              <TrackingTimeline events={currentOrder.events} />
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="details" className="mt-4">
-          <OrderItemsCard order={order} />
+          <OrderItemsCard order={currentOrder} />
         </TabsContent>
       </Tabs>
     </div>
+    
+     <ConfirmationModal
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={handleConfirmReceipt}
+        title="Confirm Receipt"
+        description="Are you sure you have received all items in this order in good condition? This action will release the payment to the seller."
+        confirmText="Yes, I've Received It"
+        type="warning"
+        consequences={[
+          'Payment will be transferred to the seller.',
+          'This action cannot be undone.'
+        ]}
+      />
+    </>
   );
 }
