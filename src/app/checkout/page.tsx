@@ -35,7 +35,7 @@ function CheckoutPageContent() {
     // Create the order in the database
     const orderPayload = {
       cartItems: cart.map(item => ({
-        product_id: item.id, // Corrected from 'id' to 'product_id'
+        product_id: item.id,
         quantity: item.quantity,
         price: item.price,
         seller_id: item.seller_id, // Pass seller_id to the API
