@@ -106,43 +106,45 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   // Diaspora user role TBD
 
   const getMenuItems = () => {
+    // Base items visible to everyone
     const baseItems = [
       { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true, icon: null },
-      { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
-      { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
-      { id: '/support', label: 'Support', href: '/support', show: true, icon: HelpCircle },
     ];
+    
+    let roleSpecificItems = [];
 
+    // Role-specific desktop and dropdown items
     if (isSellerOrSME) {
-      return [
-        ...baseItems,
+       roleSpecificItems = [
+        { id: '/sales', label: 'My Sales', href: '/sales', show: true, icon: TrendingUp },
         { id: '/adverts', label: 'My Listings', href: '/adverts', show: true, icon: Package },
-        { id: '/sales', label: 'My Orders', href: '/sales', show: true, icon: TrendingUp },
-        { id: '/analytics', label: 'Dashboard / Insights', href: '/analytics', show: true, icon: TrendingUp },
+      ];
+    } else if (isTrainer) {
+      roleSpecificItems = [
+         { id: '/courses', label: 'My Courses', href: '/courses', show: true, icon: BookOpen },
+      ];
+    } else if (isAdmin) {
+      roleSpecificItems = [
+         { id: '/admin', label: 'Admin Dashboard', href: '/admin', show: true, icon: Shield },
+      ];
+    } else { // Buyer or default
+       roleSpecificItems = [
+        { id: '/tracking', label: 'My Orders', href: '/tracking', show: true, icon: Package },
+        { id: '/courses', label: 'Learning', href: '/courses', show: true, icon: BookOpen },
       ];
     }
     
-    if (isTrainer) {
-       return [
-        ...baseItems,
-        { id: '/courses', label: 'My Courses', href: '/courses', show: true, icon: BookOpen },
-        { id: '/analytics', label: 'Student Analytics', href: '/analytics', show: true, icon: TrendingUp },
-       ];
-    }
-
-    if(isAdmin) {
-      return [
-        ...baseItems,
-        { id: '/admin', label: 'Admin Dashboard', href: '/admin', show: true, icon: Shield },
-      ]
-    }
-
-    // Default Buyer
-    return [
-      ...baseItems,
-      { id: '/tracking', label: 'My Orders', href: '/tracking', show: true, icon: Package },
-      { id: '/courses', label: 'Learning (LMS)', href: '/courses', show: true, icon: BookOpen },
+    const accountItems = [
+        { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
+        { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
+        { id: '/support', label: 'Support', href: '/support', show: true, icon: HelpCircle },
     ];
+
+    return {
+      desktop: [...baseItems, ...roleSpecificItems.map(item => ({...item, icon: null}))], // Items for desktop nav bar
+      mobile: [...baseItems, ...roleSpecificItems, ...accountItems], // All items for mobile
+      dropdown: [...roleSpecificItems, ...accountItems], // Items for desktop dropdown
+    }
   }
   
   const menuItems = getMenuItems();
@@ -200,7 +202,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
                 <div className="flex-1 overflow-y-auto pr-2">
                   <div className="space-y-2">
-                    {menuItems.filter(item => item.show).map((item) => (
+                    {menuItems.mobile.filter(item => item.show).map((item) => (
                       <Link key={item.id} href={item.href} passHref>
                         <Button
                           variant={pathname === item.href ? 'secondary' : 'ghost'}
@@ -270,7 +272,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
             <div className="hidden lg:flex items-center gap-2">
-               {menuItems.filter(item => item.show && !item.icon).map((item) => (
+               {menuItems.desktop.filter(item => item.show).map((item) => (
                 <Link key={item.id} href={item.href} passHref>
                   <Button
                     variant="ghost"
@@ -281,12 +283,6 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                   </Button>
                 </Link>
               ))}
-              {isSellerOrSME && (
-                 <>
-                    <Link href="/sales" passHref><Button variant="ghost" size="sm" className={pathname === '/sales' ? 'bg-accent' : ''}>My Sales</Button></Link>
-                    <Link href="/adverts" passHref><Button variant="ghost" size="sm" className={pathname === '/adverts' ? 'bg-accent' : ''}>My Listings</Button></Link>
-                 </>
-              )}
             </div>
 
             {user ? (
@@ -346,7 +342,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
                         <DropdownMenuGroup>
-                          {menuItems.filter(item => item.show && item.icon).map((item) => (
+                          {menuItems.dropdown.filter(item => item.show && item.icon).map((item) => (
                              <Link key={item.id} href={item.href}><DropdownMenuItem><item.icon className="mr-2 h-4 w-4" /><span>{item.label}</span></DropdownMenuItem></Link>
                           ))}
                            <Link href="/profile?tab=settings"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
