@@ -5,10 +5,10 @@ import { z } from 'zod';
 
 // This schema now includes seller_id, which is crucial for the order_items table
 const orderItemSchema = z.object({
-  id: z.string(),
+  product_id: z.string().uuid(), // Corrected from 'id' to 'product_id' and added uuid validation
   quantity: z.number().int().positive(),
   price: z.number(),
-  seller_id: z.string(), // Added seller_id
+  seller_id: z.string().uuid(), // Added uuid validation
 });
 
 const createOrderSchema = z.object({
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
     // 2. Create 'order_items' records
     const orderItemsToInsert = cartItems.map(item => ({
       order_id: orderData.id,
-      product_id: item.id,
+      product_id: item.product_id, // Use the corrected field
       quantity: item.quantity,
       price_at_purchase: item.price,
       seller_id: item.seller_id, // Including seller_id as per schema
@@ -84,11 +84,11 @@ export async function POST(request: Request) {
     // 3. Update product stock (decrement quantity_available)
     for (const item of cartItems) {
       const { error: stockUpdateError } = await supabase.rpc('decrement_product_quantity', {
-          p_id: item.id,
+          p_id: item.product_id,
           p_quantity: item.quantity
       });
       if (stockUpdateError) {
-          console.warn(`Could not update stock for product ${item.id}: ${stockUpdateError.message}`);
+          console.warn(`Could not update stock for product ${item.product_id}: ${stockUpdateError.message}`);
           // Decide on rollback strategy. For now, we'll log a warning.
       }
     }
