@@ -13,11 +13,46 @@ import { ProductInfoTabs } from './product-info-tabs';
 import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
+import { Skeleton } from '../ui/skeleton';
 
 interface ProductPageProps {
   productId: string;
   onNavigate: (page: string, productId?: string) => void;
   onAddToCart: (product: any) => void;
+}
+
+function ProductPageSkeleton() {
+    return (
+        <div className="container mx-auto px-4 py-4 md:py-6">
+            <Skeleton className="h-6 w-48 mb-4 md:mb-6" />
+            <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 mb-6 md:mb-8">
+                <div className="space-y-3">
+                    <Skeleton className="aspect-square w-full rounded-lg" />
+                    <div className="grid grid-cols-4 gap-2">
+                        <Skeleton className="aspect-square w-full rounded-md" />
+                        <Skeleton className="aspect-square w-full rounded-md" />
+                        <Skeleton className="aspect-square w-full rounded-md" />
+                        <Skeleton className="aspect-square w-full rounded-md" />
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    <Skeleton className="h-8 w-3/4" />
+                    <Skeleton className="h-5 w-1/2" />
+                    <Skeleton className="h-10 w-1/4" />
+                    <Skeleton className="h-20 w-full" />
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            </div>
+             <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
+                <div className="lg:col-span-2">
+                    <Skeleton className="h-64 w-full" />
+                </div>
+                 <div className="lg:sticky top-24 self-start">
+                    <Skeleton className="h-48 w-full" />
+                 </div>
+             </div>
+        </div>
+    )
 }
 
 export function ProductPageComponent({ productId, onNavigate, onAddToCart }: ProductPageProps) {
@@ -61,9 +96,8 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           sellerVerified: productData.seller?.kyc_status === 'verified',
           category: productData.category?.name || 'Uncategorized',
           isFree: productData.listing_type === 'freebie' || productData.price === 0,
-          rating: productData.average_rating || 4.5,
+          rating: productData.average_rating || 0,
           reviews: productData.review_count || 0,
-          sold: productData.sold_count || 0,
           stockCount: productData.quantity_available || 1,
           sellerDetails: {
             id: productData.seller?.id,
@@ -71,19 +105,13 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
             avatar: productData.seller?.avatar_url || '',
             location: productData.seller?.location || 'Unknown',
             verified: productData.seller?.kyc_status === 'verified',
-            rating: 4.8,
-            totalSales: 100,
+            rating: 4.8, // This is still mock data
+            totalSales: 100, // This is still mock data
             memberSince: productData.seller?.created_at ? new Date(productData.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
           },
-          specifications: {
-              Material: "Cotton",
-              Origin: "Ghana",
-              Dimensions: "6 yards"
-          },
-           shipping: {
-              domestic: "3-5 business days",
-              international: "7-14 business days"
-          },
+          // Real data now
+          specifications: productData.specifications,
+          shipping_policy: productData.shipping_policy
         };
         setProduct(mappedProduct as unknown as Product);
 
@@ -111,12 +139,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <p className="ml-2">Loading product...</p>
-      </div>
-    );
+    return <ProductPageSkeleton />;
   }
 
   if (!product) {

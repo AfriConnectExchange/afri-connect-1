@@ -23,10 +23,12 @@ export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
           <MessageSquare className="w-4 h-4" />
           Reviews ({reviews.length})
         </TabsTrigger>
-        <TabsTrigger value="shipping" className="text-sm data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none bg-transparent px-2 pb-2 gap-2">
-          <Ship className="w-4 h-4" />
-          Shipping Info
-        </TabsTrigger>
+        {product.shipping_policy && (
+          <TabsTrigger value="shipping" className="text-sm data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none bg-transparent px-2 pb-2 gap-2">
+            <Ship className="w-4 h-4" />
+            Shipping Info
+          </TabsTrigger>
+        )}
       </TabsList>
       
       <TabsContent value="details" className="space-y-4 pt-6">
@@ -35,14 +37,18 @@ export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
             <CardTitle className="text-lg">Specifications</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3 text-sm">
-              {product.specifications && Object.entries(product.specifications).map(([key, value]) => (
-                <div key={key} className="flex justify-between items-center py-2 border-b last:border-b-0">
-                  <span className="font-medium text-foreground/80">{key}</span>
-                  <span className="text-muted-foreground text-right">{String(value)}</span>
+            {product.specifications && Object.keys(product.specifications).length > 0 ? (
+                <div className="space-y-3 text-sm">
+                {Object.entries(product.specifications).map(([key, value]) => (
+                    <div key={key} className="flex justify-between items-center py-2 border-b last:border-b-0">
+                    <span className="font-medium text-foreground/80 capitalize">{key.replace(/_/g, ' ')}</span>
+                    <span className="text-muted-foreground text-right">{String(value)}</span>
+                    </div>
+                ))}
                 </div>
-              ))}
-            </div>
+            ) : (
+                <p className="text-sm text-muted-foreground">No specifications provided for this product.</p>
+            )}
           </CardContent>
         </Card>
       </TabsContent>
@@ -51,33 +57,31 @@ export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
         <ReviewsSection reviews={reviews} />
       </TabsContent>
       
-      <TabsContent value="shipping" className="space-y-4 pt-6">
-         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Shipping Options</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-              {product.shipping && (
-                  <>
-                      <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                          <Truck className="w-5 h-5 text-primary mt-1" />
-                          <div>
-                          <h4 className="font-medium">Domestic Shipping</h4>
-                          <p className="text-sm text-muted-foreground">{product.shipping.domestic}</p>
-                          </div>
-                      </div>
-                      <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                          <Ship className="w-5 h-5 text-primary mt-1" />
-                          <div>
-                          <h4 className="font-medium">International Shipping</h4>
-                          <p className="text-sm text-muted-foreground">{product.shipping.international}</p>
-                          </div>
-                      </div>
-                  </>
-              )}
-          </CardContent>
-        </Card>
-      </TabsContent>
+      {product.shipping_policy && (
+        <TabsContent value="shipping" className="space-y-4 pt-6">
+           <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Shipping Options</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
+                    <Truck className="w-5 h-5 text-primary mt-1" />
+                    <div>
+                    <h4 className="font-medium">Domestic Shipping</h4>
+                    <p className="text-sm text-muted-foreground">{product.shipping_policy.domestic}</p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
+                    <Ship className="w-5 h-5 text-primary mt-1" />
+                    <div>
+                    <h4 className="font-medium">International Shipping</h4>
+                    <p className="text-sm text-muted-foreground">{product.shipping_policy.international}</p>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

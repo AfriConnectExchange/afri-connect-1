@@ -39,6 +39,8 @@ export interface Product {
   created_at: string;
   updated_at: string;
   quantity_available: number;
+  specifications?: any;
+  shipping_policy?: any;
   
   // Properties from old interface, to be mapped or joined
   name: string; // Will map from title
@@ -53,6 +55,7 @@ export interface Product {
   discount?: number;
   isFree?: boolean;
   stockCount: number;
+  sellerDetails: any; // Add this to hold the full seller profile
 }
 
 export interface Category {
@@ -248,6 +251,7 @@ export default function MarketplacePage() {
               onFiltersChange={handleFiltersChange}
               onClearAllFilters={handleClearAllFilters}
               currency="£"
+              isLoading={!categories || categories.length === 0}
             />
           </div>
         </div>
@@ -259,6 +263,7 @@ export default function MarketplacePage() {
             <SearchBar
               value={filters.searchQuery}
               onChange={(value) => handleSearch(value)}
+              onSearch={() => fetchProducts(filters, sortBy)}
               placeholder="Search..."
               className="flex-grow"
             />
@@ -289,6 +294,7 @@ export default function MarketplacePage() {
                     onFiltersChange={handleFiltersChange}
                     onClearAllFilters={handleClearAllFilters}
                     currency="£"
+                    isLoading={!categories || categories.length === 0}
                   />
                 </div>
                 <div className="p-4 border-t bg-background">
@@ -323,7 +329,6 @@ export default function MarketplacePage() {
                 <SelectItem value="relevance">Most Relevant</SelectItem>
                 <SelectItem value="price_asc">Price: Low to High</SelectItem>
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                <SelectItem value="rating_desc">Highest Rated</SelectItem>
                 <SelectItem value="created_at_desc">Newest First</SelectItem>
               </SelectContent>
             </Select>

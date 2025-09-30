@@ -8,6 +8,7 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import type { FilterState } from '@/app/marketplace/page';
+import { Skeleton } from '../ui/skeleton';
 
 interface Category {
   id: string;
@@ -26,6 +27,7 @@ interface FilterPanelProps {
   onFiltersChange: (filters: Partial<FilterState>) => void;
   onClearAllFilters: () => void;
   currency?: string;
+  isLoading?: boolean;
 }
 
 export function FilterPanel({
@@ -34,6 +36,7 @@ export function FilterPanel({
   onFiltersChange,
   onClearAllFilters,
   currency = '£',
+  isLoading = false,
 }: FilterPanelProps) {
   const handleCategoryChange = (categoryId: string, selected: boolean) => {
     let newCategories: string[];
@@ -85,6 +88,50 @@ export function FilterPanel({
   };
 
   const activeFilterCount = getActiveFilterCount();
+  
+  if (isLoading) {
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-16" />
+            </div>
+            <Separator />
+            <div className="space-y-2">
+                {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-3">
+                        <Skeleton className="h-5 w-32" />
+                        <Skeleton className="h-5 w-8" />
+                    </div>
+                ))}
+            </div>
+            <Separator />
+             <div className="space-y-4">
+                <Skeleton className="h-5 w-20" />
+                <div className="flex items-center gap-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+                 <Skeleton className="h-8 w-full" />
+            </div>
+            <Separator />
+            <div className="space-y-4">
+                <Skeleton className="h-5 w-24" />
+                <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                       <Skeleton className="h-4 w-4" />
+                       <Skeleton className="h-4 w-32" />
+                    </div>
+                     <div className="flex items-center space-x-2">
+                       <Skeleton className="h-4 w-4" />
+                       <Skeleton className="h-4 w-24" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+  }
+
 
   return (
     <div className="space-y-6">
