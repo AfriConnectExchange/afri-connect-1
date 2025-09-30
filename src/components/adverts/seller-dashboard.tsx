@@ -49,6 +49,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
 import { Separator } from '../ui/separator';
 import { useRouter } from 'next/navigation';
+import { ConfirmationModal } from '../ui/confirmation-modal';
 
 function ListingsSkeleton() {
   return (
@@ -116,6 +117,7 @@ export function SellerDashboard() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Product | null>(null);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -159,27 +161,48 @@ export function SellerDashboard() {
     setIsFormOpen(true);
   };
 
-  const handleDelete = (productId: string) => {
-    console.log('Deleting product:', productId);
-    setProducts(products.filter((p) => p.id !== productId));
-    toast({ title: 'Success', description: 'Product deleted successfully.' });
+  const confirmDelete = async () => {
+    if (!showDeleteConfirm) return;
+
+    try {
+        const response = await fetch('/api/adverts/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: showDeleteConfirm.id }),
+        });
+
+        const result = await response.json();
+        if (!response.ok) {
+            throw new Error(result.error || 'Failed to delete product.');
+        }
+
+        toast({ title: 'Success', description: 'Product deleted successfully.' });
+        fetchUserProducts(); // Refresh the list from the server
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } finally {
+        setShowDeleteConfirm(null);
+    }
   };
+
 
   const handleFormSave = async (productData: Partial<Product>) => {
     const isEditing = !!selectedProduct;
     const endpoint = isEditing ? '/api/adverts/edit' : '/api/adverts/create';
+    
+    const payload = isEditing ? { ...productData, id: selectedProduct.id } : productData;
 
     try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(productData),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Something went wrong');
+        throw new Error(result.details ? JSON.stringify(result.details) : result.error || 'Something went wrong');
       }
 
       toast({
@@ -240,6 +263,7 @@ export function SellerDashboard() {
   );
 
   return (
+    <>
     <div className="flex">
         <Sidebar />
         <main className="flex-1 p-4 md:p-8 space-y-6">
@@ -277,6 +301,9 @@ export function SellerDashboard() {
                             <Input placeholder="Search listings..." className="pl-10"/>
                         </div>
                         <Button variant="outline" size="icon"><ListFilter className="w-4 h-4" /></Button>
+                         <Button onClick={handleCreateNew} className="hidden sm:flex">
+                            <PlusCircle className="mr-2 h-4 w-4" /> Create
+                        </Button>
                     </div>
                 </CardHeader>
                 <CardContent>
@@ -328,7 +355,7 @@ export function SellerDashboard() {
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
                                                 <DropdownMenuItem onSelect={() => handleEdit(product)}>Edit</DropdownMenuItem>
                                                 <DropdownMenuItem>Boost Listing</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onSelect={() => handleDelete(product.id)}>Delete</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onSelect={() => setShowDeleteConfirm(product)}>Delete</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -354,5 +381,18 @@ export function SellerDashboard() {
             product={selectedProduct}
         />
     </div>
+    
+    {showDeleteConfirm && (
+        <ConfirmationModal
+            isOpen={!!showDeleteConfirm}
+            onClose={() => setShowDeleteConfirm(null)}
+            onConfirm={confirmDelete}
+            title="Confirm Deletion"
+            description={`Are you sure you want to delete the listing "${showDeleteConfirm.name}"? This action cannot be undone.`}
+            confirmText="Delete"
+            type="destructive"
+        />
+    )}
+    </>
   );
 }
