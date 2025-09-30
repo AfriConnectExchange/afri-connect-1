@@ -181,14 +181,12 @@ export function ListingForm({ product }: ListingFormPageProps) {
   };
 
   const selectedCategoryId = form.watch('category_id');
-  const selectedCategoryName = categories.find(cat => cat.id === String(selectedCategoryId))?.name.toLowerCase();
 
   const renderDynamicFields = () => {
-    if (!selectedCategoryName) return null;
-
-    if (selectedCategoryName.includes('fashion') || selectedCategoryName.includes('apparel')) {
-      return (
-        <div className='space-y-4'>
+    switch (selectedCategoryId) {
+      case 14: // Fashion
+        return (
+          <div className='space-y-4'>
             <FormField control={form.control} name="condition" render={({ field }) => (
                 <FormItem><FormLabel>Condition</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select condition" /></SelectTrigger></FormControl><SelectContent><SelectItem value="new_with_tags">New with Tags</SelectItem><SelectItem value="new">New</SelectItem><SelectItem value="used_like_new">Used - Like New</SelectItem><SelectItem value="used_good">Used - Good</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )} />
@@ -198,37 +196,33 @@ export function ListingForm({ product }: ListingFormPageProps) {
             <FormField control={form.control} name="color" render={({ field }) => (
                 <FormItem><FormLabel>Color</FormLabel><FormControl><Input placeholder="e.g., Blue, Multi-color" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
-        </div>
-      );
-    }
-    
-    if (selectedCategoryName.includes('electronics')) {
-      return (
-         <div className='space-y-4'>
+          </div>
+        );
+      case 13: // Electronics
+        return (
+          <div className='space-y-4'>
             <FormField control={form.control} name="condition" render={({ field }) => (
                 <FormItem><FormLabel>Condition</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select condition" /></SelectTrigger></FormControl><SelectContent><SelectItem value="new">New</SelectItem><SelectItem value="open_box">Open Box</SelectItem><SelectItem value="used">Used</SelectItem><SelectItem value="for_parts">For Parts/Not Working</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )} />
             <FormField control={form.control} name="model_number" render={({ field }) => (
                 <FormItem><FormLabel>Model Number</FormLabel><FormControl><Input placeholder="e.g., iPhone 15 Pro" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
-        </div>
-      );
-    }
-    
-    if (selectedCategoryName.includes('services')) {
-      return (
-        <div className='space-y-4'>
+          </div>
+        );
+      case 17: // Services
+        return (
+          <div className='space-y-4'>
             <FormField control={form.control} name="service_delivery" render={({ field }) => (
                 <FormItem><FormLabel>Service Delivery</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select delivery method" /></SelectTrigger></FormControl><SelectContent><SelectItem value="remote">Remote / Online</SelectItem><SelectItem value="on-site">On-site</SelectItem></SelectContent></Select><FormMessage /></FormItem>
             )} />
              <FormField control={form.control} name="availability" render={({ field }) => (
                 <FormItem><FormLabel>Availability</FormLabel><FormControl><Input placeholder="e.g., Weekdays 9am - 5pm" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
-        </div>
-      );
+          </div>
+        );
+      default:
+        return null;
     }
-
-    return null;
   }
 
   return (
