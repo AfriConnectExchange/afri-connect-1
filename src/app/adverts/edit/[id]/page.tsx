@@ -42,7 +42,9 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
       setLoading(false);
     };
 
-    fetchProduct();
+    if (params.id) {
+        fetchProduct();
+    }
   }, [params.id, supabase, toast]);
 
   if (loading) {

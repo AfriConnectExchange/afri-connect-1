@@ -10,7 +10,6 @@ import { useCart } from '@/context/cart-context';
 
 export default function ProductDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
-  const productId = params.id;
   const { addToCart, cartCount } = useCart();
   const { toast } = useToast();
 
@@ -30,7 +29,7 @@ export default function ProductDetailsPage({ params }: { params: { id: string } 
     <>
       <Header cartCount={cartCount} />
       <ProductPageComponent 
-        productId={productId} 
+        productId={params.id} 
         onNavigate={handleNavigate} 
         onAddToCart={onAddToCart} 
       />
