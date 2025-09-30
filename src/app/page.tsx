@@ -10,7 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
-import { type User, type Session } from '@supabase/supabase-js';
+// Import AuthApiError to perform more robust error checking
+import { type User, type Session, AuthApiError } from '@supabase/supabase-js';
 import OTPVerification from '@/components/auth/OTPVerification';
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
@@ -94,11 +95,13 @@ export default function Home() {
     });
 
     if (error) {
-       if (error.message.includes('User already registered')) {
-         showAlert('destructive', 'Registration Failed', 'An account with this email address already exists. Please Log In or use the \'Forgot Password\' link.');
-       } else {
-         showAlert('destructive', 'Registration Failed', error.message);
-       }
+        // **UPDATED:** More robust error check for existing user.
+        // A 409 Conflict error is the standard for a user already existing.
+        if (error instanceof AuthApiError && error.status === 409) {
+          showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
+        } else {
+          showAlert('destructive', 'Registration Failed', error.message);
+        }
     } else {
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       setAuthMode('awaiting-verification');
@@ -133,8 +136,9 @@ export default function Home() {
     });
 
     if (error) {
-        if (error.message.includes("User already registered")) {
-             showAlert('destructive', 'Registration Failed', 'This phone number is already linked to another account. Please Log In with your phone number to continue.');
+        // **UPDATED:** More robust error check for existing user.
+        if (error instanceof AuthApiError && error.status === 409) {
+            showAlert('destructive', 'Registration Failed', 'This phone number is already linked to another account. Please Log In with your phone number to continue.');
         } else {
             showAlert('destructive', 'Failed to Start Signup', error.message);
         }
@@ -149,20 +153,19 @@ export default function Home() {
   const handleOtpVerification = async (otp: string) => {
     setIsLoading(true);
     
-    // This function now only handles verification. Sign up has already been initiated.
+    // This function now handles verification for both login and signup flows.
     const { data: { session }, error } = await supabase.auth.verifyOtp({
-        phone: formData.phone,
-        token: otp,
-        type: 'sms',
-    });
-
+      phone: formData.phone,
+      token: otp,
+      type: 'sms', // <-- CORRECT: The type for phone verification is always 'sms'
+  });
     if (error) {
         showAlert('destructive', 'Verification Failed', error.message);
     } else if (session) {
         showAlert('default', 'Verification Successful!', 'You are now logged in.');
         router.refresh(); // This will trigger middleware to redirect to onboarding/marketplace
     } else {
-         showAlert('destructive', 'Verification Failed', 'Could not log you in. Please try again.');
+        showAlert('destructive', 'Verification Failed', 'Could not log you in. Please try again.');
     }
     setIsLoading(false);
   }
@@ -178,7 +181,7 @@ export default function Home() {
     if (error) {
         if (error.message === 'Email not confirmed') {
             setAuthMode('awaiting-verification');
-             showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
+            showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
         } else {
             showAlert('destructive', 'Login Failed', error.message);
         }
@@ -223,8 +226,9 @@ export default function Home() {
     });
 
     if (error) {
-        if (error.message.includes('User already registered with a different provider')) {
-             showAlert('destructive', 'Login Failed', "It looks like you've signed up with this email before. Please log in using your original method (e.g., password) to access your account.");
+        // **UPDATED:** More robust error check for existing user with different provider.
+        if (error instanceof AuthApiError && error.status === 409) {
+            showAlert('destructive', 'Login Failed', "It looks like you've signed up with this email before. Please log in using your original method (e.g., password) to access your account.");
         } else {
             showAlert('destructive', 'Login Failed', error.message);
         }
@@ -272,7 +276,7 @@ export default function Home() {
             onSwitch={() => handleSwitchMode('signin')}
           />
         );
-       case 'awaiting-verification':
+        case 'awaiting-verification':
         return (
           <CheckEmailCard
             email={formData.email}
@@ -280,7 +284,7 @@ export default function Home() {
             isVerifying={isLoading}
           />
         );
-       case 'otp':
+        case 'otp':
         return (
             <OTPVerification
                 formData={formData}
