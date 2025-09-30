@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Loader2, Handshake } from 'lucide-react';
@@ -13,6 +12,7 @@ import { ProductPurchasePanel } from './product-purchase-panel';
 import { ProductInfoTabs } from './product-info-tabs';
 import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
+import { Review } from './reviews-section';
 
 interface ProductPageProps {
   productId: string;
@@ -22,17 +22,19 @@ interface ProductPageProps {
 
 export function ProductPageComponent({ productId, onNavigate, onAddToCart }: ProductPageProps) {
   const [product, setProduct] = useState<Product | null>(null);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [isBarterModalOpen, setIsBarterModalOpen] = useState(false);
   const supabase = createClient();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchProduct = async () => {
+    const fetchProductAndReviews = async () => {
       if (!productId) return;
       setLoading(true);
       
-      const { data, error } = await supabase
+      // Fetch product data
+      const { data: productData, error: productError } = await supabase
         .from('products')
         .select(`
           *,
@@ -42,7 +44,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         .eq('id', productId)
         .single();
 
-      if (error || !data) {
+      if (productError || !productData) {
         toast({
           variant: 'destructive',
           title: 'Error fetching product',
@@ -51,29 +53,28 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
         setProduct(null);
       } else {
         const mappedProduct = {
-          ...data,
-          name: data.title,
-          image: data.images?.[0] || 'https://placehold.co/600x600',
-          images: data.images?.length > 0 ? data.images : ['https://placehold.co/600x600'],
-          seller: data.seller?.full_name || 'Unknown Seller',
-          sellerVerified: data.seller?.kyc_status === 'verified',
-          category: data.category?.name || 'Uncategorized',
-          isFree: data.listing_type === 'freebie' || data.price === 0,
-          rating: data.average_rating || 4.5,
-          reviews: data.review_count || 0,
-          sold: data.sold_count || 0,
-          stockCount: data.quantity_available || 1,
+          ...productData,
+          name: productData.title,
+          image: productData.images?.[0] || 'https://placehold.co/600x600',
+          images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
+          seller: productData.seller?.full_name || 'Unknown Seller',
+          sellerVerified: productData.seller?.kyc_status === 'verified',
+          category: productData.category?.name || 'Uncategorized',
+          isFree: productData.listing_type === 'freebie' || productData.price === 0,
+          rating: productData.average_rating || 4.5,
+          reviews: productData.review_count || 0,
+          sold: productData.sold_count || 0,
+          stockCount: productData.quantity_available || 1,
           sellerDetails: {
-            id: data.seller?.id,
-            name: data.seller?.full_name || 'Unknown Seller',
-            avatar: data.seller?.avatar_url || '',
-            location: data.seller?.location || 'Unknown',
-            verified: data.seller?.kyc_status === 'verified',
-            rating: 4.8, // Mock - requires aggregation
-            totalSales: 100, // Mock - requires aggregation
-            memberSince: data.seller?.created_at ? new Date(data.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
+            id: productData.seller?.id,
+            name: productData.seller?.full_name || 'Unknown Seller',
+            avatar: productData.seller?.avatar_url || '',
+            location: productData.seller?.location || 'Unknown',
+            verified: productData.seller?.kyc_status === 'verified',
+            rating: 4.8,
+            totalSales: 100,
+            memberSince: productData.seller?.created_at ? new Date(productData.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
           },
-          // These would need dedicated tables/columns in a real app
           specifications: {
               Material: "Cotton",
               Origin: "Ghana",
@@ -85,11 +86,18 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           },
         };
         setProduct(mappedProduct as unknown as Product);
+
+        // Fetch reviews for the product
+        const res = await fetch(`/api/reviews/product?productId=${productId}`);
+        if(res.ok) {
+            const reviewData = await res.json();
+            setReviews(reviewData);
+        }
       }
       setLoading(false);
     };
 
-    fetchProduct();
+    fetchProductAndReviews();
   }, [productId, supabase, toast]);
   
   const handleBarterConfirm = (proposalData: any) => {
@@ -162,7 +170,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           <div className="lg:col-span-2">
-            <ProductInfoTabs product={product} />
+            <ProductInfoTabs product={product} reviews={reviews} />
           </div>
 
           <div className="lg:sticky top-24 self-start">

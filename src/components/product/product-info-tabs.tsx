@@ -1,23 +1,17 @@
-
 'use client';
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Info, MessageSquare, Ship, Truck } from 'lucide-react';
 import type { Product } from '@/app/marketplace/page';
-import { ReviewsSection } from './reviews-section';
+import { ReviewsSection, type Review } from './reviews-section';
 
 interface ProductInfoTabsProps {
   product: Product;
+  reviews: Review[];
 }
 
-export function ProductInfoTabs({ product }: ProductInfoTabsProps) {
-  // Mock data for reviews, as the backend doesn't support it yet.
-  const reviews = [
-    { id: 1, user: "Amina H.", rating: 5, date: "2 weeks ago", comment: "Exceptional quality!", verified: true },
-    { id: 2, user: "David O.", rating: 5, date: "1 month ago", comment: "Perfect for my wedding.", verified: true },
-  ];
-
+export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
   return (
     <Tabs defaultValue="details" className="w-full">
       <TabsList className="bg-transparent p-0 h-auto justify-start border-b rounded-none gap-4">
@@ -27,7 +21,7 @@ export function ProductInfoTabs({ product }: ProductInfoTabsProps) {
         </TabsTrigger>
         <TabsTrigger value="reviews" className="text-sm data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none bg-transparent px-2 pb-2 gap-2">
           <MessageSquare className="w-4 h-4" />
-          Reviews ({product.reviews})
+          Reviews ({reviews.length})
         </TabsTrigger>
         <TabsTrigger value="shipping" className="text-sm data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none bg-transparent px-2 pb-2 gap-2">
           <Ship className="w-4 h-4" />

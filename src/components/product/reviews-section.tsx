@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Star } from 'lucide-react';
@@ -6,13 +5,13 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 
-interface Review {
-  id: number;
-  user: string;
+export interface Review {
+  id: string;
+  reviewer_name: string;
   rating: number;
-  date: string;
+  created_at: string;
   comment: string;
-  verified: boolean;
+  verified_purchase: boolean;
 }
 
 interface ReviewsSectionProps {
@@ -35,17 +34,17 @@ export function ReviewsSection({ reviews }: ReviewsSectionProps) {
           <CardContent className="pt-6">
             <div className="flex items-start gap-4">
               <Avatar className="w-10 h-10">
-                <AvatarFallback>{review.user.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{review.reviewer_name.charAt(0)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-y-1 mb-2">
                   <div className='flex items-center gap-2'>
-                    <span className="font-medium text-sm">{review.user}</span>
-                    {review.verified && (
+                    <span className="font-medium text-sm">{review.reviewer_name}</span>
+                    {review.verified_purchase && (
                       <Badge variant="secondary" className="text-[10px]">Verified Purchase</Badge>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">{review.date}</span>
+                  <span className="text-xs text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
                 </div>
                 <div className="flex items-center gap-1 mb-2">
                   {[...Array(5)].map((_, i) => (
