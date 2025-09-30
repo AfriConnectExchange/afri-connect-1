@@ -154,21 +154,8 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   };
   
   return (
-    <header className="border-b bg-white sticky top-0 z-50">
+    <header className="bg-background/80 sticky top-0 z-50 backdrop-blur-sm shadow-sm">
       <div className="container mx-auto px-4">
-        {/* Top bar */}
-        <div className="hidden md:flex items-center justify-between py-2 border-b">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              London, UK
-            </span>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Free shipping on orders over £50
-          </div>
-        </div>
-
         {/* Main Header */}
         <div className="flex items-center justify-between py-3 md:py-4">
           {/* Mobile Menu Trigger */}
@@ -391,3 +378,5 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     </header>
   );
 }
+
+    
