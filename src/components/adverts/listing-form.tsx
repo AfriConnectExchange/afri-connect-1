@@ -16,14 +16,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, X, Loader2, Save, Undo } from 'lucide-react';
+import { Upload, X, Loader2, Save, Undo, Smartphone } from 'lucide-react';
 import type { Product } from '@/app/marketplace/page';
 import { useToast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { useRouter } from 'next/navigation';
-import { Separator } from '../ui/separator';
+import { Alert, AlertTitle } from '../ui/alert';
 
 const listingFormSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
@@ -233,91 +233,100 @@ export function ListingForm({ product }: ListingFormPageProps) {
 
   return (
     <div className="max-w-4xl mx-auto p-4 md:p-8">
-        <Button variant="ghost" onClick={() => router.push('/adverts')} className="mb-4">
-            <Undo className="w-4 h-4 mr-2" /> Back to Listings
-        </Button>
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Core Details</CardTitle>
-                        <CardDescription>This information is required for all listings.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                            <FormItem><FormLabel>Product Title</FormLabel><FormControl><Input placeholder="e.g., Handcrafted Leather Bag" {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                            <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Describe your product in detail..." {...field} rows={6} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="listing_type" render={({ field }) => (
-                                <FormItem><FormLabel>Listing Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a listing type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="sale">For Sale</SelectItem><SelectItem value="barter">For Barter</SelectItem><SelectItem value="freebie">Freebie/Giveaway</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="category_id" render={({ field }) => (
-                                <FormItem><FormLabel>Category</FormLabel><Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl><SelectContent>{categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
-                            )} />
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="price" render={({ field }) => (
-                                <FormItem><FormLabel>Price (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="quantity_available" render={({ field }) => (
-                                <FormItem><FormLabel>Quantity Available</FormLabel><FormControl><Input type="number" placeholder="1" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                        </div>
-                         <FormField control={form.control} name="location_text" render={({ field }) => (
-                            <FormItem><FormLabel>Item Location</FormLabel><FormControl><Input placeholder="e.g., London, UK" {...field} /></FormControl><FormMessage /></FormItem>
-                        )} />
-                        <div>
-                            <FormLabel>Product Images (up to 4)</FormLabel>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
-                                {imagePreviews.map((url, index) => (
-                                    <div key={index} className="relative aspect-square">
-                                        <Image src={url} alt={`upload-preview-${index}`} layout="fill" className="rounded-md object-cover" />
-                                        <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removeImage(index)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                                {imagePreviews.length < 4 && (
-                                    <label htmlFor="image-upload" className="cursor-pointer aspect-square flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 hover:bg-muted">
-                                        <Upload className="h-8 w-8 text-muted-foreground" />
-                                        <span className="mt-2 text-sm text-muted-foreground">Upload</span>
-                                        <input id="image-upload" type="file" multiple accept="image/*" className="sr-only" onChange={handleImageUpload} />
-                                    </label>
-                                )}
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {selectedCategoryId > 0 && (
-                     <Card>
+        <div className="md:hidden mb-6">
+            <Alert variant="destructive">
+                <Smartphone className="h-4 w-4" />
+                <AlertTitle>Mobile View Not Available</AlertTitle>
+                <FormDescription>
+                    For the best experience, please create and manage your listings on a desktop device. We are working on an improved mobile version.
+                </FormDescription>
+            </Alert>
+        </div>
+        <div className="hidden md:block">
+            <Button variant="ghost" onClick={() => router.push('/adverts')} className="mb-4">
+                <Undo className="w-4 h-4 mr-2" /> Back to Listings
+            </Button>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                    <Card>
                         <CardHeader>
-                            <CardTitle>Category Specifics</CardTitle>
-                            <CardDescription>Provide details specific to your chosen category.</CardDescription>
+                            <CardTitle>Core Details</CardTitle>
+                            <CardDescription>This information is required for all listings.</CardDescription>
                         </CardHeader>
-                        <CardContent>
-                           {renderDynamicFields()}
+                        <CardContent className="space-y-4">
+                            <FormField control={form.control} name="title" render={({ field }) => (
+                                <FormItem><FormLabel>Product Title</FormLabel><FormControl><Input placeholder="e.g., Handcrafted Leather Bag" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={form.control} name="description" render={({ field }) => (
+                                <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Describe your product in detail..." {...field} rows={6} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="listing_type" render={({ field }) => (
+                                    <FormItem><FormLabel>Listing Type</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a listing type" /></SelectTrigger></FormControl><SelectContent><SelectItem value="sale">For Sale</SelectItem><SelectItem value="barter">For Barter</SelectItem><SelectItem value="freebie">Freebie/Giveaway</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="category_id" render={({ field }) => (
+                                    <FormItem><FormLabel>Category</FormLabel><Select onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)}><FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl><SelectContent>{categories.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                                )} />
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="price" render={({ field }) => (
+                                    <FormItem><FormLabel>Price (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="quantity_available" render={({ field }) => (
+                                    <FormItem><FormLabel>Quantity Available</FormLabel><FormControl><Input type="number" placeholder="1" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
+                             <FormField control={form.control} name="location_text" render={({ field }) => (
+                                <FormItem><FormLabel>Item Location</FormLabel><FormControl><Input placeholder="e.g., London, UK" {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <div>
+                                <FormLabel>Product Images (up to 4)</FormLabel>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                                    {imagePreviews.map((url, index) => (
+                                        <div key={index} className="relative aspect-square">
+                                            <Image src={url} alt={`upload-preview-${index}`} layout="fill" className="rounded-md object-cover" />
+                                            <Button type="button" variant="destructive" size="icon" className="absolute -top-2 -right-2 h-6 w-6 rounded-full" onClick={() => removeImage(index)}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    ))}
+                                    {imagePreviews.length < 4 && (
+                                        <label htmlFor="image-upload" className="cursor-pointer aspect-square flex flex-col items-center justify-center rounded-md border-2 border-dashed border-muted-foreground/25 hover:bg-muted">
+                                            <Upload className="h-8 w-8 text-muted-foreground" />
+                                            <span className="mt-2 text-sm text-muted-foreground">Upload</span>
+                                            <input id="image-upload" type="file" multiple accept="image/*" className="sr-only" onChange={handleImageUpload} />
+                                        </label>
+                                    )}
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
-                )}
 
-                <Card>
-                    <CardFooter className="flex justify-end">
-                         <Button type="submit" disabled={isSaving}>
-                            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            <Save className="mr-2 h-4 w-4" />
-                            {product ? 'Save Changes' : 'Create Listing'}
-                        </Button>
-                    </CardFooter>
-                </Card>
+                    {selectedCategoryId > 0 && (
+                         <Card>
+                            <CardHeader>
+                                <CardTitle>Category Specifics</CardTitle>
+                                <CardDescription>Provide details specific to your chosen category.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                               {renderDynamicFields()}
+                            </CardContent>
+                        </Card>
+                    )}
 
-            </form>
-        </Form>
+                    <Card>
+                        <CardFooter className="flex justify-end">
+                             <Button type="submit" disabled={isSaving}>
+                                {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                <Save className="mr-2 h-4 w-4" />
+                                {product ? 'Save Changes' : 'Create Listing'}
+                            </Button>
+                        </CardFooter>
+                    </Card>
+
+                </form>
+            </Form>
+        </div>
     </div>
   );
 }
-
-    
