@@ -41,13 +41,11 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { ListingForm } from './listing-form';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
 import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { Input } from '../ui/input';
-import { Separator } from '../ui/separator';
 import { useRouter } from 'next/navigation';
 import { ConfirmationModal } from '../ui/confirmation-modal';
 
@@ -113,8 +111,6 @@ function ListingsSkeleton() {
 }
 
 export function SellerDashboard() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<Product | null>(null);
@@ -152,13 +148,11 @@ export function SellerDashboard() {
   }, []);
 
   const handleCreateNew = () => {
-    setSelectedProduct(null);
-    setIsFormOpen(true);
+    router.push('/adverts/create');
   };
 
   const handleEdit = (product: Product) => {
-    setSelectedProduct(product);
-    setIsFormOpen(true);
+    router.push(`/adverts/edit/${product.id}`);
   };
 
   const confirmDelete = async () => {
@@ -185,43 +179,6 @@ export function SellerDashboard() {
     }
   };
 
-
-  const handleFormSave = async (productData: Partial<Product>) => {
-    const isEditing = !!selectedProduct;
-    const endpoint = isEditing ? '/api/adverts/edit' : '/api/adverts/create';
-    
-    const payload = isEditing ? { ...productData, id: selectedProduct.id } : productData;
-
-    try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.details ? JSON.stringify(result.details) : result.error || 'Something went wrong');
-      }
-
-      toast({
-        title: 'Success',
-        description: `Product ${
-          isEditing ? 'updated' : 'created'
-        } successfully.`,
-      });
-
-      setIsFormOpen(false);
-      fetchUserProducts(); // Refresh the list
-    } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message,
-      });
-    }
-  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -374,12 +331,6 @@ export function SellerDashboard() {
                 </CardContent>
             </Card>
         </main>
-        <ListingForm
-            isOpen={isFormOpen}
-            onClose={() => setIsFormOpen(false)}
-            onSave={handleFormSave}
-            product={selectedProduct}
-        />
     </div>
     
     {showDeleteConfirm && (
