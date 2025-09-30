@@ -231,9 +231,9 @@ export function ListingForm({ product }: ListingFormPageProps) {
             <Alert variant="destructive">
                 <Smartphone className="h-4 w-4" />
                 <AlertTitle>Mobile View Not Available</AlertTitle>
-                <FormDescription>
+                <p className="text-sm text-destructive [&_p]:leading-relaxed">
                     For the best experience, please create and manage your listings on a desktop device. We are working on an improved mobile version.
-                </FormDescription>
+                </p>
             </Alert>
         </div>
         <div className="hidden md:block">
