@@ -15,9 +15,11 @@ import { createClient } from '@/lib/supabase/client';
 const formSchema = z.object({
   language: z.string(),
   timezone: z.string(),
-  notifications_email: z.boolean(),
-  notifications_sms: z.boolean(),
-  notifications_push: z.boolean(),
+  notifications_email_marketing: z.boolean(),
+  notifications_push_marketing: z.boolean(),
+  notifications_email_orders: z.boolean(),
+  notifications_push_orders: z.boolean(),
+  notifications_sms_orders: z.boolean(),
 });
 
 type PreferencesFormValues = z.infer<typeof formSchema>;
@@ -35,33 +37,76 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       language: 'en',
-      timezone: 'GMT+0',
-      notifications_email: true,
-      notifications_sms: false,
-      notifications_push: true,
+      timezone: 'UTC',
+      notifications_email_marketing: true,
+      notifications_push_marketing: false,
+      notifications_email_orders: true,
+      notifications_push_orders: true,
+      notifications_sms_orders: false,
     },
   });
 
   useEffect(() => {
     const fetchPreferences = async () => {
       setIsLoading(true);
-      // In a real app, this would be fetched from a 'preferences' table linked to the user
-      // For now, we simulate loading and use defaults
-      setTimeout(() => setIsLoading(false), 500);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('language, timezone, notifications')
+          .eq('id', user.id)
+          .single();
+
+        if (profile) {
+          form.reset({
+            language: profile.language || 'en',
+            timezone: profile.timezone || 'UTC',
+            notifications_email_marketing: profile.notifications?.email_marketing ?? true,
+            notifications_push_marketing: profile.notifications?.push_marketing ?? false,
+            notifications_email_orders: profile.notifications?.email_orders ?? true,
+            notifications_push_orders: profile.notifications?.push_orders ?? true,
+            notifications_sms_orders: profile.notifications?.sms_orders ?? false,
+          });
+        }
+      }
+      setIsLoading(false);
     };
     fetchPreferences();
-  }, []);
+  }, [supabase, form]);
 
   const onSubmit = async (values: PreferencesFormValues) => {
     setIsSaving(true);
-    // In a real app, this would call a Supabase function to update user preferences
-    console.log("Saving preferences:", values);
-    await new Promise(res => setTimeout(res, 1000));
-    onFeedback('success', 'Preferences updated successfully!');
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      onFeedback('error', 'User not found.');
+      setIsSaving(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        language: values.language,
+        timezone: values.timezone,
+        notifications: {
+          email_marketing: values.notifications_email_marketing,
+          push_marketing: values.notifications_push_marketing,
+          email_orders: values.notifications_email_orders,
+          push_orders: values.notifications_push_orders,
+          sms_orders: values.notifications_sms_orders,
+        },
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      onFeedback('error', 'Failed to update preferences: ' + error.message);
+    } else {
+      onFeedback('success', 'Preferences updated successfully!');
+    }
     setIsSaving(false);
   };
-
-  if (isLoading) {
+  
+   if (isLoading) {
     return (
         <Card>
             <CardHeader>
@@ -141,45 +186,42 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
               <div className="space-y-3">
                 <FormField
                   control={form.control}
-                  name="notifications_email"
+                  name="notifications_email_orders"
                   render={({ field }) => (
                     <div className="flex items-center justify-between">
                       <div>
-                        <FormLabel htmlFor="email-notifications">Email Notifications</FormLabel>
-                        <p className="text-sm text-muted-foreground">Receive updates via email</p>
+                        <FormLabel htmlFor="email-orders">Order Updates (Email)</FormLabel>
                       </div>
                       <FormControl>
-                        <Switch id="email-notifications" checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch id="email-orders" checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </div>
                   )}
                 />
                  <FormField
                   control={form.control}
-                  name="notifications_sms"
+                  name="notifications_sms_orders"
                   render={({ field }) => (
                     <div className="flex items-center justify-between">
-                      <div>
-                        <FormLabel htmlFor="sms-notifications">SMS Notifications</FormLabel>
-                        <p className="text-sm text-muted-foreground">Receive updates via SMS</p>
+                       <div>
+                        <FormLabel htmlFor="sms-orders">Order Updates (SMS)</FormLabel>
                       </div>
                       <FormControl>
-                        <Switch id="sms-notifications" checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch id="sms-orders" checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </div>
                   )}
                 />
                  <FormField
                   control={form.control}
-                  name="notifications_push"
+                  name="notifications_email_marketing"
                   render={({ field }) => (
                     <div className="flex items-center justify-between">
                       <div>
-                        <FormLabel htmlFor="push-notifications">Push Notifications</FormLabel>
-                        <p className="text-sm text-muted-foreground">Receive push notifications in-app</p>
+                        <FormLabel htmlFor="email-marketing">Marketing (Email)</FormLabel>
                       </div>
                       <FormControl>
-                        <Switch id="push-notifications" checked={field.value} onCheckedChange={field.onChange} />
+                        <Switch id="email-marketing" checked={field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                     </div>
                   )}

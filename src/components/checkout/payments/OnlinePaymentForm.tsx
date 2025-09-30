@@ -25,6 +25,14 @@ export function OnlinePaymentForm({ orderTotal, paymentType, onConfirm, onCancel
   const [showStripeForm, setShowStripeForm] = useState(false);
 
   const handleProceedToStripe = () => {
+    if (cart.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Your cart is empty',
+        description: 'Please add items to your cart before proceeding to payment.',
+      });
+      return;
+    }
     setShowStripeForm(true);
   }
 

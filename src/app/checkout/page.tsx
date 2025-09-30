@@ -99,6 +99,8 @@ function CheckoutPageContent() {
    useEffect(() => {
     const sessionId = searchParams.get('session_id');
     if (sessionId) {
+        // Here you would typically fetch session details from your backend to verify the payment
+        // and then call handlePaymentSuccess. For this demo, we'll assume success.
         handlePaymentSuccess({ stripeSessionId: sessionId });
     }
   }, [searchParams]);
