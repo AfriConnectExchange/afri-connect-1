@@ -10,6 +10,7 @@ const confirmReceiptSchema = z.object({
 export async function POST(request: Request) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const origin = request.headers.get('origin');
 
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -24,10 +25,10 @@ export async function POST(request: Request) {
 
   const { orderId } = validation.data;
   
-  // Verify the current user is the buyer for this order
+  // 1. Verify the current user is the buyer for this order
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('buyer_id')
+    .select('buyer_id, seller_id')
     .eq('id', orderId)
     .single();
 
@@ -35,12 +36,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Order not found or you are not the buyer.' }, { status: 403 });
   }
   
-  // Update order status to 'delivered'
+  // 2. Update order status to 'delivered'
   const { error: updateError } = await supabase
     .from('orders')
     .update({
       status: 'delivered',
-      actual_delivery_date: new Date().toISOString(), // Assumes this column exists
+      actual_delivery_date: new Date().toISOString(),
     })
     .eq('id', orderId);
 
@@ -49,10 +50,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to update order status.', details: updateError.message }, { status: 500 });
   }
   
-  // In a real application, this is where you would trigger the escrow release to the seller.
-  // For now, we just update the status.
+  // 3. Trigger the escrow release to the seller.
+  // This is a server-to-server call for security.
+  const escrowReleaseResponse = await fetch(`${origin}/api/escrow/release`, {
+      method: 'POST',
+      headers: { 
+          'Content-Type': 'application/json',
+          'Cookie': request.headers.get('cookie') || '', // Forward cookies for authentication
+      },
+      body: JSON.stringify({ orderId: orderId }),
+  });
+
+  if (!escrowReleaseResponse.ok) {
+    console.error('Escrow release failed:', await escrowReleaseResponse.text());
+    // Even if escrow fails, the order is confirmed. The system should have a retry mechanism for payouts.
+    // For now, we'll just log the error but still return success to the user.
+  }
   
-  // You would also create a notification for the seller here
+  // 4. Create a notification for the seller that the order is complete.
+  if(order.seller_id) {
+    await supabase.from('notifications').insert({
+        user_id: order.seller_id,
+        type: 'order',
+        title: 'Order Completed!',
+        message: `Order #${orderId.substring(0,8)} has been marked as delivered by the buyer.`,
+        link_url: `/sales`
+    });
+  }
+
 
   return NextResponse.json({ success: true, message: 'Order receipt confirmed. Payment will be released to the seller.' });
 }
