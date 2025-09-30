@@ -109,7 +109,7 @@ export function SalesPageComponent() {
 
   useEffect(() => {
     fetchSales();
-  }, []);
+  }, [toast]);
 
   const handleOpenShipModal = (order: Sale) => {
     setSelectedOrder(order);
@@ -242,4 +242,3 @@ export function SalesPageComponent() {
     </>
   );
 }
-
