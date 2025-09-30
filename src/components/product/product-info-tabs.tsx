@@ -57,26 +57,38 @@ export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
         <ReviewsSection reviews={reviews} />
       </TabsContent>
       
-      {product.shipping_policy && (
+      {product.shipping_policy && Object.values(product.shipping_policy).some(val => val) && (
         <TabsContent value="shipping" className="space-y-4 pt-6">
            <Card>
             <CardHeader>
               <CardTitle className="text-lg">Shipping Options</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                    <Truck className="w-5 h-5 text-primary mt-1" />
-                    <div>
-                    <h4 className="font-medium">Domestic Shipping</h4>
-                    <p className="text-sm text-muted-foreground">{product.shipping_policy.domestic}</p>
-                    </div>
-                </div>
-                <div className="flex items-start gap-4 p-4 border rounded-lg bg-accent/50">
-                    <Ship className="w-5 h-5 text-primary mt-1" />
-                    <div>
-                    <h4 className="font-medium">International Shipping</h4>
-                    <p className="text-sm text-muted-foreground">{product.shipping_policy.international}</p>
-                    </div>
+                 <div className="space-y-3 text-sm">
+                    {product.shipping_policy.package_weight && (
+                         <div className="flex justify-between items-center py-2 border-b">
+                            <span className="font-medium text-foreground/80">Package Weight</span>
+                            <span className="text-muted-foreground">{product.shipping_policy.package_weight} kg</span>
+                        </div>
+                    )}
+                     {product.shipping_policy.package_length && product.shipping_policy.package_width && product.shipping_policy.package_height && (
+                         <div className="flex justify-between items-center py-2 border-b">
+                            <span className="font-medium text-foreground/80">Package Dimensions</span>
+                            <span className="text-muted-foreground">{product.shipping_policy.package_length} x {product.shipping_policy.package_width} x {product.shipping_policy.package_height} cm</span>
+                        </div>
+                    )}
+                     {product.shipping_policy.domestic_shipping_cost !== undefined && (
+                         <div className="flex justify-between items-center py-2 border-b">
+                            <span className="font-medium text-foreground/80">Domestic Shipping</span>
+                            <span className="text-muted-foreground">£{product.shipping_policy.domestic_shipping_cost.toFixed(2)}</span>
+                        </div>
+                    )}
+                     {product.shipping_policy.international_shipping_cost !== undefined && (
+                         <div className="flex justify-between items-center py-2">
+                            <span className="font-medium text-foreground/80">International Shipping</span>
+                            <span className="text-muted-foreground">£{product.shipping_policy.international_shipping_cost.toFixed(2)}</span>
+                        </div>
+                    )}
                 </div>
             </CardContent>
           </Card>

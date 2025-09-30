@@ -1,11 +1,9 @@
-
 'use client';
 
 import { useState } from 'react';
-import { Star, Heart, Share2, ShoppingCart, Shield, Truck, RotateCcw, Plus, Minus, Handshake } from 'lucide-react';
+import { Star, Heart, Share2, ShoppingCart, Shield, Handshake, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import type { Product } from '@/app/marketplace/page';
 
 interface ProductPurchasePanelProps {
@@ -35,11 +33,9 @@ export function ProductPurchasePanel({ product, onAddToCart, onProposeBarter }: 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-3">
           <div className="flex items-center gap-1">
             <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium text-sm">{product.rating}</span>
-            <span className="text-muted-foreground text-sm">({product.reviews} reviews)</span>
+            <span className="font-medium text-sm">{product.rating.toFixed(1)}</span>
+            <span className="text-muted-foreground text-sm">({product.review_count} reviews)</span>
           </div>
-          <Separator orientation="vertical" className="h-4" />
-          <span className="text-muted-foreground text-sm">{product.sold} sold</span>
         </div>
 
         <div className="flex items-center gap-2 mb-4">
@@ -106,24 +102,6 @@ export function ProductPurchasePanel({ product, onAddToCart, onProposeBarter }: 
                <Share2 className="w-5 h-5 text-muted-foreground" />
              </Button>
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 py-4 border-t border-b">
-        <div className="text-center">
-          <Shield className="w-5 h-5 text-green-600 mx-auto mb-1" />
-          <div className="text-xs font-medium">Secure Payment</div>
-          <div className="text-[10px] text-muted-foreground">Escrow Protection</div>
-        </div>
-        <div className="text-center">
-          <Truck className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-          <div className="text-xs font-medium">Fast Shipping</div>
-          <div className="text-[10px] text-muted-foreground">3-5 Days</div>
-        </div>
-        <div className="text-center">
-          <RotateCcw className="w-5 h-5 text-orange-600 mx-auto mb-1" />
-          <div className="text-xs font-medium">Easy Returns</div>
-          <div className="text-[10px] text-muted-foreground">7 Day Return</div>
         </div>
       </div>
     </div>
