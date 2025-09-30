@@ -5,9 +5,27 @@ import { z } from 'zod';
 
 const shipOrderSchema = z.object({
   orderId: z.string().uuid(),
-  courierName: z.string().min(2),
-  trackingNumber: z.string().min(5),
+  courierName: z.string().min(2, 'Courier name is required.'),
+  trackingNumber: z.string().min(5, 'Tracking number seems too short.'),
 });
+
+// --- Mock Logistics API ---
+// In a real application, this would be an SDK call to Shippo, AfterShip, etc.
+async function verifyTrackingNumber(courier: string, trackingNumber: string): Promise<{ success: boolean; message: string; }> {
+    console.log(`Verifying tracking number ${trackingNumber} with ${courier}...`);
+    
+    // Simulate some latency
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Mock logic: For demonstration, let's say any number containing "INVALID" fails.
+    if (trackingNumber.toUpperCase().includes('INVALID')) {
+        return { success: false, message: 'This tracking number is not valid with the selected courier.' };
+    }
+    
+    // Simulate success
+    return { success: true, message: 'Tracking number verified.' };
+}
+
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -29,11 +47,19 @@ export async function POST(request: Request) {
   // TODO: Verify that the current user is the seller for this order before updating.
   // This is a critical security check missing for now.
 
+  // Step 1: Verify the tracking number with the mock logistics API
+  const verificationResult = await verifyTrackingNumber(courierName, trackingNumber);
+
+  if (!verificationResult.success) {
+      return NextResponse.json({ error: verificationResult.message }, { status: 400 });
+  }
+
+  // Step 2: If verification is successful, update the order in the database
   const { error } = await supabase
     .from('orders')
     .update({
       status: 'shipped',
-      courier_name: courierName, // Assumes courier_name column exists
+      courier_name: courierName, // This column needs to be added to your 'orders' table
       tracking_number: trackingNumber,
     })
     .eq('id', orderId);
@@ -43,7 +69,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to update order status.', details: error.message }, { status: 500 });
   }
   
-  // You would also create a notification for the buyer here
+  // Step 3: Create a notification for the buyer
+  const { data: orderData } = await supabase.from('orders').select('buyer_id').eq('id', orderId).single();
+  if (orderData?.buyer_id) {
+    await supabase.from('notifications').insert({
+        user_id: orderData.buyer_id,
+        type: 'delivery',
+        title: 'Your Order is on its way!',
+        message: `Your order #${orderId.substring(0,8)} has been shipped via ${courierName}. Tracking: ${trackingNumber}`,
+        link_url: `/tracking?orderId=${orderId}`
+    });
+  }
+
 
   return NextResponse.json({ success: true, message: 'Order has been marked as shipped.' });
 }

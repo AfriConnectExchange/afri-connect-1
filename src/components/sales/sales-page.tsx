@@ -117,31 +117,24 @@ export function SalesPageComponent() {
   };
   
   const handleConfirmShipment = async (orderId: string, courierName: string, trackingNumber: string) => {
-    try {
-        const response = await fetch('/api/sales/ship', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId, courierName, trackingNumber }),
-        });
+    const response = await fetch('/api/sales/ship', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, courierName, trackingNumber }),
+    });
 
-        if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.error || 'Failed to update order.');
-        }
+    const result = await response.json();
 
-        toast({
-            title: 'Order Shipped',
-            description: `Order ${orderId} has been marked as shipped.`,
-        });
-        
-        fetchSales(); // Refresh the list
-    } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: error.message,
-        });
+    if (!response.ok) {
+        throw new Error(result.error || 'Failed to update order.');
     }
+
+    toast({
+        title: 'Order Shipped',
+        description: `Order #${orderId.substring(0,8)} has been marked as shipped.`,
+    });
+    
+    fetchSales(); // Refresh the list
   };
 
 
