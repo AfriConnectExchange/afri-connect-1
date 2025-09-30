@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -53,9 +53,6 @@ export interface Product {
   discount?: number;
   isFree?: boolean;
   stockCount: number;
-  specifications: Record<string, any>;
-  shipping: Record<string, any>;
-  sellerDetails: Record<string, any>;
 }
 
 export interface Category {
@@ -84,46 +81,84 @@ export default function MarketplacePage() {
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('relevance');
-  const [currentPage, setCurrentPage] = useState(1);
   const [searchError, setSearchError] = useState('');
 
-  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [totalProducts, setTotalProducts] = useState(0);
+
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: '',
+    selectedCategories: [],
+    priceRange: { min: null, max: null },
+    verifiedSellersOnly: false,
+    featuredOnly: false,
+    onSaleOnly: false,
+    freeShippingOnly: false,
+    freeListingsOnly: false,
+  });
+
+  const fetchProducts = useCallback(async (currentFilters: FilterState, currentSortBy: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (currentFilters.searchQuery.length >= 3) {
+        params.append('q', currentFilters.searchQuery);
+      }
+      if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
+        params.append('category', currentFilters.selectedCategories.join(','));
+      }
+      if (currentFilters.priceRange.min !== null) {
+        params.append('minPrice', String(currentFilters.priceRange.min));
+      }
+      if (currentFilters.priceRange.max !== null) {
+        params.append('maxPrice', String(currentFilters.priceRange.max));
+      }
+      if (currentFilters.freeListingsOnly) {
+        params.append('isFree', 'true');
+      }
+      if (currentFilters.verifiedSellersOnly) {
+        params.append('verified', 'true');
+      }
+      params.append('sortBy', currentSortBy);
+
+      const res = await fetch(`/api/products?${params.toString()}`);
+      if (!res.ok) throw new Error('Failed to fetch products');
+      
+      const data = await res.json();
+      setProducts(data.products);
+      setTotalProducts(data.total);
+
+    } catch (error) {
+       toast({
+          variant: 'destructive',
+          title: 'Error fetching products',
+          description: (error as Error).message,
+        });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const fetchCategories = async () => {
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/categories'),
-        ]);
-
-        if (!productsRes.ok || !categoriesRes.ok) {
-          throw new Error('Failed to fetch data');
-        }
-
-        const productsData = await productsRes.json();
+        const categoriesRes = await fetch('/api/categories');
+        if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
         const categoriesData = await categoriesRes.json();
-        
-        setAllProducts(productsData);
         setCategories(categoriesData);
-
       } catch (error) {
         toast({
           variant: 'destructive',
-          title: 'Error fetching data',
+          title: 'Error fetching categories',
           description: (error as Error).message,
         });
-        setAllProducts([]);
-        setCategories([]);
-      } finally {
-        setLoading(false);
       }
     };
-
-    fetchData();
-  }, [toast]);
+    
+    fetchCategories();
+    fetchProducts(filters, sortBy);
+  }, [fetchProducts, filters, sortBy, toast]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -138,148 +173,24 @@ export default function MarketplacePage() {
     addToCart(product);
   };
 
-  // Filter state
-  const [filters, setFilters] = useState<FilterState>({
-    searchQuery: '',
-    selectedCategories: [],
-    priceRange: { min: null, max: null },
-    verifiedSellersOnly: false,
-    featuredOnly: false,
-    onSaleOnly: false,
-    freeShippingOnly: false,
-    freeListingsOnly: false,
-  });
-
   // Handle search with validation (US014)
   const handleSearch = (query: string) => {
-    setLoading(true);
     setSearchError('');
-
-    // US014-AC03 - Search validation
     if (query.length > 0 && query.length < 3) {
       setSearchError('Please enter at least 3 letters or numbers.');
-      setLoading(false);
       return;
     }
-
     const alphanumericCount = query.replace(/[^a-zA-Z0-9]/g, '').length;
     if (query.length > 0 && alphanumericCount < 3) {
       setSearchError('Please enter at least 3 letters or numbers.');
-      setLoading(false);
       return;
     }
-
-    // Simulate search delay
-    setTimeout(() => {
-      handleFiltersChange({ searchQuery: query });
-      setCurrentPage(1);
-      setLoading(false);
-    }, 500);
+    setFilters(prev => ({ ...prev, searchQuery: query }));
   };
-
-  // Filter products based on all criteria
-  const filteredProducts = useMemo(() => {
-    let filtered = allProducts;
-
-    // Search filter (US014)
-    if (filters.searchQuery.length >= 3) {
-      const query = filters.searchQuery.toLowerCase();
-      filtered = filtered.filter(
-        (product) =>
-          product.name.toLowerCase().includes(query) ||
-          product.seller.toLowerCase().includes(query) ||
-          product.category.toLowerCase().includes(query)
-      );
-    }
-
-    // Category filter (US015)
-    if (
-      filters.selectedCategories.length > 0 &&
-      !filters.selectedCategories.includes('all')
-    ) {
-       const selectedCategoryNames = filters.selectedCategories.map(id => categories.find(c => c.id === id)?.name).filter(Boolean);
-       filtered = filtered.filter((product) =>
-        selectedCategoryNames.includes(product.category)
-      );
-    }
-
-    // Price filter (US016)
-    if (filters.priceRange.min !== null || filters.priceRange.max !== null) {
-      filtered = filtered.filter((product) => {
-        const { min, max } = filters.priceRange;
-        if (product.isFree) return min === null || min === 0;
-        if (min !== null && product.price < min) return false;
-        if (max !== null && product.price > max) return false;
-        return true;
-      });
-    }
-
-    // Free listings filter (US017)
-    if (filters.freeListingsOnly) {
-      filtered = filtered.filter((product) => product.isFree);
-    }
-
-    // Other filters
-    if (filters.verifiedSellersOnly) {
-      filtered = filtered.filter((product) => product.sellerVerified);
-    }
-
-    if (filters.featuredOnly) {
-      filtered = filtered.filter((product) => product.featured);
-    }
-
-    if (filters.onSaleOnly) {
-      filtered = filtered.filter(
-        (product) => product.discount && product.discount > 0
-      );
-    }
-
-    if (filters.freeShippingOnly) {
-      // 'shippingType' not in new schema, needs adjustment if required
-      // filtered = filtered.filter(
-      //   (product) => product.shippingType === 'free'
-      // );
-    }
-
-    return filtered;
-  }, [filters, allProducts, categories]);
-
-  // Sort products
-  const sortedProducts = useMemo(() => {
-    const sorted = [...filteredProducts];
-
-    switch (sortBy) {
-      case 'price-low':
-        return sorted.sort((a, b) => {
-          if (a.isFree && !b.isFree) return -1;
-          if (!a.isFree && b.isFree) return 1;
-          return a.price - b.price;
-        });
-      case 'price-high':
-        return sorted.sort((a, b) => {
-          if (a.isFree && !b.isFree) return 1;
-          if (!a.isFree && b.isFree) return -1;
-          return b.price - a.price;
-        });
-      case 'rating':
-        return sorted.sort((a, b) => b.rating - a.rating);
-      case 'newest':
-        return sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      default: // relevance
-        return sorted.sort((a, b) => {
-          // Featured items first
-          if (a.featured && !b.featured) return -1;
-          if (!a.featured && b.featured) return 1;
-          // Then by rating
-          return b.rating - a.rating;
-        });
-    }
-  }, [filteredProducts, sortBy]);
 
   // Handle filter changes
   const handleFiltersChange = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
-    setCurrentPage(1);
   };
 
   // Clear all filters
@@ -295,10 +206,8 @@ export default function MarketplacePage() {
       freeListingsOnly: false,
     });
     setSearchError('');
-    setCurrentPage(1);
   };
 
-  // Generate no results message based on context
   const getNoResultsMessage = () => {
     if (filters.searchQuery.length >= 3) {
       return 'No products found. Try a different keyword.'; // US014-AC02
@@ -337,7 +246,6 @@ export default function MarketplacePage() {
               categories={categories}
               filters={filters}
               onFiltersChange={handleFiltersChange}
-              onSearch={handleSearch}
               onClearAllFilters={handleClearAllFilters}
               currency="£"
             />
@@ -350,8 +258,8 @@ export default function MarketplacePage() {
           <div className="lg:hidden px-4 mb-4 flex gap-2">
             <SearchBar
               value={filters.searchQuery}
-              onChange={(value) => handleFiltersChange({ searchQuery: value })}
-              onSearch={handleSearch}
+              onChange={(value) => handleSearch(value)}
+              placeholder="Search..."
               className="flex-grow"
             />
              <Sheet
@@ -379,7 +287,6 @@ export default function MarketplacePage() {
                     categories={categories}
                     filters={filters}
                     onFiltersChange={handleFiltersChange}
-                    onSearch={handleSearch}
                     onClearAllFilters={handleClearAllFilters}
                     currency="£"
                   />
@@ -389,7 +296,7 @@ export default function MarketplacePage() {
                     onClick={() => setMobileFiltersOpen(false)}
                     className="w-full"
                   >
-                    View {sortedProducts.length} Results
+                    View {products.length} Results
                   </Button>
                 </div>
               </SheetContent>
@@ -404,7 +311,7 @@ export default function MarketplacePage() {
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3 px-4 sm:px-0">
             <div>
               <p className="text-muted-foreground text-xs md:text-sm">
-                Showing {sortedProducts.length} of {allProducts.length} products
+                Showing {products.length} of {totalProducts} products
                 {filters.searchQuery && ` for "${filters.searchQuery}"`}
               </p>
             </div>
@@ -414,10 +321,10 @@ export default function MarketplacePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="relevance">Most Relevant</SelectItem>
-                <SelectItem value="price-low">Price: Low to High</SelectItem>
-                <SelectItem value="price-high">Price: High to Low</SelectItem>
-                <SelectItem value="rating">Highest Rated</SelectItem>
-                <SelectItem value="newest">Newest First</SelectItem>
+                <SelectItem value="price_asc">Price: Low to High</SelectItem>
+                <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                <SelectItem value="rating_desc">Highest Rated</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -425,7 +332,7 @@ export default function MarketplacePage() {
           {/* Products Grid */}
           <div className="px-4 sm:px-0">
             <ProductGrid
-              products={sortedProducts}
+              products={products}
               loading={loading}
               onNavigate={onNavigate}
               onAddToCart={onAddToCart}

@@ -24,7 +24,6 @@ interface FilterPanelProps {
   categories: Category[];
   filters: FilterState;
   onFiltersChange: (filters: Partial<FilterState>) => void;
-  onSearch: (query: string) => void;
   onClearAllFilters: () => void;
   currency?: string;
 }
@@ -33,7 +32,6 @@ export function FilterPanel({
   categories,
   filters,
   onFiltersChange,
-  onSearch,
   onClearAllFilters,
   currency = '£',
 }: FilterPanelProps) {
@@ -75,7 +73,7 @@ export function FilterPanel({
   const getActiveFilterCount = () => {
     let count = 0;
     if (filters.searchQuery) count++;
-    if (filters.selectedCategories.length > 0) count++;
+    if (filters.selectedCategories.length > 0 && !filters.selectedCategories.includes('all')) count++;
     if (filters.priceRange.min !== null || filters.priceRange.max !== null)
       count++;
     if (filters.verifiedSellersOnly) count++;
@@ -109,13 +107,6 @@ export function FilterPanel({
           </div>
         )}
       </div>
-
-      {/* Search */}
-      <SearchBar
-        value={filters.searchQuery}
-        onChange={(value) => onFiltersChange({ searchQuery: value })}
-        onSearch={onSearch}
-      />
 
       <Separator />
 
@@ -173,19 +164,6 @@ export function FilterPanel({
 
           <div className="flex items-center space-x-2">
             <Checkbox
-              id="featured"
-              checked={filters.featuredOnly}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ featuredOnly: !!checked })
-              }
-            />
-            <Label htmlFor="featured" className="text-sm">
-              Featured Products
-            </Label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
               id="on-sale"
               checked={filters.onSaleOnly}
               onCheckedChange={(checked) =>
@@ -197,18 +175,6 @@ export function FilterPanel({
             </Label>
           </div>
 
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="free-shipping"
-              checked={filters.freeShippingOnly}
-              onCheckedChange={(checked) =>
-                onFiltersChange({ freeShippingOnly: !!checked })
-              }
-            />
-            <Label htmlFor="free-shipping" className="text-sm">
-              Free Shipping
-            </Label>
-          </div>
         </div>
       </div>
     </div>
