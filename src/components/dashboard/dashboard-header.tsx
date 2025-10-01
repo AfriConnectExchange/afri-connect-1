@@ -91,88 +91,90 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
       <div className="container mx-auto px-4">
         {/* Main Header */}
         <div className="flex items-center justify-between py-3 md:py-4">
-          {/* Mobile Menu Trigger */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetTrigger asChild className="lg:hidden">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0"
-                aria-label="Open navigation menu"
-              >
-                <Menu className="w-5 h-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-80 p-4">
-              <div className="flex flex-col h-full">
-                <div className="flex items-center gap-2 mb-6 px-2">
-                  <Link
-                    href="/marketplace"
-                    className="flex items-center gap-2"
-                    onClick={handleMobileLinkClick}
-                  >
-                    <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold">AE</span>
-                    </div>
-                    <span className="text-xl font-bold text-primary">
-                      AfriConnect
-                    </span>
-                  </Link>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-2">
-                  <div className="space-y-2">
-                    {navItems.map((item) => (
-                      <Link key={item.id} href={item.href} passHref>
-                        <Button
-                          variant={pathname === item.href ? 'secondary' : 'ghost'}
-                          className="w-full justify-start text-base py-6"
-                          onClick={handleMobileLinkClick}
-                        >
-                          {item.icon && <item.icon className="w-4 h-4 mr-2" />}
-                          {item.label}
-                        </Button>
-                      </Link>
-                    ))}
+          <div className="flex items-center gap-2">
+            {/* Mobile Menu Trigger */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild className="lg:hidden">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  aria-label="Open navigation menu"
+                >
+                  <Menu className="w-5 h-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-80 p-4">
+                <div className="flex flex-col h-full">
+                  <div className="flex items-center gap-2 mb-6 px-2">
+                    <Link
+                      href="/marketplace"
+                      className="flex items-center gap-2"
+                      onClick={handleMobileLinkClick}
+                    >
+                      <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold">AE</span>
+                      </div>
+                      <span className="text-xl font-bold text-primary">
+                        AfriConnect
+                      </span>
+                    </Link>
                   </div>
-                   <div className="border-t my-4"></div>
-                     <Link href="/marketplace" passHref>
-                        <Button
-                          variant={'ghost'}
-                          className="w-full justify-start text-base py-6"
-                          onClick={handleMobileLinkClick}
-                        >
-                          <LayoutGrid className="w-4 h-4 mr-2" />
-                          Back to Marketplace
-                        </Button>
-                      </Link>
+
+                  <div className="flex-1 overflow-y-auto pr-2">
+                    <div className="space-y-2">
+                      {navItems.map((item) => (
+                        <Link key={item.id} href={item.href} passHref>
+                          <Button
+                            variant={pathname === item.href ? 'secondary' : 'ghost'}
+                            className="w-full justify-start text-base py-6"
+                            onClick={handleMobileLinkClick}
+                          >
+                            {item.icon && <item.icon className="w-4 h-4 mr-2" />}
+                            {item.label}
+                          </Button>
+                        </Link>
+                      ))}
+                    </div>
+                    <div className="border-t my-4"></div>
+                      <Link href="/marketplace" passHref>
+                          <Button
+                            variant={'ghost'}
+                            className="w-full justify-start text-base py-6"
+                            onClick={handleMobileLinkClick}
+                          >
+                            <LayoutGrid className="w-4 h-4 mr-2" />
+                            Back to Marketplace
+                          </Button>
+                        </Link>
+                  </div>
+
+                  <div className="border-t mt-4 pt-4">
+                      {user && (
+                          <Button
+                              variant="ghost"
+                              className="w-full justify-start text-destructive hover:text-destructive"
+                              onClick={() => { handleLogout(); handleMobileLinkClick(); }}
+                          >
+                              <LogOut className="w-4 h-4 mr-2" />
+                              Sign Out
+                          </Button>
+                      )}
+                  </div>
+
                 </div>
+              </SheetContent>
+            </Sheet>
 
-                <div className="border-t mt-4 pt-4">
-                    {user && (
-                        <Button
-                            variant="ghost"
-                            className="w-full justify-start text-destructive hover:text-destructive"
-                            onClick={() => { handleLogout(); handleMobileLinkClick(); }}
-                        >
-                            <LogOut className="w-4 h-4 mr-2" />
-                            Sign Out
-                        </Button>
-                    )}
+            {/* Logo & Title */}
+            <div className="flex items-center gap-4 cursor-pointer flex-1 lg:flex-none justify-center lg:justify-start min-w-0">
+              <Link href="/marketplace" className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                  <span className="text-white font-bold text-base">AE</span>
                 </div>
-
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Logo & Title */}
-          <div className="flex items-center gap-4 cursor-pointer flex-1 lg:flex-none justify-center lg:justify-start min-w-0">
-            <Link href="/marketplace" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                <span className="text-white font-bold text-base">AE</span>
-              </div>
-            </Link>
-            <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">{title}</h1>
+              </Link>
+              <h1 className="text-lg lg:text-xl font-bold text-foreground truncate">{title}</h1>
+            </div>
           </div>
 
 
@@ -182,7 +184,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
                 <Link href="/marketplace">Marketplace</Link>
             </Button>
             {user && (
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden md:flex items-center gap-4">
                  <Link href="/notifications" passHref>
                   <Button
                     variant="ghost"
