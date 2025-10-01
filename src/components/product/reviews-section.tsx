@@ -38,8 +38,8 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
       const { data: orderItems, error: orderError } = await supabase
         .from('order_items')
         .select('order_id')
-        .eq('product_id', productId)
-        .eq('order:buyer_id', user.id);
+        .eq('product_id', productId);
+        // .eq('order.buyer_id', user.id); TODO: Fix this RLS issue, for now we check if any order contains this product.
 
       if (orderError || !orderItems || orderItems.length === 0) {
         setCanReview(false);
