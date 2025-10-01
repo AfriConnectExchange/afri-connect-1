@@ -72,7 +72,7 @@ export function CheckoutPageComponent({
 
     const props = {
       orderTotal: total,
-      onConfirm: onPaymentSuccess, // This is the success callback
+      onConfirm: (details: any) => onPaymentSuccess({ ...details, paymentMethod: selectedPaymentMethod.id }),
       onCancel: handleBackToSummary,
     };
 

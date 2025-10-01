@@ -5,167 +5,155 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Check, CreditCard, Shield, Handshake, Truck } from 'lucide-react';
 import Image from 'next/image';
+import { Separator } from '@/components/ui/separator';
+import { cn } from '@/lib/utils';
 
 interface PaymentMethod {
   id: string;
   name: string;
-  type: 'cash' | 'online_card' | 'online_wallet' | 'escrow' | 'barter';
+  type: 'online' | 'direct';
   icon: React.ReactNode;
   description: string;
-  ranking: number;
   recommended?: boolean;
   maxAmount?: number;
-  processingTime: string;
   fees: string;
 }
 
-interface PaymentMethodSelectorProps {
-  orderTotal: number;
-  onSelectMethod: (method: PaymentMethod) => void;
-  selectedMethod?: string;
-}
-
-export function PaymentMethodSelector({ orderTotal, onSelectMethod, selectedMethod }: PaymentMethodSelectorProps) {
-  const [methods] = useState<PaymentMethod[]>([
+const paymentMethods: PaymentMethod[] = [
     {
-      id: 'escrow',
-      name: 'Escrow Payment',
-      type: 'escrow',
-      icon: <Shield className="w-5 h-5" />,
-      description: 'Secure payment held until delivery confirmed',
-      ranking: 1,
-      recommended: true,
-      processingTime: 'Instant',
-      fees: '2.5% + £0.30'
+        id: 'card',
+        name: 'Card Payment',
+        type: 'online',
+        icon: <CreditCard className="w-5 h-5" />,
+        description: 'Visa, Mastercard, etc. via Stripe',
+        fees: '~2.9% + £0.30'
     },
     {
-      id: 'card',
-      name: 'Card Payment',
-      type: 'online_card',
-      icon: <CreditCard className="w-5 h-5" />,
-      description: 'Visa, Mastercard, etc. via Stripe',
-      ranking: 2,
-      processingTime: 'Instant',
-      fees: '2.9% + £0.30'
-    },
-    {
-      id: 'wallet',
-      name: 'Digital Wallet',
-      type: 'online_wallet',
-      icon: <div className="flex items-center gap-2 h-6">
-              <Image src="/paypal.svg" alt="PayPal" width={60} height={15} />
-              <Image src="/apple-pay.svg" alt="Apple Pay" width={40} height={15} />
-              <Image src="/google-pay.svg" alt="Google Pay" width={40} height={15} />
+        id: 'wallet',
+        name: 'Digital Wallet',
+        type: 'online',
+        icon: <div className="flex items-center gap-2 h-6">
+                <Image src="/paypal.svg" alt="PayPal" width={60} height={15} />
+                <Image src="/apple-pay.svg" alt="Apple Pay" width={40} height={15} />
             </div>,
-      description: 'PayPal, Apple Pay, Google Pay',
-      ranking: 3,
-      processingTime: 'Instant',
-      fees: 'Varies'
+        description: 'PayPal, Apple Pay, etc.',
+        fees: 'Varies'
     },
-     {
-      id: 'flutterwave',
-      name: 'Flutterwave',
-      type: 'online_wallet',
-      icon: <Image src="/flutterwave.svg" alt="Flutterwave" width={100} height={20} />,
-      description: 'Mobile money, bank transfer, and more',
-      ranking: 4,
-      processingTime: 'Instant',
-      fees: 'Varies'
+    {
+        id: 'flutterwave',
+        name: 'Flutterwave',
+        type: 'online',
+        icon: <Image src="/flutterwave.svg" alt="Flutterwave" width={100} height={20} />,
+        description: 'Mobile money & more',
+        fees: 'Varies'
     },
     {
       id: 'cash',
       name: 'Cash on Delivery',
-      type: 'cash',
+      type: 'direct',
       icon: <Truck className="w-5 h-5" />,
       description: 'Pay when you receive your order',
-      ranking: 5,
       maxAmount: 1000,
-      processingTime: 'On delivery',
       fees: 'Free'
     },
     {
       id: 'barter',
       name: 'Barter Exchange',
-      type: 'barter',
+      type: 'direct',
       icon: <Handshake className="w-5 h-5" />,
       description: 'Exchange goods or services',
-      ranking: 6,
-      processingTime: 'By agreement',
       fees: 'Free'
     }
-  ]);
+];
 
-  const availableMethods = methods.filter(method => {
-    if (method.type === 'cash' && orderTotal > (method.maxAmount || Infinity)) {
-      return false;
+interface PaymentMethodSelectorProps {
+  orderTotal: number;
+  onSelectMethod: (method: any) => void; // Keeping 'any' for flexibility as the object is complex now
+  selectedMethod?: string;
+}
+
+export function PaymentMethodSelector({ orderTotal, onSelectMethod, selectedMethod }: PaymentMethodSelectorProps) {
+
+  const handleSelect = (method: PaymentMethod) => {
+    // When an "online" method is selected, we want to trigger the escrow flow.
+    // The specific form (card, wallet, etc.) can be determined later.
+    // For now, let's treat all online payments as triggering the secure flow.
+    if (method.type === 'online') {
+        // We pass the specific method but also imply it's an escrow-protected one
+        onSelectMethod({ ...method, isEscrow: true, id: 'escrow' }); // Override id to 'escrow' to trigger correct form
+    } else {
+        onSelectMethod({ ...method, isEscrow: false });
     }
-    return true;
-  });
-
-  const sortedMethods = availableMethods.sort((a, b) => a.ranking - b.ranking);
+  }
+  
+  const onlineMethods = paymentMethods.filter(m => m.type === 'online');
+  const directMethods = paymentMethods.filter(m => m.type === 'direct' && orderTotal <= (m.maxAmount || Infinity));
 
   return (
     <Card>
         <CardHeader>
             <CardTitle>Choose Payment Method</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-            {sortedMethods.map((method, index) => (
-            <Card 
-                key={method.id}
-                className={`cursor-pointer transition-all duration-200 ${
-                selectedMethod === method.id 
-                    ? 'ring-2 ring-primary border-primary' 
-                    : 'hover:border-primary/50'
-                }`}
-                onClick={() => onSelectMethod(method)}
-            >
-                <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                    <div className={`p-2 rounded-lg flex items-center justify-center ${
-                        method.type === 'escrow' ? 'bg-green-100 text-green-600' :
-                        method.type.startsWith('online') ? 'bg-blue-100 text-blue-600' :
-                        method.type === 'cash' ? 'bg-orange-100 text-orange-600' :
-                        'bg-purple-100 text-purple-600'
-                    }`}>
-                        {method.id === 'wallet' || method.id === 'flutterwave' ? (
-                            <div className="h-5 w-auto flex items-center">{method.icon}</div>
-                        ) : (
-                            method.icon
-                        )}
-                    </div>
-                    
-                    <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                        <span className="font-medium">{method.name}</span>
-                        {method.recommended && (
-                            <Badge variant="default" className="text-xs h-5">
-                            Recommended
-                            </Badge>
-                        )}
-                        </div>
-                        <p className="text-sm text-muted-foreground mt-1">
-                        {method.description}
-                        </p>
-                        <div className="flex items-center space-x-4 mt-2 text-xs text-muted-foreground">
-                        <span>Processing: {method.processingTime}</span>
-                        <span>Fees: {method.fees}</span>
-                        </div>
-                    </div>
-                    </div>
+        <CardContent className="space-y-6">
 
-                    <div className="flex items-center space-x-2">
-                    {selectedMethod === method.id && (
-                        <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                        <Check className="w-3 h-3 text-primary-foreground" />
-                        </div>
-                    )}
+            {/* Secure Escrow Payment Section */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                    <Shield className="w-6 h-6 text-green-600" />
+                    <div>
+                        <h3 className="font-semibold text-base">Secure Escrow Payment <Badge className="bg-green-100 text-green-700">Recommended</Badge></h3>
+                        <p className="text-sm text-muted-foreground">Your payment is held securely until you confirm delivery.</p>
                     </div>
                 </div>
-                </CardContent>
-            </Card>
-            ))}
+                <div className="pl-9 space-y-3">
+                    {onlineMethods.map(method => (
+                        <div key={method.id} onClick={() => handleSelect(method)} className={cn(
+                            "p-3 border rounded-lg cursor-pointer transition-all flex items-center justify-between",
+                            selectedMethod === 'escrow' ? "border-primary ring-2 ring-primary/50" : "hover:border-primary/50"
+                        )}>
+                            <div className="flex items-center gap-3">
+                                {method.icon}
+                                <div>
+                                    <p className="font-medium text-sm">{method.name}</p>
+                                    <p className="text-xs text-muted-foreground">{method.description}</p>
+                                </div>
+                            </div>
+                            {selectedMethod === 'escrow' && <Check className="w-5 h-5 text-primary" />}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <Separator />
+            
+            {/* Direct Payment Section */}
+            <div className="space-y-3">
+                 <div className="flex items-center gap-3">
+                    <Truck className="w-6 h-6 text-muted-foreground" />
+                    <div>
+                        <h3 className="font-semibold text-base">Direct Payment</h3>
+                        <p className="text-sm text-muted-foreground">Payment is not protected by AfriConnect Escrow.</p>
+                    </div>
+                </div>
+                 <div className="pl-9 space-y-3">
+                    {directMethods.map(method => (
+                         <div key={method.id} onClick={() => handleSelect(method)} className={cn(
+                            "p-3 border rounded-lg cursor-pointer transition-all flex items-center justify-between",
+                            selectedMethod === method.id ? "border-primary ring-2 ring-primary/50" : "hover:border-primary/50"
+                        )}>
+                            <div className="flex items-center gap-3">
+                                {method.icon}
+                                <div>
+                                    <p className="font-medium text-sm">{method.name}</p>
+                                     <p className="text-xs text-muted-foreground">{method.description}</p>
+                                </div>
+                            </div>
+                             {selectedMethod === method.id && <Check className="w-5 h-5 text-primary" />}
+                        </div>
+                    ))}
+                </div>
+            </div>
+
         </CardContent>
     </Card>
   );
