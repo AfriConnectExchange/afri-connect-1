@@ -1,3 +1,4 @@
+
 'use server';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
   const isFree = searchParams.get('isFree');
   const verified = searchParams.get('verified');
   const sortBy = searchParams.get('sortBy') || 'relevance';
+  const limit = searchParams.get('limit');
 
   let query = supabase
     .from('products')
@@ -53,6 +55,10 @@ export async function GET(request: Request) {
         // Default sort for relevance could be by created_at or another metric
         query = query.order('created_at', { ascending: false });
     }
+  }
+  
+  if (limit) {
+    query = query.limit(Number(limit));
   }
 
 

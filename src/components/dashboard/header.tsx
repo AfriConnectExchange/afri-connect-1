@@ -6,18 +6,12 @@ import {
   ShoppingCart,
   User,
   Menu,
-  MapPin,
   Bell,
-  TrendingUp,
-  HelpCircle,
   LogOut,
   Package,
   Settings,
-  Shield,
-  BookOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,7 +32,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { createClient } from '@/lib/supabase/client';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
-
+import { HeaderSearchBar } from '../marketplace/header-search-bar';
 
 interface HeaderProps {
     cartCount?: number;
@@ -47,7 +41,7 @@ interface HeaderProps {
 export function Header({ cartCount = 0 }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<any | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -100,15 +94,11 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const notificationCount = 2; // Mock
 
   const menuItems = {
-      desktop: [
-        { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true },
-      ],
       mobile: [
         { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true, icon: ShoppingCart },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
-        { id: '/support', label: 'Support', href: '/support', show: true, icon: HelpCircle },
       ],
       dropdown: [
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
@@ -215,37 +205,26 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           </div>
 
           {/* Desktop Search */}
-          <div className="hidden lg:block flex-1 max-w-lg mx-8">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search products, services..."
-                className="pl-10 pr-4 h-10"
-              />
-            </div>
+          <div className="hidden lg:block flex-1 max-w-xl mx-8">
+            <HeaderSearchBar />
           </div>
 
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
-            <div className="hidden lg:flex items-center gap-2">
-               {menuItems.desktop.filter(item => item.show).map((item) => (
-                <Link key={item.id} href={item.href} passHref>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={pathname === item.href ? 'bg-accent' : ''}
-                  >
-                    {item.label}
-                  </Button>
-                </Link>
-              ))}
-              <Button asChild variant="outline" size="sm">
+             <div className="lg:hidden">
+              <Button variant="ghost" size="icon">
+                <Search className="w-5 h-5" />
+              </Button>
+            </div>
+            
+            <div className="hidden md:flex items-center gap-2">
+               <Button asChild variant="outline" size="sm">
                 <Link href="/adverts">Sell on AfriConnect</Link>
               </Button>
             </div>
 
             {user ? (
-              <div className="hidden md:flex items-center gap-2">
+              <div className="hidden md:flex items-center gap-4">
                 <Link href="/cart" passHref>
                   <motion.div
                     animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}
