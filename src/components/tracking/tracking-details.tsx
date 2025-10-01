@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -9,16 +8,17 @@ import {
   RefreshCw,
   CheckCircle,
   Loader2,
+  Package,
+  CreditCard,
 } from 'lucide-react';
 import { OrderDetails as OrderDetailsType } from './order-tracking-page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import { TrackingTimeline } from './tracking-timeline';
 import { OrderItemsCard } from './order-items-card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '../ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '../ui/confirmation-modal';
+import { Separator } from '../ui/separator';
 
 interface TrackingDetailsProps {
   order: OrderDetailsType;
@@ -32,63 +32,6 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
   const [currentOrder, setCurrentOrder] = useState(order);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   
-  const getStatusInfo = (
-    status: OrderDetailsType['status']
-  ): { color: string; progress: number; label: string } => {
-    switch (status) {
-      case 'pending':
-      case 'processing':
-        return {
-          color: 'bg-gray-500',
-          progress: 10,
-          label: 'Processing',
-        };
-      case 'shipped':
-        return {
-          color: 'bg-blue-500',
-          progress: 40,
-          label: 'Shipped',
-        };
-      case 'in-transit':
-        return {
-          color: 'bg-yellow-500',
-          progress: 70,
-          label: 'In Transit',
-        };
-      case 'out-for-delivery':
-        return {
-          color: 'bg-orange-500',
-          progress: 90,
-          label: 'Out for Delivery',
-        };
-      case 'delivered':
-        return {
-          color: 'bg-green-500',
-          progress: 100,
-          label: 'Delivered',
-        };
-      case 'failed':
-        return {
-          color: 'bg-red-500',
-          progress: 100,
-          label: 'Delivery Failed',
-        };
-      default:
-        return { color: 'bg-gray-500', progress: 0, label: 'Unknown' };
-    }
-  };
-
-  const statusInfo = getStatusInfo(currentOrder.status);
-  const estimatedDate = new Date(currentOrder.estimatedDelivery);
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: 'Copied to clipboard!',
-      description: `${text} has been copied.`,
-    });
-  };
-
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
@@ -127,7 +70,7 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
 
         toast({
             title: 'Order Completed',
-            description: `Thank you for confirming receipt of order ${currentOrder.id}.`,
+            description: `Thank you for confirming receipt of order #${currentOrder.id.substring(0,8)}.`,
         });
         
         handleRefresh(); // Refresh to get the final 'delivered' state
@@ -142,6 +85,11 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
     }
   };
 
+  const subtotal = currentOrder.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+  // Assuming a static delivery fee for now as it's not on the order object
+  const deliveryFee = subtotal > 50 ? 0 : 4.99;
+  const total = subtotal + deliveryFee;
+
   return (
     <>
     <div className="space-y-6">
@@ -150,118 +98,78 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
         Track another order
       </Button>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-muted rounded-lg">
-                <Truck className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <CardTitle className="text-lg">
-                  {statusInfo.label}
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  {currentOrder.courierName}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                disabled={isRefreshing}
-              >
-                <RefreshCw
-                  className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`}
-                />
-                Refresh
-              </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Progress value={statusInfo.progress} className="h-2" />
-            <div className="mt-2 text-sm text-muted-foreground flex justify-between">
-              <span>Order Placed</span>
-              <span>Delivered</span>
-            </div>
-          </div>
-          <div className="text-sm">
-            <span className="font-semibold">Tracking Number: </span>
-            <div className="inline-flex items-center gap-2">
-              <span className="font-mono">{currentOrder.tracking_number}</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => copyToClipboard(currentOrder.tracking_number)}
-              >
-                <ClipboardCopy className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-          <div className="p-4 bg-muted/50 rounded-lg text-center">
-            <p className="text-sm text-muted-foreground">
-              {currentOrder.status === 'delivered'
-                ? 'Delivered On'
-                : 'Estimated Delivery'}
-            </p>
-            <p className="font-bold text-lg">
-              {currentOrder.status === 'delivered' && currentOrder.actualDelivery
-                ? new Date(currentOrder.actualDelivery).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })
-                : estimatedDate.toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-            </p>
-          </div>
-           {currentOrder.status === 'in-transit' || currentOrder.status === 'out-for-delivery' ? (
-                <Button 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 space-y-6">
+            <OrderItemsCard order={currentOrder} />
+            <Card>
+                <CardHeader>
+                    <CardTitle>Shipment History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <TrackingTimeline events={currentOrder.events} />
+                </CardContent>
+            </Card>
+        </div>
+
+        <div className="lg:col-span-1 space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Order Summary</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                    <div className="flex justify-between">
+                        <span className="text-muted-foreground">Order ID</span>
+                        <span className="font-mono">#{currentOrder.id.substring(0,8)}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Order Date</span>
+                        <span>{new Date(currentOrder.events[0].timestamp).toLocaleDateString()}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Order Status</span>
+                        <span className="font-semibold capitalize">{currentOrder.status}</span>
+                    </div>
+                </CardContent>
+            </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Payment Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Payment Method</span>
+                        <span>Card</span>
+                    </div>
+                    <Separator />
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span>£{subtotal.toFixed(2)}</span>
+                    </div>
+                     <div className="flex justify-between">
+                        <span className="text-muted-foreground">Delivery Fee</span>
+                        <span>£{deliveryFee.toFixed(2)}</span>
+                    </div>
+                    <Separator />
+                     <div className="flex justify-between font-bold">
+                        <span>Total</span>
+                        <span>£{total.toFixed(2)}</span>
+                    </div>
+                </CardContent>
+            </Card>
+            
+             {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
+               <Button 
                     className="w-full"
                     onClick={() => setShowConfirmModal(true)}
                     disabled={isConfirming}
                 >
                     {isConfirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Receipt of Goods
+                    Confirm Receipt
                 </Button>
-            ) : currentOrder.status === 'delivered' ? (
-                <div className="flex items-center justify-center gap-2 text-green-600 p-2 bg-green-50 border border-green-200 rounded-md">
-                   <CheckCircle className="h-4 w-4" />
-                   <p className="text-sm font-medium">This order has been completed.</p>
-                </div>
-            ) : null}
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="timeline">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="timeline">Tracking Timeline</TabsTrigger>
-          <TabsTrigger value="details">Order Details</TabsTrigger>
-        </TabsList>
-        <TabsContent value="timeline" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Shipment History</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <TrackingTimeline events={currentOrder.events} />
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="details" className="mt-4">
-          <OrderItemsCard order={currentOrder} />
-        </TabsContent>
-      </Tabs>
+            )}
+        </div>
+      </div>
     </div>
     
      <ConfirmationModal
@@ -269,7 +177,7 @@ export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
         onClose={() => setShowConfirmModal(false)}
         onConfirm={handleConfirmReceipt}
         title="Confirm Receipt"
-        description="Are you sure you have received all items in this order in good condition? This action will release the payment to the seller."
+        description="Are you sure you have received all items in this order in good condition? This will release payment to the seller."
         confirmText="Yes, I've Received It"
         type="warning"
         consequences={[

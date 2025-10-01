@@ -9,15 +9,16 @@ export interface OrderDetails {
   id: string;
   tracking_number: string;
   status:
+    | 'pending'
     | 'processing'
     | 'shipped'
     | 'in-transit'
     | 'out-for-delivery'
     | 'delivered'
-    | 'failed'
-    | 'pending';
-  courierName: string; // This might be hardcoded for now or joined
-  estimatedDelivery: string; // This will be calculated
+    | 'cancelled'
+    | 'failed';
+  courierName: string;
+  estimatedDelivery: string;
   actualDelivery?: string;
   items: Array<{
     id: string;
@@ -77,9 +78,9 @@ export function OrderTrackingPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
+    <div className="mx-auto w-full max-w-5xl space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Track Your Order</h1>
+        <h1 className="text-3xl font-bold">Order Details</h1>
         <p className="text-muted-foreground">
           Enter your order ID or tracking number for real-time updates.
         </p>

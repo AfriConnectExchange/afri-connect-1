@@ -16,8 +16,10 @@ export async function GET(request: Request) {
     .select(`
       id,
       tracking_number,
+      courier_name,
       status,
       created_at,
+      actual_delivery_date,
       shipping_address,
       buyer:profiles (full_name)
     `)
@@ -44,22 +46,46 @@ export async function GET(request: Request) {
   }
 
   const shippingAddress = orderData.shipping_address as any;
+  const orderStatus = orderData.status as OrderDetails['status'];
 
   // Mock tracking events for now as we don't have a table for them
-  const events: TrackingEvent[] = [
-    { id: '1', status: 'Order Placed', description: 'Your order has been received.', location: 'Online', timestamp: orderData.created_at, isCompleted: true },
-    { id: '2', status: 'Processing', description: 'Seller is preparing your order.', location: 'Seller Warehouse', timestamp: new Date(new Date(orderData.created_at).getTime() + 3600 * 1000).toISOString(), isCompleted: true, isCurrent: orderData.status === 'processing' },
-  ];
-  if(orderData.status === 'shipped' || orderData.status === 'in-transit' || orderData.status === 'delivered') {
-    events.push({ id: '3', status: 'Shipped', description: 'Package has been dispatched.', location: 'Origin Facility', timestamp: new Date(new Date(orderData.created_at).getTime() + 24 * 3600 * 1000).toISOString(), isCompleted: true, isCurrent: orderData.status === 'shipped' });
+  const events: TrackingEvent[] = [];
+  
+  const orderPlacedTime = new Date(orderData.created_at);
+  
+  events.push({ id: '1', status: 'Order Placed', description: 'Your order has been received.', location: 'Online', timestamp: orderPlacedTime.toISOString(), isCompleted: true });
+
+  const processingTime = new Date(orderPlacedTime.getTime() + 3 * 3600 * 1000); // 3 hours later
+  if (['processing', 'shipped', 'in-transit', 'out-for-delivery', 'delivered'].includes(orderStatus)) {
+    events.push({ id: '2', status: 'Processing', description: 'Seller is preparing your order.', location: 'Seller Warehouse', timestamp: processingTime.toISOString(), isCompleted: true, isCurrent: orderStatus === 'processing' });
+  }
+
+  const shippedTime = new Date(processingTime.getTime() + 21 * 3600 * 1000); // 21 hours later
+  if (['shipped', 'in-transit', 'out-for-delivery', 'delivered'].includes(orderStatus)) {
+    events.push({ id: '3', status: 'Shipped', description: 'Package has been dispatched.', location: 'Origin Facility', timestamp: shippedTime.toISOString(), isCompleted: true, isCurrent: orderStatus === 'shipped' });
+  }
+  
+  const transitTime = new Date(shippedTime.getTime() + 48 * 3600 * 1000); // 2 days later
+  if (['in-transit', 'out-for-delivery', 'delivered'].includes(orderStatus)) {
+     events.push({ id: '4', status: 'In Transit', description: 'Package is on its way to you.', location: 'Regional Hub', timestamp: transitTime.toISOString(), isCompleted: true, isCurrent: orderStatus === 'in-transit' });
+  }
+  
+  const deliveryTime = new Date(transitTime.getTime() + 24 * 3600 * 1000); // 1 day later
+  if (['out-for-delivery', 'delivered'].includes(orderStatus)) {
+     events.push({ id: '5', status: 'Out for Delivery', description: 'Your package is out for final delivery.', location: 'Local Delivery Center', timestamp: deliveryTime.toISOString(), isCompleted: true, isCurrent: orderStatus === 'out-for-delivery' });
+  }
+  
+  if (orderStatus === 'delivered' && orderData.actual_delivery_date) {
+    events.push({ id: '6', status: 'Delivered', description: 'Your package has been delivered.', location: shippingAddress?.city || 'Delivery Address', timestamp: new Date(orderData.actual_delivery_date).toISOString(), isCompleted: true, isCurrent: true });
   }
 
   const response: OrderDetails = {
     id: orderData.id,
     tracking_number: orderData.tracking_number || 'N/A',
-    status: orderData.status as OrderDetails['status'],
-    courierName: 'AfriConnect Logistics', // Mock
-    estimatedDelivery: new Date(new Date(orderData.created_at).getTime() + 5 * 24 * 3600 * 1000).toISOString(), // Mock: 5 days
+    status: orderStatus,
+    courierName: orderData.courier_name || 'AfriConnect Logistics',
+    estimatedDelivery: new Date(orderPlacedTime.getTime() + 5 * 24 * 3600 * 1000).toISOString(),
+    actualDelivery: orderData.actual_delivery_date || undefined,
     items: itemsData.map(item => ({
       id: item.product!.id,
       name: item.product!.title,
@@ -74,7 +100,7 @@ export async function GET(request: Request) {
       postcode: shippingAddress?.postcode || 'N/A',
       phone: shippingAddress?.phone || 'N/A',
     },
-    events,
+    events: events.reverse(),
   };
 
 

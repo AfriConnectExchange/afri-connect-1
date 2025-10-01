@@ -2,7 +2,7 @@
 import { OrderDetails } from './order-tracking-page';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { MapPin } from 'lucide-react';
+import { MapPin, Package } from 'lucide-react';
 import Image from 'next/image';
 
 interface OrderItemsCardProps {
@@ -13,12 +13,13 @@ export function OrderItemsCard({ order }: OrderItemsCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Order Details</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+            <Package className="w-5 h-5" />
+            Items in your order
+        </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <h3 className="font-semibold mb-2">Items in Shipment</h3>
-          <div className="space-y-4">
+      <CardContent className="space-y-4">
+        <div className="space-y-4">
             {order.items.map((item) => (
               <div key={item.id} className="flex items-center gap-4">
                 <div className="relative h-16 w-16 rounded-md overflow-hidden bg-muted">
@@ -40,28 +41,20 @@ export function OrderItemsCard({ order }: OrderItemsCardProps) {
                 </p>
               </div>
             ))}
-          </div>
         </div>
 
         <Separator />
 
         <div>
-          <h3 className="font-semibold mb-3">Shipping Address</h3>
-          <div className="flex gap-4">
-            <MapPin className="h-5 w-5 text-muted-foreground mt-1" />
-            <div>
+          <h3 className="font-semibold mb-3 flex items-center gap-2">
+            <MapPin className="w-4 h-4" />
+            Delivery Information
+          </h3>
+          <div className="pl-6 text-sm">
               <p className="font-medium">{order.shippingAddress.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {order.shippingAddress.street}
+              <p className="text-muted-foreground">
+                {order.shippingAddress.street}, {order.shippingAddress.city}, {order.shippingAddress.postcode}
               </p>
-              <p className="text-sm text-muted-foreground">
-                {order.shippingAddress.city},{' '}
-                {order.shippingAddress.postcode}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {order.shippingAddress.phone}
-              </p>
-            </div>
           </div>
         </div>
       </CardContent>
