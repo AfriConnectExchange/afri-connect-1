@@ -133,7 +133,7 @@ export function CartPageComponent({
       alert('Please accept the terms and conditions to proceed');
       return;
     }
-    if (cartItems.some((item) => item.stockCount < item.quantity)) {
+    if (cartItems.some((item) => item.quantity > item.quantity_available)) {
       alert(
         'Some items in your cart are out of stock. Please remove them to continue.'
       );
@@ -168,6 +168,7 @@ export function CartPageComponent({
         size="icon"
         className="h-7 w-7 rounded-l-none"
         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+        disabled={item.quantity >= item.quantity_available}
       >
         <Plus className="w-3 h-3" />
       </Button>
@@ -184,7 +185,7 @@ export function CartPageComponent({
         className="w-full font-semibold"
         size="lg"
         onClick={handleProceedToCheckout}
-        disabled={!agreeToTerms || cartItems.some((item) => item.stockCount < item.quantity)}
+        disabled={!agreeToTerms || cartItems.some((item) => item.quantity > item.quantity_available)}
       >
         Proceed to Checkout
       </Button>
@@ -298,11 +299,14 @@ export function CartPageComponent({
                             <p className="text-xs text-muted-foreground">
                               Sold by {getSellerName(item.seller)}
                             </p>
-                            <Badge variant="outline" className="text-xs mt-1">
-                              {item.category}
-                            </Badge>
-                             {item.stockCount < item.quantity && (
-                                <p className="text-xs text-destructive font-semibold mt-1">Out of Stock</p>
+                             {item.quantity > item.quantity_available ? (
+                                <p className="text-xs text-destructive font-semibold mt-1">
+                                    Not enough stock. Only {item.quantity_available} available.
+                                </p>
+                            ) : (
+                                <Badge variant="outline" className="text-xs mt-1">
+                                    {item.category}
+                                </Badge>
                             )}
                           </div>
 
@@ -407,7 +411,7 @@ export function CartPageComponent({
                     size="lg"
                     onClick={handleProceedToCheckout}
                     disabled={
-                      !agreeToTerms || cartItems.some((item) => item.stockCount < item.quantity)
+                      !agreeToTerms || cartItems.some((item) => item.quantity > item.quantity_available)
                     }
                   >
                     Proceed to Checkout

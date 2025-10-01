@@ -49,9 +49,11 @@ export function CheckoutPageComponent({
   const total = subtotal + deliveryFee;
 
   useEffect(() => {
-    // If the user lands on the checkout page with an empty cart redirect them.
-    if (cartItems.length === 0 && checkoutStep !== 'confirmation') {
-      onNavigate('cart');
+    // If the user lands on the checkout page with an empty cart or an invalid item, redirect them.
+    if (cartItems.length === 0 || cartItems.some(item => item.quantity > item.quantity_available)) {
+      if (checkoutStep !== 'confirmation') {
+         onNavigate('cart');
+      }
     }
   }, [cartItems, onNavigate, checkoutStep]);
 

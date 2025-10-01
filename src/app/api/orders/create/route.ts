@@ -53,6 +53,23 @@ export async function POST(request: Request) {
     // In a real application, you would wrap this in a database transaction (e.g., via an RPC call)
     // to ensure all operations succeed or fail together.
 
+    // 0. Pre-flight check: Verify stock for all items
+    for (const item of cartItems) {
+      const { data: product, error } = await supabase
+        .from('products')
+        .select('quantity_available, title')
+        .eq('id', item.product_id)
+        .single();
+      
+      if (error || !product) {
+        throw new Error(`Product with ID ${item.product_id} not found.`);
+      }
+      if (product.quantity_available < item.quantity) {
+        throw new Error(`Not enough stock for "${product.title}". Requested: ${item.quantity}, Available: ${product.quantity_available}.`);
+      }
+    }
+
+
     // 1. Create an 'orders' record
     const { data: orderData, error: orderError } = await supabase
       .from('orders')

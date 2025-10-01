@@ -70,16 +70,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [toast]);
 
   const updateQuantity = useCallback((itemId: string, newQuantity: number) => {
-    if (newQuantity < 1) {
-      removeFromCart(itemId);
-      return;
-    }
-    setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  }, [removeFromCart]);
+    setCart((prevCart) => {
+       const itemToUpdate = prevCart.find(item => item.id === itemId);
+        if (!itemToUpdate) return prevCart;
+
+        if (newQuantity < 1) {
+            return prevCart.filter(item => item.id !== itemId);
+        }
+        
+        if (newQuantity > itemToUpdate.quantity_available) {
+            toast({
+                variant: 'destructive',
+                title: 'Stock Limit Reached',
+                description: `You cannot add more than ${itemToUpdate.quantity_available} of this item.`,
+            });
+            return prevCart.map((item) =>
+                item.id === itemId ? { ...item, quantity: itemToUpdate.quantity_available } : item
+            );
+        }
+
+        return prevCart.map((item) =>
+            item.id === itemId ? { ...item, quantity: newQuantity } : item
+        );
+    });
+  }, [toast]);
 
   const clearCart = useCallback(() => {
     setCart([]);
