@@ -269,7 +269,7 @@ export function PaymentConfirmation({ paymentData, orderItems, orderTotal, onNav
         </Button>
         <Button 
           className="flex-1"
-          onClick={() => onNavigate('profile')}
+          onClick={() => onNavigate('orders')}
         >
           View Order History
         </Button>
