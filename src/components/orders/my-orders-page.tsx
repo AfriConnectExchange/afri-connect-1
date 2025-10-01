@@ -43,7 +43,7 @@ function OrdersSkeleton() {
                             <TableRow key={i}>
                                 <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                                 <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
-                                <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                                <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                                 <TableCell><Skeleton className="h-5 w-3/4" /></TableCell>
                             </TableRow>
                         ))}
