@@ -21,19 +21,10 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import Image from 'next/image';
 import { Skeleton } from '../ui/skeleton';
 import { ShipOrderDialog } from './ship-order-dialog';
+import { useRouter } from 'next/navigation';
 
-interface OrderItem {
-    id: string;
-    product: {
-        title: string;
-        images: string[];
-    };
-    quantity: number;
-    price_at_purchase: string;
-}
 export interface Sale {
     id: string;
     created_at: string;
@@ -42,7 +33,6 @@ export interface Sale {
     buyer: {
         full_name: string;
     } | null;
-    order_items: OrderItem[];
 }
 
 function SalesSkeleton() {
@@ -80,6 +70,7 @@ export function SalesPageComponent() {
   const [selectedOrder, setSelectedOrder] = useState<Sale | null>(null);
   const [isShipModalOpen, setIsShipModalOpen] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const fetchSales = async () => {
       setIsLoading(true);
@@ -109,7 +100,7 @@ export function SalesPageComponent() {
 
   useEffect(() => {
     fetchSales();
-  }, [toast]);
+  }, []);
 
   const handleOpenShipModal = (order: Sale) => {
     setSelectedOrder(order);
@@ -146,6 +137,10 @@ export function SalesPageComponent() {
       default: return 'destructive';
     }
   }
+  
+   const handleTrackOrder = (orderId: string) => {
+    router.push(`/tracking?orderId=${orderId}`);
+  };
 
   return (
     <>
@@ -177,7 +172,7 @@ export function SalesPageComponent() {
                 </TableHeader>
                 <TableBody>
                     {sales.map((sale) => (
-                    <TableRow key={sale.id}>
+                    <TableRow key={sale.id} className="cursor-pointer" onClick={() => handleTrackOrder(sale.id)}>
                         <TableCell className="font-medium">#{sale.id.substring(0, 8)}</TableCell>
                         <TableCell>{sale.buyer?.full_name || 'N/A'}</TableCell>
                         <TableCell>
@@ -190,7 +185,7 @@ export function SalesPageComponent() {
                         <TableCell>
                         <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                            <Button aria-haspopup="true" size="icon" variant="ghost">
+                            <Button aria-haspopup="true" size="icon" variant="ghost" onClick={(e) => e.stopPropagation()}>
                                 <MoreHorizontal className="h-4 w-4" />
                                 <span className="sr-only">Toggle menu</span>
                             </Button>
@@ -198,9 +193,9 @@ export function SalesPageComponent() {
                             <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Actions</DropdownMenuLabel>
                             {sale.status === 'processing' && (
-                                <DropdownMenuItem onSelect={() => handleOpenShipModal(sale)}>Mark as Shipped</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={(e) => {e.preventDefault(); handleOpenShipModal(sale);}}>Mark as Shipped</DropdownMenuItem>
                             )}
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => handleTrackOrder(sale.id)}>View Details</DropdownMenuItem>
                             </DropdownMenuContent>
                         </DropdownMenu>
                         </TableCell>

@@ -10,26 +10,22 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  // Find all orders that contain at least one item sold by the current user
+  // This is the correct way to fetch sales for a specific seller using a database function.
+  // The function 'get_sales_for_seller' needs to be created in the Supabase SQL Editor.
   const { data, error } = await supabase
-    .from('orders')
+    .rpc('get_sales_for_seller', { p_seller_id: user.id })
     .select(`
         id,
         created_at,
         total_amount,
         status,
-        buyer:profiles!buyer_id ( full_name ),
-        order_items!inner (
-            product_id,
-            product:products ( seller_id )
-        )
+        buyer:profiles!buyer_id ( full_name )
     `)
-    .eq('order_items.product.seller_id', user.id)
     .order('created_at', { ascending: false });
 
 
   if (error) {
-    console.error('Error fetching sales:', error);
+    console.error('Error fetching sales via RPC:', error);
     return NextResponse.json({ error: 'Failed to fetch sales.', details: error.message }, { status: 500 });
   }
 
