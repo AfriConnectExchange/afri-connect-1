@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
-// This schema now includes seller_id, which is crucial for the order_items table
 const orderItemSchema = z.object({
   product_id: z.string().uuid(),
   quantity: z.number().int().positive(),
@@ -16,7 +15,7 @@ const createOrderSchema = z.object({
   subtotal: z.number(),
   deliveryFee: z.number(),
   total: z.number(),
-  paymentMethod: z.string(), // Now accepts more generic 'card' etc.
+  paymentMethod: z.string(),
   shippingAddress: z.object({
       street: z.string(),
       city: z.string(),
@@ -37,7 +36,6 @@ export async function POST(request: Request) {
   const validation = createOrderSchema.safeParse(body);
 
   if (!validation.success) {
-    // Return detailed validation errors
     console.error('Order validation failed:', validation.error.flatten());
     return NextResponse.json({
         error: 'Invalid input data provided.',
@@ -50,10 +48,7 @@ export async function POST(request: Request) {
   const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
 
   try {
-    // In a real application, you would wrap this in a database transaction (e.g., via an RPC call)
-    // to ensure all operations succeed or fail together.
-
-    // 0. Pre-flight check: Verify stock for all items
+    // 1. Pre-flight check: Verify stock for all items
     for (const item of cartItems) {
       const { data: product, error } = await supabase
         .from('products')
@@ -69,50 +64,22 @@ export async function POST(request: Request) {
       }
     }
 
+    // 2. Call the RPC function to create the order and its items atomically
+    const { data: newOrderId, error: rpcError } = await supabase.rpc('create_order_with_items', {
+        buyer_id_param: user.id,
+        total_amount_param: total,
+        payment_method_param: paymentMethod,
+        shipping_address_param: shippingAddress,
+        items: cartItems,
+    });
 
-    // 1. Create an 'orders' record
-    const { data: orderData, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        buyer_id: user.id,
-        total_amount: total,
-        currency: 'GBP', // Assuming GBP for now
-        status: 'processing', // Default status
-        payment_method: paymentMethod,
-        shipping_address: shippingAddress, // Store address object directly now
-      })
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error('Supabase order creation error:', orderError);
-      // Throw the detailed Supabase error to be caught by the catch block
-      throw new Error(`Order creation error: ${orderError.message} (Code: ${orderError.code})`);
+    if (rpcError) {
+      console.error('Supabase RPC error:', rpcError);
+      throw new Error(`Order creation RPC failed: ${rpcError.message}`);
     }
     
-    if (!orderData) {
-        throw new Error('Order creation did not return the expected data.');
-    }
-
-
-    // 2. Create 'order_items' records
-    const orderItemsToInsert = cartItems.map(item => ({
-      order_id: orderData.id,
-      product_id: item.product_id,
-      quantity: item.quantity,
-      price_at_purchase: item.price,
-      seller_id: item.seller_id,
-    }));
-    
-    const { error: orderItemsError } = await supabase
-      .from('order_items')
-      .insert(orderItemsToInsert);
-
-    if (orderItemsError) {
-        // Attempt to roll back the order creation if items fail
-        console.error('Supabase order items creation error:', orderItemsError);
-        await supabase.from('orders').delete().eq('id', orderData.id);
-        throw new Error(`Order items creation error: ${orderItemsError.message} (Code: ${orderItemsError.code})`);
+    if (!newOrderId) {
+        throw new Error('Order creation RPC did not return an order ID.');
     }
 
     // 3. Update product stock (decrement quantity_available)
@@ -129,24 +96,24 @@ export async function POST(request: Request) {
 
     // 4. Create a 'transactions' record (optional, but good practice)
     await supabase.from('transactions').insert({
-        order_id: orderData.id,
+        order_id: newOrderId,
         profile_id: user.id,
         type: 'purchase',
         amount: total,
-        status: 'completed', // Assuming payment was successful before calling this API
-        provider: paymentMethod, // Store the specific payment method here
+        status: 'completed',
+        provider: paymentMethod,
     });
     
     // 5. Create notifications for seller(s)
     const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
     for (const sellerId of sellerIds) {
-        if (sellerId === user.id) continue; // Don't notify user of their own purchase from themself
+        if (sellerId === user.id) continue;
         
         await supabase.from('notifications').insert({
             user_id: sellerId,
             type: 'order',
             title: 'New Sale!',
-            message: `You have a new order #${orderData.id.substring(0, 8)} from ${user.user_metadata.full_name || 'a buyer'}.`,
+            message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${user.user_metadata.full_name || 'a buyer'}.`,
             link_url: '/sales'
         });
     }
@@ -156,20 +123,18 @@ export async function POST(request: Request) {
         user_id: user.id,
         type: 'order',
         title: 'Order Confirmed!',
-        message: `Your order #${orderData.id.substring(0, 8)} for £${total.toFixed(2)} has been confirmed.`,
-        link_url: `/tracking?orderId=${orderData.id}`
+        message: `Your order #${String(newOrderId).substring(0, 8)} for £${total.toFixed(2)} has been confirmed.`,
+        link_url: `/tracking?orderId=${newOrderId}`
     });
 
 
-    return NextResponse.json({ success: true, message: 'Order created successfully', orderId: orderData.id, order: orderData });
+    return NextResponse.json({ success: true, message: 'Order created successfully', orderId: newOrderId });
 
   } catch (error: any) {
-    // This will now catch detailed errors from above
     console.error('Full order creation failed:', error.message);
     return NextResponse.json(
       {
         error: 'Order Creation Failed',
-        // Send the specific error message to the client
         details: error.message,
       },
       { status: 500 }
