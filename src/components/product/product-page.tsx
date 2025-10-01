@@ -1,12 +1,10 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Loader2, Handshake } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { BarterProposalForm } from '@/components/checkout/payments/BarterProposalForm';
 import { ProductImageGallery } from './product-image-gallery';
 import { ProductPurchasePanel } from './product-purchase-panel';
 import { ProductInfoTabs } from './product-info-tabs';
@@ -59,7 +57,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isBarterModalOpen, setIsBarterModalOpen] = useState(false);
   const supabase = createClient();
   const { toast } = useToast();
 
@@ -125,15 +122,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
     fetchProductAndReviews();
   }, [productId, supabase, toast]);
   
-  const handleBarterConfirm = (proposalData: any) => {
-    console.log("Barter Proposal submitted:", proposalData);
-    toast({
-        title: 'Proposal Sent!',
-        description: 'Your barter proposal has been sent to the seller.',
-    });
-    setIsBarterModalOpen(false);
-  };
-
 
   if (loading) {
     return <ProductPageSkeleton />;
@@ -183,7 +171,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
                 <ProductPurchasePanel
                     product={product}
                     onAddToCart={onAddToCart}
-                    onProposeBarter={() => setIsBarterModalOpen(true)}
                 />
             </motion.div>
         </div>
@@ -204,30 +191,6 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           </div>
         </div>
       </div>
-      
-      <Dialog open={isBarterModalOpen} onOpenChange={setIsBarterModalOpen}>
-        <DialogContent className="sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-                <Handshake />
-                Propose a Barter
-            </DialogTitle>
-            <DialogDescription>
-              Offer one of your items or services in exchange for "{product.name}".
-            </DialogDescription>
-          </DialogHeader>
-          <BarterProposalForm
-            targetProduct={{
-              id: product.id,
-              name: product.name,
-              seller: product.seller,
-              estimatedValue: product.price,
-            }}
-            onConfirm={handleBarterConfirm}
-            onCancel={() => setIsBarterModalOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </>
   );
 }

@@ -7,6 +7,7 @@ import { Handshake, ArrowLeft, ArrowRight, Send, Package, User } from 'lucide-re
 import { Progress } from '@/components/ui/progress';
 import { BarterStep1_YourOffer } from './barter-steps/step1-your-offer';
 import { BarterStep2_ExchangeDetails } from './barter-steps/step2-exchange-details';
+import { useToast } from '@/hooks/use-toast';
 
 interface BarterProposalFormProps {
   targetProduct: {
@@ -15,7 +16,7 @@ interface BarterProposalFormProps {
     seller: string;
     estimatedValue: number;
   };
-  onConfirm: (data: any) => void;
+  onConfirm: (data: BarterFormData) => void;
   onCancel: () => void;
 }
 
@@ -38,6 +39,7 @@ const steps = [
 
 export function BarterProposalForm({ targetProduct, onConfirm, onCancel }: BarterProposalFormProps) {
   const [currentStep, setCurrentStep] = useState(0);
+  const { toast } = useToast();
   const [formData, setFormData] = useState<BarterFormData>({
     offerType: 'product',
     itemName: '',
@@ -88,76 +90,71 @@ export function BarterProposalForm({ targetProduct, onConfirm, onCancel }: Barte
   }
 
   const handleSubmit = async () => {
-    if (!validateStep(0) || !validateStep(1)) return;
+    if (!validateStep(0) || !validateStep(1)) {
+        toast({
+            variant: 'destructive',
+            title: 'Validation Error',
+            description: 'Please fill in all required fields before submitting.',
+        });
+        return;
+    };
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    const proposalData = {
-        paymentMethod: 'barter_proposal',
-        targetProduct,
-        offer: {
-          type: formData.offerType,
-          name: formData.itemName,
-          description: formData.description,
-          estimatedValue: parseFloat(formData.estimatedValue),
-          condition: formData.condition,
-          category: formData.category,
-          exchangeLocation: formData.exchangeLocation,
-          additionalNotes: formData.additionalNotes
-        },
-        proposalId: `BP${Date.now()}`,
-        expiresAt: new Date(Date.now() + parseInt(formData.proposalExpiry) * 24 * 60 * 60 * 1000).toISOString(),
-        status: 'Pending',
-        createdAt: new Date().toISOString()
-    };
-    onConfirm(proposalData);
+    await onConfirm(formData);
     setIsSubmitting(false);
   };
   
   return (
-    <div className="space-y-4">
-        <Progress value={((currentStep + 1) / steps.length) * 100} className="mb-4" />
-        
-        <div className="bg-muted/50 rounded-lg p-3">
-          <h4 className="font-medium text-sm mb-1">Trading For:</h4>
-          <div className="flex justify-between items-center">
-            <p className="font-medium text-sm">{targetProduct.name}</p>
-            <p className="font-semibold text-sm">~£{targetProduct.estimatedValue}</p>
-          </div>
-        </div>
-
-        {currentStep === 0 && (
-            <BarterStep1_YourOffer formData={formData} onInputChange={handleInputChange} errors={errors} targetValue={targetProduct.estimatedValue} />
-        )}
-        
-        {currentStep === 1 && (
-            <BarterStep2_ExchangeDetails formData={formData} onInputChange={handleInputChange} errors={errors} />
-        )}
-
-        <div className="flex justify-between items-center pt-4">
-            <Button variant="outline" onClick={onCancel}>Cancel</Button>
-            <div className="flex gap-2">
-                {currentStep > 0 && (
-                    <Button variant="secondary" onClick={prevStep}>
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Previous
-                    </Button>
-                )}
-                {currentStep < steps.length - 1 && (
-                    <Button onClick={nextStep}>
-                        Next
-                        <ArrowRight className="w-4 h-4 ml-2" />
-                    </Button>
-                )}
-                {currentStep === steps.length - 1 && (
-                    <Button onClick={handleSubmit} disabled={isSubmitting}>
-                        <Send className="w-4 h-4 mr-2" />
-                        {isSubmitting ? 'Sending...' : 'Send Proposal'}
-                    </Button>
-                )}
+    <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <Handshake />
+                Propose a Barter
+            </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+            <Progress value={((currentStep + 1) / steps.length) * 100} className="mb-4" />
+            
+            <div className="bg-muted/50 rounded-lg p-3">
+            <h4 className="font-medium text-sm mb-1">Trading For:</h4>
+            <div className="flex justify-between items-center">
+                <p className="font-medium text-sm">{targetProduct.name}</p>
+                <p className="font-semibold text-sm">~£{targetProduct.estimatedValue}</p>
             </div>
-        </div>
-    </div>
+            </div>
+
+            {currentStep === 0 && (
+                <BarterStep1_YourOffer formData={formData} onInputChange={handleInputChange} errors={errors} targetValue={targetProduct.estimatedValue} />
+            )}
+            
+            {currentStep === 1 && (
+                <BarterStep2_ExchangeDetails formData={formData} onInputChange={handleInputChange} errors={errors} />
+            )}
+
+            <div className="flex justify-between items-center pt-4">
+                <div>
+                    {currentStep > 0 && (
+                        <Button variant="secondary" onClick={prevStep}>
+                            <ArrowLeft className="w-4 h-4 mr-2" />
+                            Previous
+                        </Button>
+                    )}
+                </div>
+                <div className="flex gap-2">
+                    {currentStep < steps.length - 1 ? (
+                        <Button onClick={nextStep}>
+                            Next
+                            <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                    ) : (
+                        <Button onClick={handleSubmit} disabled={isSubmitting}>
+                            <Send className="w-4 h-4 mr-2" />
+                            {isSubmitting ? 'Sending...' : 'Send Proposal'}
+                        </Button>
+                    )}
+                </div>
+            </div>
+        </CardContent>
+    </Card>
   );
 }

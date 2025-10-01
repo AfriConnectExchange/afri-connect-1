@@ -5,20 +5,25 @@ import { Star, Heart, Share2, ShoppingCart, Shield, Handshake, Minus, Plus } fro
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Product } from '@/app/marketplace/page';
+import { useRouter } from 'next/navigation';
 
 interface ProductPurchasePanelProps {
   product: Product;
   onAddToCart: (product: any) => void;
-  onProposeBarter: () => void;
 }
 
-export function ProductPurchasePanel({ product, onAddToCart, onProposeBarter }: ProductPurchasePanelProps) {
+export function ProductPurchasePanel({ product, onAddToCart }: ProductPurchasePanelProps) {
   const [quantity, setQuantity] = useState(1);
+  const router = useRouter();
 
   const formatPrice = (price: number) => `£${price.toLocaleString()}`;
 
   const handleAddToCartClick = () => {
     onAddToCart({ ...product, quantity });
+  };
+  
+  const handleProposeBarter = () => {
+    router.push(`/barter/propose?productId=${product.id}`);
   };
 
   return (
@@ -84,24 +89,24 @@ export function ProductPurchasePanel({ product, onAddToCart, onProposeBarter }: 
         </div>
 
         <div className="flex flex-col gap-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Button size="lg" className="w-full h-12" onClick={handleAddToCartClick}>
               <ShoppingCart className="w-5 h-5 mr-2" />
               Add to Cart
             </Button>
-            <Button size="lg" variant="outline" className="w-full h-12" onClick={onProposeBarter}>
-              <Handshake className="w-5 h-5 mr-2" />
-              Propose Barter
-            </Button>
-          </div>
-          <div className="flex items-center justify-end gap-1">
-             <Button size="icon" variant="ghost" className="rounded-full">
-               <Heart className="w-5 h-5 text-muted-foreground" />
-             </Button>
-             <Button size="icon" variant="ghost" className="rounded-full">
-               <Share2 className="w-5 h-5 text-muted-foreground" />
-             </Button>
-          </div>
+            <div className="flex items-center justify-between gap-2">
+                <Button size="sm" variant="link" className="text-muted-foreground" onClick={handleProposeBarter}>
+                    <Handshake className="w-4 h-4 mr-2" />
+                    Propose a Barter
+                </Button>
+                <div className="flex items-center">
+                    <Button size="icon" variant="ghost" className="rounded-full">
+                    <Heart className="w-5 h-5 text-muted-foreground" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="rounded-full">
+                    <Share2 className="w-5 h-5 text-muted-foreground" />
+                    </Button>
+                </div>
+            </div>
         </div>
       </div>
     </div>
