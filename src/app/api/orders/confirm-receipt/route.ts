@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { logSystemEvent } from '@/lib/system-logger';
 
 const confirmReceiptSchema = z.object({
   orderId: z.string().uuid(),
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
   // 1. Verify the current user is the buyer for this order
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('buyer_id, seller_id')
+    .select('buyer_id, seller_id, total_amount')
     .eq('id', orderId)
     .single();
 
@@ -47,8 +48,24 @@ export async function POST(request: Request) {
 
   if (updateError) {
     console.error('Error confirming receipt:', updateError);
+     await logSystemEvent(user, {
+      type: 'order_confirmation',
+      status: 'failure',
+      description: `Failed to confirm receipt for order ${orderId}`,
+      order_id: orderId,
+      metadata: { error: updateError.message },
+    });
     return NextResponse.json({ error: 'Failed to update order status.', details: updateError.message }, { status: 500 });
   }
+
+  await logSystemEvent(user, {
+    type: 'order_confirmation',
+    status: 'success',
+    amount: parseFloat(order.total_amount),
+    description: `Buyer confirmed receipt for order ${orderId}`,
+    order_id: orderId,
+    metadata: { seller_id: order.seller_id },
+  });
   
   // 3. Trigger the escrow release to the seller.
   // This is a server-to-server call for security.
