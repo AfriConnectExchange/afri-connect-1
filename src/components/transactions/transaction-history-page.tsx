@@ -22,8 +22,8 @@ import { Input } from '../ui/input';
 export interface Transaction {
     id: string;
     created_at: string;
-    type: 'purchase' | 'sale' | 'withdrawal' | 'deposit';
-    status: 'completed' | 'pending' | 'failed';
+    type: 'purchase' | 'sale' | 'withdrawal' | 'deposit' | 'escrow_creation' | 'escrow_release';
+    status: 'completed' | 'pending' | 'failed' | 'success' | 'failure';
     amount: number;
     description: string;
     order_id: string;
@@ -95,7 +95,9 @@ export function TransactionHistoryPage() {
 
   const getStatusVariant = (status: string) => {
     switch (status) {
-      case 'completed': return 'default';
+      case 'completed':
+      case 'success':
+         return 'default';
       case 'pending': return 'secondary';
       default: return 'destructive';
     }
@@ -107,11 +109,14 @@ export function TransactionHistoryPage() {
         case 'sale': return 'default';
         case 'withdrawal': return 'secondary';
         case 'deposit': return 'outline';
+        case 'escrow_creation': return 'secondary';
+        case 'escrow_release': return 'default';
         default: return 'secondary';
     }
   }
   
   const formatAmount = (type: string, amount: number) => {
+      if (amount === 0) return '-';
       const sign = type === 'purchase' || type === 'withdrawal' ? '-' : '+';
       return `${sign} £${amount.toFixed(2)}`;
   }
@@ -123,7 +128,7 @@ export function TransactionHistoryPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Transaction History</h1>
           <p className="text-sm text-muted-foreground">
-            Review your financial activity on the platform.
+            Review your financial activity and system events on the platform.
           </p>
         </div>
         <div className="flex gap-2 w-full md:w-auto">
@@ -153,16 +158,16 @@ export function TransactionHistoryPage() {
                 </TableHeader>
                 <TableBody>
                     {transactions.map((tx) => (
-                    <TableRow key={tx.id} className="cursor-pointer" onClick={() => tx.order_id && router.push(`/tracking?orderId=${tx.order_id}`)}>
+                    <TableRow key={tx.id} className={tx.order_id ? "cursor-pointer" : ""} onClick={() => tx.order_id && router.push(`/tracking?orderId=${tx.order_id}`)}>
                         <TableCell>{new Date(tx.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="font-medium">{tx.description}</TableCell>
                         <TableCell>
-                            <Badge variant={getTypeVariant(tx.type)} className="capitalize">{tx.type}</Badge>
+                            <Badge variant={getTypeVariant(tx.type)} className="capitalize">{tx.type.replace(/_/g, ' ')}</Badge>
                         </TableCell>
                         <TableCell>
                             <Badge variant={getStatusVariant(tx.status)} className="capitalize">{tx.status}</Badge>
                         </TableCell>
-                        <TableCell className={`text-right font-medium ${tx.type.includes('purchase') || tx.type.includes('withdrawal') ? 'text-destructive' : 'text-green-600'}`}>
+                        <TableCell className={`text-right font-medium ${tx.amount > 0 && (tx.type.includes('purchase') || tx.type.includes('withdrawal')) ? 'text-destructive' : tx.amount > 0 ? 'text-green-600' : ''}`}>
                            {formatAmount(tx.type, tx.amount)}
                         </TableCell>
                     </TableRow>
@@ -188,4 +193,3 @@ export function TransactionHistoryPage() {
     </div>
   );
 }
-

@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { logSystemEvent } from '@/lib/system-logger';
 
 const releaseEscrowSchema = z.object({
   orderId: z.string().uuid(),
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
   // 1. Verify the current user is the buyer for this order
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
-    .select('buyer_id, seller_id') // Select seller_id as well
+    .select('buyer_id, seller_id, total_amount') // Select seller_id and amount as well
     .eq('id', orderId)
     .single();
 
@@ -48,8 +49,27 @@ export async function POST(request: Request) {
 
   if (escrowError) {
     console.error('Error releasing escrow:', escrowError);
+     await logSystemEvent(user, {
+      type: 'escrow_release',
+      status: 'failure',
+      amount: parseFloat(orderData.total_amount),
+      description: `Failed to release escrow for order ${orderId}`,
+      order_id: orderId,
+      metadata: { error: escrowError.message },
+    });
     return NextResponse.json({ error: 'Failed to release escrow payment.', details: escrowError.message }, { status: 500 });
   }
+
+  // Log the successful escrow release
+  await logSystemEvent(user, {
+    type: 'escrow_release',
+    status: 'success',
+    amount: parseFloat(orderData.total_amount),
+    description: `Escrow released to seller for order ${orderId}`,
+    order_id: orderId,
+    metadata: { escrow_id: escrowData.id, seller_id: orderData.seller_id },
+  });
+
 
   // 3. (Future step) This is where you would trigger a payout to the seller's connected account.
   // For now, we'll create a notification for the seller.
