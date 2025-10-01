@@ -78,7 +78,7 @@ export async function POST(request: Request) {
         total_amount: total,
         currency: 'GBP', // Assuming GBP for now
         status: 'processing', // Default status
-        payment_method: paymentMethod, // Store generic payment method
+        payment_method: paymentMethod,
         shipping_address: shippingAddress, // Store address object directly now
       })
       .select()

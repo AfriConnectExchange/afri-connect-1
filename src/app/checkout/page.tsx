@@ -43,7 +43,7 @@ function CheckoutPageContent() {
       subtotal,
       deliveryFee,
       total,
-      paymentMethod: selectedPaymentMethod?.isEscrow ? 'card' : selectedPaymentMethod?.id || 'card',
+      paymentMethod: selectedPaymentMethod?.id || 'card',
       shippingAddress: {
         street: '123 Example Street',
         city: 'London',
