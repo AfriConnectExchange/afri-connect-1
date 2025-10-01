@@ -1,13 +1,13 @@
 
 'use client';
 import { SellerDashboard } from '@/components/adverts/seller-dashboard';
-import { Header } from '@/components/dashboard/header';
+import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Package, TrendingUp, User as UserIcon } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -59,7 +59,7 @@ export default function AdvertsPage() {
   if (!canAccess) {
     return (
         <div className="min-h-screen bg-muted/40">
-            <Header />
+            <DashboardHeader title="Access Denied" navItems={[]} />
             <main className="flex flex-1 items-center justify-center p-4 md:p-8">
                  <Card className="w-full max-w-md text-center">
                     <CardHeader>
@@ -87,9 +87,15 @@ export default function AdvertsPage() {
     );
   }
   
+  const navItems = [
+    { id: 'adverts', label: 'My Listings', href: '/adverts', icon: Package },
+    { id: 'sales', label: 'My Sales', href: '/sales', icon: TrendingUp },
+    { id: 'profile', label: 'Marketplace Profile', href: '/profile', icon: UserIcon },
+  ];
+  
   return (
     <div className="min-h-screen bg-background">
-      <Header />
+      <DashboardHeader title="My Listings" navItems={navItems} />
       <SellerDashboard />
     </div>
   );

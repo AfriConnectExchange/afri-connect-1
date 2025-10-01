@@ -1,13 +1,14 @@
+
 'use client';
 
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
-import { Header } from '@/components/dashboard/header';
+import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { PageLoader } from '@/components/ui/loader';
 import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
 import type { User } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
@@ -56,11 +57,17 @@ export default function AdminPage() {
 
   // Assuming role_id 5 is for Admin
   const canAccess = profile && profile.role_id === 5;
+  
+  const navItems = [
+    { id: 'user-management', label: 'User Management', href: '#', icon: UserIcon },
+    { id: 'content-moderation', label: 'Content Moderation', href: '#', icon: Shield },
+    { id: 'analytics', label: 'Platform Analytics', href: '#', icon: BarChart2 },
+  ];
 
   if (!canAccess) {
     return (
         <div className="min-h-screen bg-muted/40">
-            <Header />
+            <DashboardHeader title="Access Denied" navItems={[]} />
             <main className="flex flex-1 items-center justify-center p-4 md:p-8">
                  <Card className="w-full max-w-md text-center">
                     <CardHeader>
@@ -85,7 +92,7 @@ export default function AdminPage() {
   
   return (
     <div className="min-h-screen bg-muted/40">
-      <Header />
+      <DashboardHeader title="Admin Dashboard" navItems={navItems} />
       <main className="flex-1 p-4 md:gap-8 md:p-8">
         <AdminDashboard />
       </main>

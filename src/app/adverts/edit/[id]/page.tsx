@@ -1,11 +1,13 @@
+
 'use client';
 import { useEffect, useState } from 'react';
-import { Header } from '@/components/dashboard/header';
+import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { ListingForm } from '@/components/adverts/listing-form';
 import { createClient } from '@/lib/supabase/client';
 import { PageLoader } from '@/components/ui/loader';
 import { Product } from '@/app/marketplace/page';
 import { useToast } from '@/hooks/use-toast';
+import { Package, TrendingUp, User as UserIcon } from 'lucide-react';
 
 export default function EditListingPage({ params }: { params: { id: string } }) {
   const [product, setProduct] = useState<Product | null>(null);
@@ -51,9 +53,15 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
     return <PageLoader />;
   }
   
+  const navItems = [
+    { id: 'adverts', label: 'My Listings', href: '/adverts', icon: Package },
+    { id: 'sales', label: 'My Sales', href: '/sales', icon: TrendingUp },
+    { id: 'profile', label: 'Marketplace Profile', href: '/profile', icon: UserIcon },
+  ];
+  
   return (
     <>
-      <Header />
+      <DashboardHeader title="Edit Listing" navItems={navItems} />
       <ListingForm product={product} />
     </>
   );
