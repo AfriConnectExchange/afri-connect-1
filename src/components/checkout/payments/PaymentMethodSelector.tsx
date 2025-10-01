@@ -30,13 +30,10 @@ const paymentMethods: PaymentMethod[] = [
     },
     {
         id: 'wallet',
-        name: 'Digital Wallet',
+        name: 'PayPal',
         type: 'online',
-        icon: <div className="flex items-center gap-2 h-6">
-                <Image src="/paypal.svg" alt="PayPal" width={60} height={15} />
-                <Image src="/apple-pay.svg" alt="Apple Pay" width={40} height={15} />
-            </div>,
-        description: 'PayPal, Apple Pay, etc.',
+        icon: <Image src="/paypal.svg" alt="PayPal" width={60} height={15} />,
+        description: 'Pay with your PayPal account',
         fees: 'Varies'
     },
     {
