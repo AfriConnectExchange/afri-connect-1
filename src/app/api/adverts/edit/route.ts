@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
@@ -12,6 +13,8 @@ const productSchema = z.object({
   location_text: z.string().min(3, 'Please provide a location.'),
   quantity_available: z.number().int().min(1, 'Quantity must be at least 1.'),
   images: z.array(z.string().url()).optional(),
+  specifications: z.record(z.any()).optional(),
+  shipping_policy: z.record(z.any()).optional(),
 });
 
 
@@ -40,7 +43,9 @@ export async function POST(request: Request) {
       listing_type,
       location_text,
       quantity_available,
-      images
+      images,
+      specifications,
+      shipping_policy
   } = validation.data;
 
   // Verify the user owns the product before updating
@@ -69,6 +74,8 @@ export async function POST(request: Request) {
       location_text,
       quantity_available,
       images,
+      specifications,
+      shipping_policy,
       updated_at: new Date().toISOString(),
     })
     .eq('id', id)
