@@ -2,16 +2,17 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Info, MessageSquare, Ship, Truck } from 'lucide-react';
+import { Info, MessageSquare, Ship } from 'lucide-react';
 import type { Product } from '@/app/marketplace/page';
 import { ReviewsSection, type Review } from './reviews-section';
 
 interface ProductInfoTabsProps {
   product: Product;
   reviews: Review[];
+  onReviewSubmit: () => void;
 }
 
-export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
+export function ProductInfoTabs({ product, reviews, onReviewSubmit }: ProductInfoTabsProps) {
   return (
     <Tabs defaultValue="details" className="w-full">
       <TabsList className="bg-transparent p-0 h-auto justify-start border-b rounded-none gap-4">
@@ -54,7 +55,12 @@ export function ProductInfoTabs({ product, reviews }: ProductInfoTabsProps) {
       </TabsContent>
       
       <TabsContent value="reviews" className="space-y-4 pt-6">
-        <ReviewsSection reviews={reviews} />
+        <ReviewsSection 
+            reviews={reviews} 
+            productId={product.id}
+            sellerId={product.seller_id}
+            onReviewSubmit={onReviewSubmit}
+        />
       </TabsContent>
       
       {product.shipping_policy && Object.values(product.shipping_policy).some(val => val) && (

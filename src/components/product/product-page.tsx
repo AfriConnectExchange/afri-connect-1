@@ -63,68 +63,65 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const supabase = createClient();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const fetchProductAndReviews = async () => {
-      if (!productId) return;
-      setLoading(true);
-      
-      // Fetch product data
-      const { data: productData, error: productError } = await supabase
-        .from('products')
-        .select(`
-          *,
-          seller:profiles ( id, full_name, kyc_status, avatar_url, location, created_at ),
-          category:categories ( name )
-        `)
-        .eq('id', productId)
-        .single();
+  const fetchProductAndReviews = async () => {
+    if (!productId) return;
+    setLoading(true);
+    
+    const { data: productData, error: productError } = await supabase
+      .from('products')
+      .select(`
+        *,
+        seller:profiles ( id, full_name, kyc_status, avatar_url, location, created_at ),
+        category:categories ( name )
+      `)
+      .eq('id', productId)
+      .single();
 
-      if (productError || !productData) {
-        toast({
-          variant: 'destructive',
-          title: 'Error fetching product',
-          description: "This product could not be found.",
-        });
-        setProduct(null);
-      } else {
-        const mappedProduct = {
-          ...productData,
-          name: productData.title,
-          image: productData.images?.[0] || 'https://placehold.co/600x600',
-          images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
-          seller: productData.seller?.full_name || 'Unknown Seller',
-          sellerVerified: productData.seller?.kyc_status === 'verified',
-          category: productData.category?.name || 'Uncategorized',
-          isFree: productData.listing_type === 'freebie' || productData.price === 0,
-          rating: productData.average_rating || 0,
-          reviews: productData.review_count || 0,
-          stockCount: productData.quantity_available || 1,
-          sellerDetails: {
-            id: productData.seller?.id,
-            name: productData.seller?.full_name || 'Unknown Seller',
-            avatar: productData.seller?.avatar_url || '',
-            location: productData.seller?.location || 'Unknown',
-            verified: productData.seller?.kyc_status === 'verified',
-            rating: 4.8, // This is still mock data
-            totalSales: 100, // This is still mock data
-            memberSince: productData.seller?.created_at ? new Date(productData.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
-          },
-          // Real data now
-          specifications: productData.specifications,
-          shipping_policy: productData.shipping_policy
-        };
-        setProduct(mappedProduct as unknown as Product);
+    if (productError || !productData) {
+      toast({
+        variant: 'destructive',
+        title: 'Error fetching product',
+        description: "This product could not be found.",
+      });
+      setProduct(null);
+    } else {
+      const mappedProduct = {
+        ...productData,
+        name: productData.title,
+        image: productData.images?.[0] || 'https://placehold.co/600x600',
+        images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
+        seller: productData.seller?.full_name || 'Unknown Seller',
+        sellerVerified: productData.seller?.kyc_status === 'verified',
+        category: productData.category?.name || 'Uncategorized',
+        isFree: productData.listing_type === 'freebie' || productData.price === 0,
+        rating: productData.average_rating || 0,
+        reviews: productData.review_count || 0,
+        stockCount: productData.quantity_available || 1,
+        sellerDetails: {
+          id: productData.seller?.id,
+          name: productData.seller?.full_name || 'Unknown Seller',
+          avatar: productData.seller?.avatar_url || '',
+          location: productData.seller?.location || 'Unknown',
+          verified: productData.seller?.kyc_status === 'verified',
+          rating: 4.8, // This is still mock data
+          totalSales: 100, // This is still mock data
+          memberSince: productData.seller?.created_at ? new Date(productData.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
+        },
+        specifications: productData.specifications,
+        shipping_policy: productData.shipping_policy
+      };
+      setProduct(mappedProduct as unknown as Product);
 
-        // Fetch reviews for the product
-        const res = await fetch(`/api/reviews/product?productId=${productId}`);
-        if(res.ok) {
-            const reviewData = await res.json();
-            setReviews(reviewData);
-        }
+      const res = await fetch(`/api/reviews/product?productId=${productId}`);
+      if(res.ok) {
+          const reviewData = await res.json();
+          setReviews(reviewData);
       }
-      setLoading(false);
-    };
+    }
+    setLoading(false);
+  };
 
+  useEffect(() => {
     fetchProductAndReviews();
   }, [productId, supabase, toast]);
   
@@ -193,7 +190,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
 
         <div className="grid lg:grid-cols-3 gap-6 lg:gap-8">
           <div className="lg:col-span-2">
-            <ProductInfoTabs product={product} reviews={reviews} />
+            <ProductInfoTabs product={product} reviews={reviews} onReviewSubmit={fetchProductAndReviews} />
           </div>
 
           <div className="lg:sticky top-24 self-start">
