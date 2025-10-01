@@ -4,51 +4,8 @@ import { useState } from 'react';
 import { TrackingSearch } from './tracking-search';
 import { TrackingDetails } from './tracking-details';
 import { AnimatePresence, motion } from 'framer-motion';
+import { OrderDetails } from './types';
 
-export interface OrderDetails {
-  id: string;
-  tracking_number: string;
-  status:
-    | 'pending'
-    | 'processing'
-    | 'shipped'
-    | 'in-transit'
-    | 'out-for-delivery'
-    | 'delivered'
-    | 'cancelled'
-    | 'failed';
-  courierName: string;
-  estimatedDelivery: string;
-  actualDelivery?: string;
-  items: Array<{
-    id: string;
-    name: string;
-    image: string;
-    quantity: number;
-    price: number;
-  }>;
-  shippingAddress: {
-    street: string;
-    city: string;
-    postcode: string;
-    phone: string;
-    name: string;
-  };
-  events: TrackingEvent[];
-  courierContact?: {
-    phone: string;
-    website: string;
-  };
-}
-export interface TrackingEvent {
-  id: string;
-  status: string;
-  description: string;
-  location: string;
-  timestamp: string;
-  isCompleted: boolean;
-  isCurrent?: boolean;
-}
 
 export function OrderTrackingPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(
@@ -78,15 +35,8 @@ export function OrderTrackingPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold">Order Details</h1>
-        <p className="text-muted-foreground">
-          Enter your order ID or tracking number for real-time updates.
-        </p>
-      </div>
-
-      <AnimatePresence mode="wait">
+    <div className="mx-auto w-full max-w-6xl space-y-6">
+       <AnimatePresence mode="wait">
         {selectedOrder ? (
           <motion.div
             key="details"
@@ -95,7 +45,7 @@ export function OrderTrackingPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <TrackingDetails order={selectedOrder} onClear={handleClear} />
+            <TrackingDetails order={selectedOrder} onClear={handleClear} onNavigate={() => {}} />
           </motion.div>
         ) : (
           <motion.div
@@ -105,6 +55,12 @@ export function OrderTrackingPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
+             <div className="space-y-2 text-center mb-8">
+              <h1 className="text-3xl font-bold">Track Your Order</h1>
+              <p className="text-muted-foreground">
+                Enter your order ID or tracking number for real-time updates.
+              </p>
+            </div>
             <TrackingSearch
               onTrackOrder={handleTrackOrder}
               onSelectOrder={handleSelectOrder}

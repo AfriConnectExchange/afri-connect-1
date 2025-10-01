@@ -1,190 +1,124 @@
 'use client';
-
 import { useState } from 'react';
 import {
   ArrowLeft,
-  Truck,
-  ClipboardCopy,
-  RefreshCw,
-  CheckCircle,
-  Loader2,
-  Package,
-  CreditCard,
+  MessageCircle,
+  HelpCircle,
+  FileText,
+  Star,
 } from 'lucide-react';
-import { OrderDetails as OrderDetailsType } from './order-tracking-page';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { OrderDetails } from './types';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { TrackingTimeline } from './tracking-timeline';
 import { OrderItemsCard } from './order-items-card';
-import { useToast } from '@/hooks/use-toast';
-import { ConfirmationModal } from '../ui/confirmation-modal';
-import { Separator } from '../ui/separator';
+import { OrderSummaryCard } from './order-summary-card';
+import { PaymentDetailsCard } from './payment-details-card';
+import { DeliveryInfoCard } from './delivery-info-card';
+import { ActionCard } from './action-card';
+import { createClient } from '@/lib/supabase/client';
 
 interface TrackingDetailsProps {
-  order: OrderDetailsType;
+  order: OrderDetails;
   onClear: () => void;
+  onNavigate: (path: string) => void;
 }
 
-export function TrackingDetails({ order, onClear }: TrackingDetailsProps) {
+export function TrackingDetails({ order, onClear, onNavigate }: TrackingDetailsProps) {
   const { toast } = useToast();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isConfirming, setIsConfirming] = useState(false);
   const [currentOrder, setCurrentOrder] = useState(order);
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
-  
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-        const response = await fetch(`/api/orders/track?orderId=${currentOrder.id}`);
-        if(response.ok) {
-            const data = await response.json();
-            setCurrentOrder(data);
-            toast({
-                title: 'Tracking Updated',
-                description: 'Latest tracking details have been fetched.',
-            });
-        } else {
-             toast({ variant: 'destructive', title: 'Error', description: 'Failed to refresh tracking details.' });
-        }
-    } catch (error) {
-         toast({ variant: 'destructive', title: 'Error', description: 'Could not connect to server.' });
-    } finally {
-        setIsRefreshing(false);
-    }
-  };
-  
+  const [isConfirming, setIsConfirming] = useState(false);
+  const supabase = createClient();
+
   const handleConfirmReceipt = async () => {
-    setShowConfirmModal(false);
     setIsConfirming(true);
-     try {
-        const response = await fetch('/api/orders/confirm-receipt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderId: currentOrder.id }),
-        });
+    try {
+      const response = await fetch('/api/orders/confirm-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: currentOrder.id }),
+      });
 
-        if (!response.ok) {
-            const result = await response.json();
-            throw new Error(result.error || 'Failed to confirm receipt.');
-        }
+      if (!response.ok) {
+        const result = await response.json();
+        throw new Error(result.error || 'Failed to confirm receipt.');
+      }
+      
+      const updatedOrder = await fetchOrderDetails(currentOrder.id);
+      if (updatedOrder) {
+          setCurrentOrder(updatedOrder);
+      }
+      
+      toast({
+        title: 'Order Completed',
+        description: 'Thank you for confirming receipt. Payment will be released to the seller.',
+      });
 
-        toast({
-            title: 'Order Completed',
-            description: `Thank you for confirming receipt of order #${currentOrder.id.substring(0,8)}.`,
-        });
-        
-        handleRefresh(); // Refresh to get the final 'delivered' state
     } catch (error: any) {
-        toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: error.message,
-        });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
     } finally {
-        setIsConfirming(false);
+      setIsConfirming(false);
     }
   };
 
-  const subtotal = currentOrder.items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
-  // Assuming a static delivery fee for now as it's not on the order object
-  const deliveryFee = subtotal > 50 ? 0 : 4.99;
-  const total = subtotal + deliveryFee;
+  const fetchOrderDetails = async (orderId: string): Promise<OrderDetails | null> => {
+      const { data, error } = await supabase.from('orders').select('*, items:order_items(*, product:products(*, seller:profiles(*)))').eq('id', orderId).single();
+      if (error || !data) return null;
+      // This mapping logic should ideally be in the API route, but doing it here for speed.
+      // A more robust solution would re-use the mapping from the `track` API endpoint.
+      return data as unknown as OrderDetails;
+  }
 
   return (
-    <>
     <div className="space-y-6">
-      <Button variant="ghost" onClick={onClear} className="pl-0">
+      <Button variant="ghost" onClick={onClear} className="pl-0 text-muted-foreground">
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Track another order
+        Back to search
       </Button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-bold">Order Details</h1>
+        <div className="text-muted-foreground text-sm">
+          <span>Order # {currentOrder.id.substring(0, 8)}</span>
+          <span className="mx-2">|</span>
+          <span>
+            Placed on{' '}
+            {new Date(currentOrder.created_at).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-2 space-y-6">
-            <OrderItemsCard order={currentOrder} />
-            <Card>
-                <CardHeader>
-                    <CardTitle>Shipment History</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <TrackingTimeline events={currentOrder.events} />
-                </CardContent>
-            </Card>
+          <OrderItemsCard order={currentOrder} onNavigate={onNavigate} />
+          <Card>
+            <CardHeader>
+              <CardTitle>Shipment History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TrackingTimeline events={currentOrder.events} />
+            </CardContent>
+          </Card>
         </div>
 
-        <div className="lg:col-span-1 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Order Summary</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                    <div className="flex justify-between">
-                        <span className="text-muted-foreground">Order ID</span>
-                        <span className="font-mono">#{currentOrder.id.substring(0,8)}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Order Date</span>
-                        <span>{new Date(currentOrder.events[0].timestamp).toLocaleDateString()}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Order Status</span>
-                        <span className="font-semibold capitalize">{currentOrder.status}</span>
-                    </div>
-                </CardContent>
-            </Card>
-
-             <Card>
-                <CardHeader>
-                    <CardTitle className="text-base">Payment Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Payment Method</span>
-                        <span>Card</span>
-                    </div>
-                    <Separator />
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span>£{subtotal.toFixed(2)}</span>
-                    </div>
-                     <div className="flex justify-between">
-                        <span className="text-muted-foreground">Delivery Fee</span>
-                        <span>£{deliveryFee.toFixed(2)}</span>
-                    </div>
-                    <Separator />
-                     <div className="flex justify-between font-bold">
-                        <span>Total</span>
-                        <span>£{total.toFixed(2)}</span>
-                    </div>
-                </CardContent>
-            </Card>
-            
-             {currentOrder.status !== 'delivered' && currentOrder.status !== 'cancelled' && (
-               <Button 
-                    className="w-full"
-                    onClick={() => setShowConfirmModal(true)}
-                    disabled={isConfirming}
-                >
-                    {isConfirming && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Confirm Receipt
-                </Button>
-            )}
+        <div className="lg:col-span-1 space-y-6 lg:sticky top-24">
+           <ActionCard
+                orderStatus={currentOrder.status}
+                onConfirmReceipt={handleConfirmReceipt}
+                isConfirming={isConfirming}
+            />
+          <PaymentDetailsCard payment={currentOrder.payment} />
+          <DeliveryInfoCard shippingAddress={currentOrder.shippingAddress} />
         </div>
       </div>
     </div>
-    
-     <ConfirmationModal
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={handleConfirmReceipt}
-        title="Confirm Receipt"
-        description="Are you sure you have received all items in this order in good condition? This will release payment to the seller."
-        confirmText="Yes, I've Received It"
-        type="warning"
-        consequences={[
-          'Payment will be transferred to the seller.',
-          'This action cannot be undone.'
-        ]}
-      />
-    </>
   );
 }
