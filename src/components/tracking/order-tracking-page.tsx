@@ -1,13 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { TrackingSearch } from './tracking-search';
 import { TrackingDetails } from './tracking-details';
 import { AnimatePresence, motion } from 'framer-motion';
-import { OrderDetails } from './types';
+import type { OrderDetails } from './types';
+import { useRouter } from 'next/navigation';
 
 
 export function OrderTrackingPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const orderIdFromUrl = searchParams.get('orderId');
+
   const [selectedOrder, setSelectedOrder] = useState<OrderDetails | null>(
     null
   );
@@ -32,6 +38,7 @@ export function OrderTrackingPage() {
 
   const handleClear = () => {
     setSelectedOrder(null);
+    router.push('/tracking');
   };
 
   return (
@@ -45,7 +52,7 @@ export function OrderTrackingPage() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.3 }}
           >
-            <TrackingDetails order={selectedOrder} onClear={handleClear} onNavigate={() => {}} />
+            <TrackingDetails order={selectedOrder} onClear={handleClear} onNavigate={router.push} />
           </motion.div>
         ) : (
           <motion.div
@@ -64,6 +71,7 @@ export function OrderTrackingPage() {
             <TrackingSearch
               onTrackOrder={handleTrackOrder}
               onSelectOrder={handleSelectOrder}
+              initialOrderId={orderIdFromUrl}
             />
           </motion.div>
         )}

@@ -22,6 +22,7 @@ export async function GET(request: Request) {
       actual_delivery_date,
       shipping_address,
       total_amount,
+      payment_method,
       buyer:profiles (full_name)
     `)
     .eq('id', orderId)
@@ -108,7 +109,7 @@ export async function GET(request: Request) {
       phone: shippingAddress?.phone || 'N/A',
     },
     payment: {
-        method: 'Card', // Mocking for now
+        method: orderData.payment_method || 'Card',
         subtotal: subtotal,
         deliveryFee: deliveryFee,
         total: orderData.total_amount,

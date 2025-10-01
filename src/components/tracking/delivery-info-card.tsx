@@ -1,6 +1,6 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { OrderDetails } from './types';
+import type { OrderDetails } from './types';
 
 interface DeliveryInfoCardProps {
   shippingAddress: OrderDetails['shippingAddress'];

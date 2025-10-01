@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   MessageCircle,
@@ -7,7 +7,7 @@ import {
   FileText,
   Star,
 } from 'lucide-react';
-import { OrderDetails } from './types';
+import type { OrderDetails } from './types';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { TrackingTimeline } from './tracking-timeline';
@@ -16,7 +16,7 @@ import { OrderSummaryCard } from './order-summary-card';
 import { PaymentDetailsCard } from './payment-details-card';
 import { DeliveryInfoCard } from './delivery-info-card';
 import { ActionCard } from './action-card';
-import { createClient } from '@/lib/supabase/client';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 
 interface TrackingDetailsProps {
   order: OrderDetails;
@@ -28,7 +28,10 @@ export function TrackingDetails({ order, onClear, onNavigate }: TrackingDetailsP
   const { toast } = useToast();
   const [currentOrder, setCurrentOrder] = useState(order);
   const [isConfirming, setIsConfirming] = useState(false);
-  const supabase = createClient();
+
+  useEffect(() => {
+    setCurrentOrder(order);
+  }, [order]);
 
   const handleConfirmReceipt = async () => {
     setIsConfirming(true);
@@ -44,10 +47,10 @@ export function TrackingDetails({ order, onClear, onNavigate }: TrackingDetailsP
         throw new Error(result.error || 'Failed to confirm receipt.');
       }
       
-      const updatedOrder = await fetchOrderDetails(currentOrder.id);
-      if (updatedOrder) {
-          setCurrentOrder(updatedOrder);
-      }
+      const updatedResponse = await fetch(`/api/orders/track?orderId=${currentOrder.id}`);
+      const updatedOrder = await updatedResponse.json();
+      
+      setCurrentOrder(updatedOrder);
       
       toast({
         title: 'Order Completed',
@@ -64,14 +67,6 @@ export function TrackingDetails({ order, onClear, onNavigate }: TrackingDetailsP
       setIsConfirming(false);
     }
   };
-
-  const fetchOrderDetails = async (orderId: string): Promise<OrderDetails | null> => {
-      const { data, error } = await supabase.from('orders').select('*, items:order_items(*, product:products(*, seller:profiles(*)))').eq('id', orderId).single();
-      if (error || !data) return null;
-      // This mapping logic should ideally be in the API route, but doing it here for speed.
-      // A more robust solution would re-use the mapping from the `track` API endpoint.
-      return data as unknown as OrderDetails;
-  }
 
   return (
     <div className="space-y-6">
@@ -115,6 +110,7 @@ export function TrackingDetails({ order, onClear, onNavigate }: TrackingDetailsP
                 onConfirmReceipt={handleConfirmReceipt}
                 isConfirming={isConfirming}
             />
+          <OrderSummaryCard order={currentOrder} />
           <PaymentDetailsCard payment={currentOrder.payment} />
           <DeliveryInfoCard shippingAddress={currentOrder.shippingAddress} />
         </div>

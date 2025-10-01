@@ -1,23 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, AlertCircle } from 'lucide-react';
-import { OrderDetails } from './order-tracking-page';
+import type { OrderDetails } from './types';
 import { AnimatePresence, motion } from 'framer-motion';
 
 interface TrackingSearchProps {
   onTrackOrder: (orderId: string) => Promise<OrderDetails | null>;
   onSelectOrder: (order: OrderDetails) => void;
+  initialOrderId?: string | null;
 }
 
 export function TrackingSearch({
   onTrackOrder,
   onSelectOrder,
+  initialOrderId,
 }: TrackingSearchProps) {
-  const [trackingInput, setTrackingInput] = useState('');
+  const [trackingInput, setTrackingInput] = useState(initialOrderId || '');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -40,6 +42,13 @@ export function TrackingSearch({
     }
     setIsLoading(false);
   };
+  
+  useEffect(() => {
+    if (initialOrderId) {
+      handleSearch();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialOrderId]);
 
   return (
     <div className="space-y-6">

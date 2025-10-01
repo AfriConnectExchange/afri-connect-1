@@ -1,20 +1,23 @@
 'use client';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface ActionCardProps {
-  orderStatus: 'processing' | 'shipped' | 'delivered' | 'cancelled';
+  orderStatus: 'pending' | 'processing' | 'shipped' | 'in-transit' | 'out-for-delivery' | 'delivered' | 'cancelled' | 'failed';
   onConfirmReceipt: () => void;
   isConfirming: boolean;
 }
 
 export function ActionCard({ orderStatus, onConfirmReceipt, isConfirming }: ActionCardProps) {
+    const router = useRouter();
 
     const renderContent = () => {
         switch(orderStatus) {
             case 'shipped':
             case 'out-for-delivery':
+            case 'in-transit':
                 return (
                     <div className="text-center space-y-3">
                         <h3 className="font-semibold">Have you received your order?</h3>
@@ -30,7 +33,7 @@ export function ActionCard({ orderStatus, onConfirmReceipt, isConfirming }: Acti
                     <div className="text-center space-y-3">
                         <h3 className="font-semibold">Order Delivered!</h3>
                         <p className="text-sm text-muted-foreground">Thank you for your purchase. We hope you enjoy your items.</p>
-                        <Button className="w-full">Leave a Review</Button>
+                        <Button className="w-full" onClick={() => router.push('/reviews')}>Leave a Review</Button>
                     </div>
                 );
              case 'processing':
@@ -50,12 +53,15 @@ export function ActionCard({ orderStatus, onConfirmReceipt, isConfirming }: Acti
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardHeader>
+        <CardTitle className="text-base">Actions</CardTitle>
+      </CardHeader>
+      <CardContent>
         {content}
         <div className="text-center mt-4">
-            <Button variant="link" size="sm" className="text-muted-foreground">Raise a Dispute</Button>
+            <Button variant="link" size="sm" className="text-muted-foreground h-auto p-1">Raise a Dispute</Button>
             <span className="text-muted-foreground mx-1">·</span>
-            <Button variant="link" size="sm" className="text-muted-foreground">Contact Seller</Button>
+            <Button variant="link" size="sm" className="text-muted-foreground h-auto p-1">Contact Seller</Button>
         </div>
       </CardContent>
     </Card>

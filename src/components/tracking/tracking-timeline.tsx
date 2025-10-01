@@ -1,7 +1,7 @@
 'use client';
-import { TrackingEvent } from './types';
+import type { TrackingEvent } from './types';
 import { cn } from '@/lib/utils';
-import { CheckCircle, Truck, Package, Home } from 'lucide-react';
+import { CheckCircle, Truck, Package, Home, XCircle } from 'lucide-react';
 
 interface TrackingTimelineProps {
   events: TrackingEvent[];
@@ -11,10 +11,16 @@ export function TrackingTimeline({ events }: TrackingTimelineProps) {
   const getIconForStatus = (status: string) => {
     const lowerStatus = status.toLowerCase();
     if (lowerStatus.includes('delivered')) return <Home className="h-5 w-5" />;
-    if (lowerStatus.includes('shipped') || lowerStatus.includes('delivery')) return <Truck className="h-5 w-5" />;
-    if (lowerStatus.includes('placed') || lowerStatus.includes('confirmed')) return <CheckCircle className="h-5 w-5" />;
-    return <Package className="h-5 w-5" />;
+    if (lowerStatus.includes('out for delivery')) return <Truck className="h-5 w-5" />;
+    if (lowerStatus.includes('shipped') || lowerStatus.includes('in-transit')) return <Truck className="h-5 w-5" />;
+    if (lowerStatus.includes('placed') || lowerStatus.includes('confirmed') || lowerStatus.includes('processing')) return <Package className="h-5 w-5" />;
+    if (lowerStatus.includes('cancelled') || lowerStatus.includes('failed')) return <XCircle className="h-5 w-5" />;
+    return <CheckCircle className="h-5 w-5" />;
   };
+
+  if (!events || events.length === 0) {
+    return <p className="text-muted-foreground text-sm">No tracking history available yet.</p>
+  }
 
   return (
     <div className="space-y-8">

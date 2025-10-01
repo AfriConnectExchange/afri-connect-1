@@ -1,7 +1,7 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { OrderDetails } from './types';
+import type { OrderDetails } from './types';
 
 interface PaymentDetailsCardProps {
   payment: OrderDetails['payment'];

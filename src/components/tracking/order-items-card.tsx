@@ -1,7 +1,7 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import { OrderDetails } from './types';
+import type { OrderDetails } from './types';
 
 interface OrderItemsCardProps {
   order: OrderDetails;
