@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { type OrderDetails, type TrackingEvent } from '@/components/tracking/types';
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
       payment_method,
       buyer:profiles (full_name)
     `)
-    .eq('id', orderId)
+    .or(`id.eq.${orderId},tracking_number.eq.${orderId}`)
     .single();
 
   if (orderError || !orderData) {
