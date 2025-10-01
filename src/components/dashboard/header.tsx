@@ -11,6 +11,7 @@ import {
   Package,
   Settings,
   Handshake,
+  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -93,6 +94,8 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }
 
   const notificationCount = 2; // Mock
+  
+  const canAccessSellerFeatures = profile && [2, 3].includes(profile.role_id);
 
   const menuItems = {
       mobile: [
@@ -286,6 +289,14 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                           {menuItems.dropdown.filter(item => item.show && item.icon).map((item) => (
                              <Link key={item.id} href={item.href}><DropdownMenuItem><item.icon className="mr-2 h-4 w-4" /><span>{item.label}</span></DropdownMenuItem></Link>
                           ))}
+                           {canAccessSellerFeatures && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <Link href="/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
+                              <Link href="/adverts"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
+                            </>
+                           )}
+                           <DropdownMenuSeparator />
                            <Link href="/profile?tab=settings"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
