@@ -47,7 +47,6 @@ function OrdersSkeleton() {
                         <TableHead><Skeleton className="h-5 w-1/2" /></TableHead>
                         <TableHead><Skeleton className="h-5 w-1/2" /></TableHead>
                         <TableHead><Skeleton className="h-5 w-1/2" /></TableHead>
-                        <TableHead><span className="sr-only">Actions</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -57,7 +56,6 @@ function OrdersSkeleton() {
                             <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
                             <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
                             <TableCell><Skeleton className="h-5 w-1/2" /></TableCell>
-                            <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                         </TableRow>
                     ))}
                 </TableBody>
@@ -139,12 +137,11 @@ export function MyOrdersPage() {
                     <TableHead>Status</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead><span className="sr-only">Actions</span></TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {orders.map((order) => (
-                    <TableRow key={order.id}>
+                    <TableRow key={order.id} className="cursor-pointer" onClick={() => handleTrackOrder(order.id)}>
                         <TableCell className="font-medium">#{order.id.substring(0, 8)}</TableCell>
                         <TableCell className="text-muted-foreground">
                           {order.order_items.map(item => item.product.title).join(', ')}
@@ -156,12 +153,6 @@ export function MyOrdersPage() {
                         </TableCell>
                         <TableCell>£{parseFloat(order.total_amount).toFixed(2)}</TableCell>
                         <TableCell>{new Date(order.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell>
-                         <Button variant="outline" size="sm" onClick={() => handleTrackOrder(order.id)}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Track
-                          </Button>
-                        </TableCell>
                     </TableRow>
                     ))}
                 </TableBody>
