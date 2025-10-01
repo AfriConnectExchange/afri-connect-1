@@ -16,7 +16,7 @@ const createOrderSchema = z.object({
   subtotal: z.number(),
   deliveryFee: z.number(),
   total: z.number(),
-  paymentMethod: z.string(), // Now accepts more generic 'online'
+  paymentMethod: z.string(), // Now accepts more generic 'card' etc.
   shippingAddress: z.object({
       street: z.string(),
       city: z.string(),
