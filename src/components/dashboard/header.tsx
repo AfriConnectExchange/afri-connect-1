@@ -10,6 +10,7 @@ import {
   LogOut,
   Package,
   Settings,
+  Handshake,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,7 +42,7 @@ interface HeaderProps {
 export function Header({ cartCount = 0 }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -103,6 +104,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
       dropdown: [
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
+        { id: '/barter', label: 'My Barter Proposals', href: '/barter', show: true, icon: Handshake },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
       ]
   }
