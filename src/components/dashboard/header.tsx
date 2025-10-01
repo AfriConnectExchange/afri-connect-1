@@ -245,7 +245,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
             </div>
 
             {user ? (
-              <div className="hidden md:flex items-center gap-1">
+              <div className="hidden md:flex items-center gap-2">
                 <Link href="/cart" passHref>
                   <motion.div
                     animate={isCartAnimating ? { scale: [1, 1.2, 1], rotate: [0, -10, 10, 0] } : {}}
