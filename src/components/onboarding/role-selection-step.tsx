@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { AnimatedButton } from '../ui/animated-button';
 
 interface RoleSelectionStepProps {
-  onNext: () => void;
+  onNext: (data: { role: string }) => void;
   onBack: () => void;
   onUpdate: (data: { role: string }) => void;
   currentValue: string;
@@ -57,7 +57,7 @@ export function RoleSelectionStep({ onNext, onBack, onUpdate, currentValue }: Ro
 
         <div className="flex justify-between items-center">
             <AnimatedButton variant="outline" onClick={onBack}>Back</AnimatedButton>
-            <AnimatedButton onClick={onNext} disabled={!selectedRole}>Next</AnimatedButton>
+            <AnimatedButton onClick={() => onNext({ role: selectedRole })} disabled={!selectedRole}>Next</AnimatedButton>
         </div>
         </div>
     );

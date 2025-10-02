@@ -1,6 +1,7 @@
 
 'use client';
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { WelcomeStep } from './welcome-step';
 import { RoleSelectionStep } from './role-selection-step';
 import { PersonalDetailsStep } from './personal-details-step';
@@ -13,16 +14,16 @@ import { type User } from '@supabase/supabase-js';
 
 export function OnboardingFlow() {
   const supabase = createClient();
-  const [currentStep, setCurrentStep] = useState(0);
+  const router = useRouter();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const [userData, setUserData] = useState({
-    role_id: '1', // Default role_id for 'buyer'
+    role_id: '1',
     full_name: '',
     phone_number: '',
     location: '',
-    onboarding_completed: false,
   });
 
   useEffect(() => {
@@ -31,24 +32,67 @@ export function OnboardingFlow() {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
-      setUserData((prev) => ({
-        ...prev,
-        full_name: user?.user_metadata.full_name || user?.email || '',
-        phone_number: user?.phone || '',
-        location: user?.user_metadata.location || '',
-      }));
+      if (user) {
+        setUserData((prev) => ({
+          ...prev,
+          full_name: user.user_metadata.full_name || user.email || '',
+          phone_number: user.phone || '',
+          location: user.user_metadata.location || '',
+        }));
+      }
     };
     getUser();
   }, [supabase]);
 
-  const handleNext = () => setCurrentStep((prev) => prev + 1);
+  const handleRoleSelection = async (data: { role: string }) => {
+    const roleId = parseInt(data.role, 10);
+    handleUpdateUserData({ role_id: data.role });
+
+    if (!user) {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'You must be logged in.',
+      });
+      return;
+    }
+
+    // Save the role immediately
+    const { error } = await supabase
+      .from('profiles')
+      .update({ role_id: roleId })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Failed to Save Role',
+        description: error.message,
+      });
+      return;
+    }
+
+    // --- DYNAMIC FLOW LOGIC ---
+    if (roleId === 1) {
+      // Buyer: proceed to the next step in the modal
+      setCurrentStep((prev) => prev + 1);
+    } else {
+      // Seller, SME, Trainer: redirect to KYC page
+      toast({
+        title: 'Verification Required',
+        description: "Let's get you verified to start selling.",
+      });
+      router.push('/kyc');
+    }
+  };
+
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
   const handleUpdateUserData = (data: Partial<typeof userData>) => {
     setUserData((prev) => ({ ...prev, ...data }));
   };
 
-  const handleOnboardingComplete = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
+  const handleBuyerDetailsSubmit = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
     if (!user) {
       toast({
         variant: 'destructive',
@@ -57,46 +101,16 @@ export function OnboardingFlow() {
       });
       return;
     }
-    
-    const dataToSave = {
-      id: user.id,
-      ...finalData,
-      role_id: parseInt(userData.role_id, 10),
-      onboarding_completed: true,
-      email: user.email, // Include email from the auth user
-      avatar_url: user.user_metadata.avatar_url,
-    };
-    
-    // Check if a profile already exists
-    const { data: existingProfile, error: fetchError } = await supabase
+
+    const { error } = await supabase
       .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .single();
-
-    let error;
-
-    if (existingProfile) {
-        // Profile exists, so we UPDATE it
-        const { error: updateError } = await supabase
-            .from('profiles')
-            .update({
-                full_name: dataToSave.full_name,
-                phone_number: dataToSave.phone_number,
-                location: dataToSave.location,
-                role_id: dataToSave.role_id,
-                onboarding_completed: true,
-            })
-            .eq('id', user.id);
-        error = updateError;
-    } else {
-        // Profile doesn't exist, so we INSERT it
-        const { error: insertError } = await supabase
-            .from('profiles')
-            .insert(dataToSave);
-        error = insertError;
-    }
-
+      .update({
+        full_name: finalData.full_name,
+        phone_number: finalData.phone_number,
+        location: finalData.location,
+        onboarding_completed: true,
+      })
+      .eq('id', user.id);
 
     if (error) {
       toast({
@@ -108,25 +122,25 @@ export function OnboardingFlow() {
       // Also update the auth user's metadata as a fallback/sync
       await supabase.auth.updateUser({
         data: {
-            full_name: dataToSave.full_name,
-            phone: dataToSave.phone_number,
-            location: dataToSave.location,
-        }
+          full_name: finalData.full_name,
+          phone: finalData.phone_number,
+          location: finalData.location,
+        },
       });
-      handleNext();
+      setCurrentStep((prev) => prev + 1); // Move to final step
     }
   };
 
   const steps = [
-    <WelcomeStep onNext={handleNext} />,
+    <WelcomeStep onNext={() => setCurrentStep(1)} />,
     <RoleSelectionStep
-      onNext={handleNext}
+      onNext={handleRoleSelection}
       onBack={handleBack}
       onUpdate={(data) => handleUpdateUserData({ role_id: data.role })}
       currentValue={userData.role_id}
     />,
     <PersonalDetailsStep
-      onNext={handleOnboardingComplete}
+      onNext={handleBuyerDetailsSubmit}
       onBack={handleBack}
       defaultValues={{
         fullName: userData.full_name,
