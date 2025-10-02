@@ -1,10 +1,11 @@
 'use client';
-import { Upload, FileText, CheckCircle, XCircle, Shield } from 'lucide-react';
+import { Upload, FileText, CheckCircle, XCircle, Shield, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { DocumentUpload } from "../kyc-flow";
+import { createClient } from '@/lib/supabase/client';
 
 interface DocumentUploadStepProps {
     documents: DocumentUpload[];
@@ -13,30 +14,56 @@ interface DocumentUploadStepProps {
 }
 
 export function DocumentUploadStep({ documents, setDocuments, setError }: DocumentUploadStepProps) {
+    const supabase = createClient();
+    const [uploadingDocId, setUploadingDocId] = useState<string | null>(null);
 
-    const handleFileUpload = (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileUpload = async (documentId: string, event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
         if (file.size > 5 * 1024 * 1024) {
-        setError('File size must be less than 5MB');
-        return;
+            setError('File size must be less than 5MB');
+            return;
         }
 
         const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
         if (!allowedTypes.includes(file.type)) {
-        setError('File must be JPEG, PNG, or PDF format');
-        return;
+            setError('File must be JPEG, PNG, or PDF format');
+            return;
         }
 
-        setDocuments(prev => 
-        prev.map(doc => 
-            doc.id === documentId 
-            ? { ...doc, file, uploaded: true, status: 'pending' }
-            : doc
-        )
-        );
         setError('');
+        setUploadingDocId(documentId);
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) {
+                throw new Error("You must be logged in to upload documents.");
+            }
+            
+            // Use the correct bucket: kyc_documents
+            const filePath = `${user.id}/${documentId}_${Date.now()}_${file.name}`;
+            const { error: uploadError } = await supabase.storage
+                .from('kyc_documents')
+                .upload(filePath, file);
+
+            if (uploadError) {
+                throw uploadError;
+            }
+
+            setDocuments(prev => 
+                prev.map(doc => 
+                    doc.id === documentId 
+                    ? { ...doc, file, uploaded: true, status: 'pending' }
+                    : doc
+                )
+            );
+
+        } catch(error: any) {
+            setError(`Upload failed: ${error.message}`);
+        } finally {
+            setUploadingDocId(null);
+        }
     };
 
     const removeDocument = (documentId: string) => {
@@ -107,14 +134,20 @@ export function DocumentUploadStep({ documents, setDocuments, setError }: Docume
                     onChange={(e) => handleFileUpload(document.id, e)}
                     className="hidden"
                     id={`file-${document.id}`}
+                    disabled={!!uploadingDocId}
                     />
                     <Button
                     type="button"
                     variant="outline"
                     onClick={() => window.document.getElementById(`file-${document.id}`)?.click()}
+                    disabled={!!uploadingDocId}
                     >
-                    <Upload className="w-4 h-4 mr-2" />
-                    Choose File
+                      {uploadingDocId === document.id ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : (
+                          <Upload className="w-4 h-4 mr-2" />
+                      )}
+                      {uploadingDocId === document.id ? 'Uploading...' : 'Choose File'}
                     </Button>
                 </div>
                 )}
