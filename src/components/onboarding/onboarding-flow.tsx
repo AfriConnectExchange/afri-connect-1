@@ -33,10 +33,16 @@ export function OnboardingFlow() {
       } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
+        let userPhone = user.phone || '';
+        // FIX: Ensure phone number is in E.164 format for the input component
+        if (userPhone && !userPhone.startsWith('+')) {
+            userPhone = `+${userPhone}`;
+        }
+        
         setUserData((prev) => ({
           ...prev,
           full_name: user.user_metadata.full_name || user.email || '',
-          phone_number: user.phone || '',
+          phone_number: userPhone,
           location: user.user_metadata.location || '',
         }));
       }
@@ -85,15 +91,14 @@ export function OnboardingFlow() {
       router.push('/kyc');
     }
   };
-
-  const handleBack = () => setCurrentStep((prev) => prev - 1);
-
-  const handleUpdateUserData = (data: Partial<typeof userData>) => {
-    setUserData((prev) => ({ ...prev, ...data }));
-  };
-
-  const handleBuyerDetailsSubmit = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
-    if (!user) {
+  
+  const handleOnboardingComplete = async (data: {
+    role_id: string;
+    full_name: string;
+    phone_number: string;
+    location: string;
+  }) => {
+     if (!user) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -102,33 +107,45 @@ export function OnboardingFlow() {
       return;
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        full_name: finalData.full_name,
-        phone_number: finalData.phone_number,
-        location: finalData.location,
-        onboarding_completed: true,
-      })
-      .eq('id', user.id);
+    // This operation will now either INSERT a new profile or UPDATE an existing one.
+    const { error } = await supabase.rpc('upsert_profile', {
+      p_id: user.id,
+      p_full_name: data.full_name,
+      p_phone_number: data.phone_number,
+      p_location: data.location,
+      p_role_id: parseInt(data.role_id, 10),
+      p_onboarding_completed: true,
+    });
+
 
     if (error) {
-      toast({
+       toast({
         variant: 'destructive',
         title: 'Failed to Save Profile',
         description: error.message,
       });
     } else {
-      // Also update the auth user's metadata as a fallback/sync
+       // Also update the auth user's metadata as a fallback/sync
       await supabase.auth.updateUser({
         data: {
-          full_name: finalData.full_name,
-          phone: finalData.phone_number,
-          location: finalData.location,
+          full_name: data.full_name,
+          phone: data.phone_number,
+          location: data.location,
         },
       });
-      setCurrentStep((prev) => prev + 1); // Move to final step
+      setCurrentStep((prev) => prev + 1);
     }
+  };
+
+
+  const handleBack = () => setCurrentStep((prev) => prev - 1);
+
+  const handleUpdateUserData = (data: Partial<typeof userData>) => {
+    setUserData((prev) => ({ ...prev, ...data }));
+  };
+
+  const handleBuyerDetailsSubmit = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
+    await handleOnboardingComplete({ ...userData, ...finalData });
   };
 
   const steps = [
