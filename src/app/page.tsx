@@ -13,6 +13,8 @@ import { createClient } from '@/lib/supabase/client';
 // Import AuthApiError to perform more robust error checking
 import { type User, type Session, AuthApiError } from '@supabase/supabase-js';
 import OTPVerification from '@/components/auth/OTPVerification';
+import { Card, CardContent } from '@/components/ui/card';
+import { CheckCircle, Loader2 } from 'lucide-react';
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
@@ -21,6 +23,7 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
 
@@ -165,7 +168,8 @@ export default function Home() {
         setIsLoading(false); // Only stop loading on error
     } else if (session) {
         showAlert('default', 'Verification Successful!', 'Redirecting...');
-        // Keep isLoading true to show a loading state while redirecting
+        setIsLoading(false);
+        setIsRedirecting(true); // Show redirecting UI
         router.refresh(); // This will trigger middleware to redirect to onboarding/marketplace
     } else {
         showAlert('destructive', 'Verification Failed', 'Could not log you in. Please try again.');
@@ -243,8 +247,30 @@ export default function Home() {
     return <PageLoader />;
   }
 
+  const RedirectingCard = () => (
+    <Card className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden w-full max-w-md">
+      <CardContent className="p-8 sm:p-10 text-center">
+        <div className="flex justify-center mb-6">
+          <div className="w-20 h-20 bg-green-100 dark:bg-green-900/50 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-10 h-10 text-green-500" />
+          </div>
+        </div>
+        <h2 className="text-2xl font-semibold mb-3">Verification Successful!</h2>
+        <p className="text-sm text-muted-foreground mb-8">
+          Please wait while we redirect you...
+        </p>
+        <div className="flex justify-center">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
 
   const renderAuthCard = () => {
+    if (isRedirecting) {
+        return <RedirectingCard />;
+    }
     switch (authMode) {
       case 'signin':
         return (
