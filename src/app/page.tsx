@@ -158,16 +158,19 @@ export default function Home() {
       phone: formData.phone,
       token: otp,
       type: 'sms', // <-- CORRECT: The type for phone verification is always 'sms'
-  });
+    });
+
     if (error) {
         showAlert('destructive', 'Verification Failed', error.message);
+        setIsLoading(false); // Only stop loading on error
     } else if (session) {
-        showAlert('default', 'Verification Successful!', 'You are now logged in.');
+        showAlert('default', 'Verification Successful!', 'Redirecting...');
+        // Keep isLoading true to show a loading state while redirecting
         router.refresh(); // This will trigger middleware to redirect to onboarding/marketplace
     } else {
         showAlert('destructive', 'Verification Failed', 'Could not log you in. Please try again.');
+        setIsLoading(false); // Stop loading on failure
     }
-    setIsLoading(false);
   }
 
 
@@ -226,9 +229,8 @@ export default function Home() {
     });
 
     if (error) {
-        // **UPDATED:** More robust error check for existing user with different provider.
         if (error instanceof AuthApiError && error.status === 409) {
-            showAlert('destructive', 'Login Failed', "It looks like you've signed up with this email before. Please log in using your original method (e.g., password) to access your account.");
+          showAlert('destructive', 'Login Failed', "An account with this email address already exists. Please try another sign in method.");
         } else {
             showAlert('destructive', 'Login Failed', error.message);
         }
