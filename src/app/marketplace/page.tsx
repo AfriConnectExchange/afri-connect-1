@@ -1,5 +1,6 @@
+
 'use client';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -25,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
 
 export interface Product {
-  id: string; // Changed to string for UUID
+  id: string;
   seller_id: string;
   title: string;
   description: string;
@@ -34,28 +35,30 @@ export interface Product {
   category_id: number;
   listing_type: 'sale' | 'barter' | 'freebie';
   status: 'active' | 'sold' | 'delisted';
-  images: string[]; // Assuming images are an array of URLs
+  images: string[];
   location_text: string; 
   created_at: string;
   updated_at: string;
   quantity_available: number;
   specifications?: any;
   shipping_policy?: any;
+  average_rating: number;
+  review_count: number;
   
   // Properties from old interface, to be mapped or joined
   name: string; // Will map from title
   originalPrice?: number;
-  rating: number; // Will need a join or separate fetch
-  reviews: number; // Will need a join or separate fetch
-  seller: string; // Will need a join to profiles table
-  sellerVerified: boolean; // Will need a join to profiles table
+  rating: number; 
+  reviews: number; 
+  seller: string; 
+  sellerVerified: boolean; 
   image: string; // Will use the first image from the images array
-  category: string; // Will need a join to categories table
+  category: string;
   featured?: boolean;
   discount?: number;
   isFree?: boolean;
   stockCount: number;
-  sellerDetails: any; // Add this to hold the full seller profile
+  sellerDetails: any; 
 }
 
 export interface Category {
@@ -83,7 +86,7 @@ export default function MarketplacePage() {
   
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState('relevance');
+  const [sortBy, setSortBy] = useState('created_at_desc');
   const [searchError, setSearchError] = useState('');
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -109,7 +112,11 @@ export default function MarketplacePage() {
         params.append('q', currentFilters.searchQuery);
       }
       if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-        params.append('category', currentFilters.selectedCategories.join(','));
+        // The API expects the category name, not the ID
+        const selectedCategoryName = categories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
+        if(selectedCategoryName) {
+            params.append('category', selectedCategoryName);
+        }
       }
       if (currentFilters.priceRange.min !== null) {
         params.append('minPrice', String(currentFilters.priceRange.min));
@@ -141,7 +148,7 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, categories]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -160,8 +167,14 @@ export default function MarketplacePage() {
     };
     
     fetchCategories();
-    fetchProducts(filters, sortBy);
-  }, [fetchProducts, filters, sortBy, toast]);
+  }, [toast]);
+  
+  useEffect(() => {
+     // Fetch products only after categories are loaded
+    if(categories.length > 0) {
+        fetchProducts(filters, sortBy);
+    }
+  }, [fetchProducts, filters, sortBy, categories]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -174,6 +187,10 @@ export default function MarketplacePage() {
 
   const onAddToCart = (product: Product) => {
     addToCart(product);
+     toast({
+      title: "Added to Cart",
+      description: `${product.name} has been added to your cart.`,
+    });
   };
 
   // Handle search with validation (US014)
@@ -302,7 +319,7 @@ export default function MarketplacePage() {
                     onClick={() => setMobileFiltersOpen(false)}
                     className="w-full"
                   >
-                    View {products.length} Results
+                    View {totalProducts} Results
                   </Button>
                 </div>
               </SheetContent>
@@ -326,10 +343,10 @@ export default function MarketplacePage() {
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="relevance">Most Relevant</SelectItem>
+                <SelectItem value="created_at_desc">Newest First</SelectItem>
                 <SelectItem value="price_asc">Price: Low to High</SelectItem>
                 <SelectItem value="price_desc">Price: High to Low</SelectItem>
-                <SelectItem value="created_at_desc">Newest First</SelectItem>
+                <SelectItem value="average_rating_desc">Highest Rated</SelectItem>
               </SelectContent>
             </Select>
           </div>
