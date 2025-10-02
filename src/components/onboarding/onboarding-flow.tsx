@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect } from 'react';
 import { WelcomeStep } from './welcome-step';
@@ -57,17 +58,45 @@ export function OnboardingFlow() {
       return;
     }
     
-    // Combine role from state with final data from the form
     const dataToSave = {
+      id: user.id,
       ...finalData,
       role_id: parseInt(userData.role_id, 10),
       onboarding_completed: true,
+      email: user.email, // Include email from the auth user
+      avatar_url: user.user_metadata.avatar_url,
     };
-
-    const { error } = await supabase
+    
+    // Check if a profile already exists
+    const { data: existingProfile, error: fetchError } = await supabase
       .from('profiles')
-      .update(dataToSave)
-      .eq('id', user.id);
+      .select('id')
+      .eq('id', user.id)
+      .single();
+
+    let error;
+
+    if (existingProfile) {
+        // Profile exists, so we UPDATE it
+        const { error: updateError } = await supabase
+            .from('profiles')
+            .update({
+                full_name: dataToSave.full_name,
+                phone_number: dataToSave.phone_number,
+                location: dataToSave.location,
+                role_id: dataToSave.role_id,
+                onboarding_completed: true,
+            })
+            .eq('id', user.id);
+        error = updateError;
+    } else {
+        // Profile doesn't exist, so we INSERT it
+        const { error: insertError } = await supabase
+            .from('profiles')
+            .insert(dataToSave);
+        error = insertError;
+    }
+
 
     if (error) {
       toast({
