@@ -44,8 +44,22 @@ export async function POST(request: Request) {
 
   const { orderId, courierName, trackingNumber } = validation.data;
   
-  // TODO: Verify that the current user is the seller for this order before updating.
-  // This is a critical security check missing for now.
+  // Security Check: Verify that the current user is the seller for this order.
+  const { data: orderData, error: orderError } = await supabase
+    .from('orders')
+    .select('buyer_id, order_items(seller_id)')
+    .eq('id', orderId)
+    .single();
+
+  if (orderError || !orderData) {
+      return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
+  }
+
+  const isSellerForOrder = orderData.order_items.some((item: any) => item.seller_id === user.id);
+  
+  if (!isSellerForOrder) {
+      return NextResponse.json({ error: 'You are not authorized to ship this order.' }, { status: 403 });
+  }
 
   // Step 1: Verify the tracking number with the mock logistics API
   const verificationResult = await verifyTrackingNumber(courierName, trackingNumber);
@@ -55,22 +69,21 @@ export async function POST(request: Request) {
   }
 
   // Step 2: If verification is successful, update the order in the database
-  const { error } = await supabase
+  const { error: updateError } = await supabase
     .from('orders')
     .update({
       status: 'shipped',
-      courier_name: courierName, // This column needs to be added to your 'orders' table
+      courier_name: courierName,
       tracking_number: trackingNumber,
     })
     .eq('id', orderId);
 
-  if (error) {
-    console.error('Error shipping order:', error);
-    return NextResponse.json({ error: 'Failed to update order status.', details: error.message }, { status: 500 });
+  if (updateError) {
+    console.error('Error shipping order:', updateError);
+    return NextResponse.json({ error: 'Failed to update order status.', details: updateError.message }, { status: 500 });
   }
   
   // Step 3: Create a notification for the buyer
-  const { data: orderData } = await supabase.from('orders').select('buyer_id').eq('id', orderId).single();
   if (orderData?.buyer_id) {
     await supabase.from('notifications').insert({
         user_id: orderData.buyer_id,

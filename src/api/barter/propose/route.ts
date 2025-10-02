@@ -67,7 +67,7 @@ export async function POST(request: Request) {
     type: 'barter',
     title: 'New Barter Proposal!',
     message: `You have received a new barter proposal for your item "${recipientProduct.title}".`,
-    link_url: '/barter' // A future page to view all proposals
+    link_url: '/barter'
   });
 
 
