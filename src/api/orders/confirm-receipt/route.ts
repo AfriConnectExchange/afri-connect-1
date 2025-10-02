@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   // 1. Verify the current user is the buyer for this order
   const { data: order, error: fetchError } = await supabase
     .from('orders')
-    .select('buyer_id, seller_id, total_amount')
+    .select('id, buyer_id, total_amount, order_items(seller_id)')
     .eq('id', orderId)
     .single();
 
@@ -57,6 +57,9 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ error: 'Failed to update order status.', details: updateError.message }, { status: 500 });
   }
+  
+  // Get unique seller IDs
+  const sellerIds = [...new Set(order.order_items.map((item: any) => item.seller_id))];
 
   await logSystemEvent(user, {
     type: 'order_confirmation',
@@ -64,7 +67,7 @@ export async function POST(request: Request) {
     amount: parseFloat(order.total_amount),
     description: `Buyer confirmed receipt for order ${orderId}`,
     order_id: orderId,
-    metadata: { seller_id: order.seller_id },
+    metadata: { seller_ids: sellerIds },
   });
   
   // 3. Trigger the escrow release to the seller.
@@ -84,15 +87,17 @@ export async function POST(request: Request) {
     // For now, we'll just log the error but still return success to the user.
   }
   
-  // 4. Create a notification for the seller that the order is complete.
-  if(order.seller_id) {
-    await supabase.from('notifications').insert({
-        user_id: order.seller_id,
-        type: 'order',
-        title: 'Order Completed!',
-        message: `Order #${orderId.substring(0,8)} has been marked as delivered by the buyer.`,
-        link_url: `/sales`
-    });
+  // 4. Create a notification for each seller that the order is complete.
+  for (const sellerId of sellerIds) {
+    if (sellerId) {
+        await supabase.from('notifications').insert({
+            user_id: sellerId,
+            type: 'order',
+            title: 'Order Completed!',
+            message: `Order #${orderId.substring(0,8)} has been marked as delivered by the buyer.`,
+            link_url: `/sales`
+        });
+    }
   }
 
 

@@ -24,7 +24,12 @@ export async function GET(request: Request) {
   // If not, you would map it here. For now, we assume the RPC returns the expected structure.
   
   // A more robust query within the RPC would be better, but if we need to join here:
-  const orderIds = data.map((d: any) => d.id);
+  const orderIds = (data as any[] || []).map((d: any) => d.id);
+  
+  if (orderIds.length === 0) {
+    return NextResponse.json([]);
+  }
+  
   const { data: finalData, error: finalError } = await supabase
     .from('orders')
     .select(`

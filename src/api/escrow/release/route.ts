@@ -25,10 +25,10 @@ export async function POST(request: Request) {
 
   const { orderId } = validation.data;
 
-  // 1. Verify the current user is the buyer for this order
+  // 1. Verify the current user is the buyer for this order and get order items
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
-    .select('buyer_id, seller_id, total_amount') // Select seller_id and amount as well
+    .select('id, buyer_id, total_amount, order_items(seller_id)')
     .eq('id', orderId)
     .single();
 
@@ -60,30 +60,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to release escrow payment.', details: escrowError.message }, { status: 500 });
   }
 
+  // Get unique seller IDs from the order items
+  const sellerIds = [...new Set(orderData.order_items.map((item: any) => item.seller_id))];
+
   // Log the successful escrow release
   await logSystemEvent(user, {
     type: 'escrow_release',
     status: 'success',
     amount: parseFloat(orderData.total_amount),
-    description: `Escrow released to seller for order ${orderId}`,
+    description: `Escrow released to sellers for order ${orderId}`,
     order_id: orderId,
-    metadata: { escrow_id: escrowData.id, seller_id: orderData.seller_id },
+    metadata: { escrow_id: escrowData.id, seller_ids: sellerIds },
   });
 
 
-  // 3. (Future step) This is where you would trigger a payout to the seller's connected account.
-  // For now, we'll create a notification for the seller.
-  
-  if(orderData.seller_id) {
-      await supabase.from('notifications').insert({
-          user_id: orderData.seller_id,
-          type: 'payment',
-          title: 'Funds Released!',
-          message: `Funds for order #${orderId.substring(0,8)} have been released and are on their way to you.`,
-          link_url: '/sales'
-      });
+  // 3. (Future step) This is where you would trigger payouts to sellers' connected accounts.
+  // For now, we'll create notifications for the sellers.
+  for (const sellerId of sellerIds) {
+      if (sellerId) {
+          await supabase.from('notifications').insert({
+              user_id: sellerId,
+              type: 'payment',
+              title: 'Funds Released!',
+              message: `Funds for order #${orderId.substring(0,8)} have been released and are on their way to you.`,
+              link_url: '/sales'
+          });
+      }
   }
-
 
   return NextResponse.json({ success: true, message: `Escrow released for order ${orderId}.`, data: escrowData });
 }
