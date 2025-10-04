@@ -12,9 +12,7 @@ const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
   : null;
 
 if (!getApps().length) {
-  if (!serviceAccount) {
-    console.error("Firebase service account key is not set. This API route will not work.");
-  } else {
+  if (serviceAccount) {
     initializeApp({
       credential: {
         projectId: serviceAccount.project_id,
@@ -22,6 +20,8 @@ if (!getApps().length) {
         privateKey: serviceAccount.private_key,
       },
     });
+  } else {
+    console.error("Firebase service account key is not set. This API route will not work during development.");
   }
 }
 
@@ -46,6 +46,21 @@ export async function GET() {
     const profileDoc = await adminFirestore.collection('profiles').doc(userId).get();
 
     if (!profileDoc.exists) {
+      // This is a new user who just signed up, or a user whose profile creation failed.
+      // We will create their profile now.
+      const userRecord = await adminAuth.getUser(userId);
+      const profileData = {
+          id: userId,
+          auth_user_id: userId,
+          email: userRecord.email,
+          full_name: userRecord.displayName || '',
+          phone_number: userRecord.phoneNumber || '',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          onboarding_completed: false,
+          primary_role: 'buyer',
+      };
+      await adminFirestore.collection('profiles').doc(userId).set(profileData);
       return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
     }
 
