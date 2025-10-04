@@ -4,27 +4,33 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function GET() {
   const supabase = createClient();
-  
-  // Call the new RPC function to get categories with counts efficiently
-  const { data, error } = await supabase.rpc('get_categories_with_product_counts');
+  const { data: categoriesData, error: categoriesError } = await supabase
+    .from('categories')
+    .select('id, name');
 
-  if (error) {
-    console.error('Error fetching categories with counts:', error);
-    return NextResponse.json({ error: 'Failed to fetch categories.' }, { status: 500 });
+  if (categoriesError) {
+    return NextResponse.json({ error: categoriesError.message }, { status: 500 });
   }
-  
-  // The RPC function result includes the total count for the "All" category.
-  const allCategory = data.find((c: any) => c.id === null);
-  const otherCategories = data.filter((c: any) => c.id !== null);
 
-  const allCategoriesData = [
-    { id: 'all', name: 'All Categories', count: allCategory ? allCategory.product_count : 0 },
-    ...otherCategories.map((c: any) => ({
-      id: c.id,
-      name: c.name,
-      count: c.product_count,
-    })),
+  // Fetch all products to calculate counts
+  const { data: productsData, error: productsError } = await supabase
+    .from('products')
+    .select('category_id');
+
+  if (productsError) {
+    return NextResponse.json({ error: productsError.message }, { status: 500 });
+  }
+
+  // Calculate the count for each category
+  const mappedCategories = categoriesData.map((c: any) => ({
+    ...c,
+    count: productsData?.filter(p => p.category_id === c.id).length || 0,
+  }));
+
+  const allCategories = [
+    { id: 'all', name: 'All Categories', count: productsData?.length || 0 },
+    ...mappedCategories,
   ];
 
-  return NextResponse.json(allCategoriesData);
+  return NextResponse.json(allCategories);
 }
