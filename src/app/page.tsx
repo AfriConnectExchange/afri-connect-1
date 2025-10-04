@@ -46,7 +46,7 @@ export default function Home() {
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
-  const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(true); // Start as true
   const { toast } = useToast();
   const router = useRouter();
 
@@ -64,35 +64,42 @@ export default function Home() {
 
   // Main redirect logic for already logged-in users
   useEffect(() => {
-    if (firebaseUser && !isUserLoading) {
-      setIsRedirecting(true);
-      const checkOnboarding = async () => {
-        if (!firestore) return;
-        const profileDocRef = doc(firestore, "profiles", firebaseUser.uid);
-        
-        try {
-            const profileDoc = await getDoc(profileDocRef);
-            
-            if (profileDoc.exists()) {
-                if (profileDoc.data().onboarding_completed) {
-                    router.replace('/marketplace');
-                } else {
-                    router.replace('/onboarding');
-                }
-            } else {
-                // This is a new user (e.g. from phone sign-in), create their profile and send to onboarding
-                await createProfileDocument(firebaseUser);
-                router.replace('/onboarding');
-            }
-        } catch (error) {
-            console.error("Error checking onboarding status:", error);
-            // Don't redirect, maybe show an error to the user
-            setIsRedirecting(false);
-            showAlert('destructive', 'Error', 'Could not verify your profile. Please try again.');
-        }
-      };
-      checkOnboarding();
+    if (isUserLoading) {
+      return; // Wait until user state is determined
     }
+
+    if (!firebaseUser) {
+      setIsRedirecting(false); // Not logged in, stop loading and show auth forms
+      return;
+    }
+
+    const checkOnboarding = async () => {
+      if (!firestore) return;
+      const profileDocRef = doc(firestore, "profiles", firebaseUser.uid);
+      
+      try {
+          const profileDoc = await getDoc(profileDocRef);
+          
+          if (profileDoc.exists()) {
+              if (profileDoc.data().onboarding_completed) {
+                  router.replace('/marketplace');
+              } else {
+                  router.replace('/onboarding');
+              }
+          } else {
+              // This is a new user (e.g. from phone sign-in), create their profile and send to onboarding
+              await createProfileDocument(firebaseUser);
+              router.replace('/onboarding');
+          }
+      } catch (error) {
+          console.error("Error checking onboarding status:", error);
+          // Don't redirect, maybe show an error to the user
+          setIsRedirecting(false);
+          showAlert('destructive', 'Error', 'Could not verify your profile. Please try again.');
+      }
+    };
+
+    checkOnboarding();
   }, [firebaseUser, isUserLoading, router, firestore]);
 
   // Email verification listener
@@ -106,8 +113,8 @@ export default function Home() {
           setIsVerifying(false);
           if(intervalId) clearInterval(intervalId);
           toast({ title: 'Email Verified!', description: 'Redirecting you to complete your profile.' });
-          setIsRedirecting(true);
-          // Don't check for profile here, let the main useEffect handle it
+          setIsRedirecting(true); // Set redirecting state to show loader
+          // The main useEffect will now handle the check and redirection
         }
       }, 3000); // Check every 3 seconds
     }
@@ -307,7 +314,7 @@ export default function Home() {
     }
   }
 
-  if (isUserLoading || isRedirecting) {
+  if (isRedirecting || isUserLoading) {
     return <PageLoader />;
   }
 
