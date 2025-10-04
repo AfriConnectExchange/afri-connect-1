@@ -13,10 +13,10 @@ interface RoleSelectionStepProps {
 }
 
 const roles = [
-  { id: '1', name: 'Buyer', description: 'Browse, buy, and trade for items.', icon: ShoppingBag },
-  { id: '2', name: 'Seller', description: 'List products and sell to a wide audience.', icon: Briefcase },
-  { id: '3', name: 'SME', description: 'Grow your Small or Medium Enterprise with our tools.', icon: Lightbulb },
-  { id: '4', name: 'Trainer', description: 'Offer courses and share your expertise.', icon: School, comingSoon: true },
+  { id: 'buyer', name: 'Buyer', description: 'Browse, buy, and trade for items.', icon: ShoppingBag },
+  { id: 'seller', name: 'Seller', description: 'List products and sell to a wide audience.', icon: Briefcase },
+  { id: 'sme', name: 'SME', description: 'Grow your Small or Medium Enterprise with our tools.', icon: Lightbulb },
+  { id: 'trainer', name: 'Trainer', description: 'Offer courses and share your expertise.', icon: School, comingSoon: true },
 ];
 
 export function RoleSelectionStep({ onNext, onBack, onUpdate, currentValue }: RoleSelectionStepProps) {

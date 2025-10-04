@@ -19,7 +19,7 @@ export function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(0);
 
   const [userData, setUserData] = useState({
-    role_id: 1, // Default to Buyer
+    primary_role: 'buyer',
     full_name: '',
     phone_number: '',
     location: '',
@@ -42,11 +42,11 @@ export function OnboardingFlow() {
   }, [supabase]);
 
   const handleRoleSelection = async (data: { role: string }) => {
-    const roleId = parseInt(data.role, 10);
-    handleUpdateUserData({ role_id: roleId });
+    const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
+    handleUpdateUserData({ primary_role: role });
 
     // For Buyers, we just move to the next step in the UI.
-    if (roleId === 1) {
+    if (role === 'buyer') {
       setCurrentStep((prev) => prev + 1);
     } else {
       // For Sellers, SMEs, Trainers, redirect to a dedicated, more detailed verification flow.
@@ -54,7 +54,7 @@ export function OnboardingFlow() {
       if (user) {
           const { error } = await supabase
             .from('profiles')
-            .update({ role_id: roleId })
+            .update({ primary_role: role })
             .eq('id', user.id);
           if (error) {
                toast({
@@ -88,11 +88,9 @@ export function OnboardingFlow() {
       .update({
         full_name: data.full_name,
         phone_number: data.phone_number,
-        // Using address_line1 for simplicity as per new schema.
-        // A more complex form could map to city, country etc.
         address_line1: data.location, 
         onboarding_completed: true,
-        role_id: userData.role_id, // ensure role is saved
+        primary_role: userData.primary_role,
       })
       .eq('id', user.id);
 
@@ -102,7 +100,6 @@ export function OnboardingFlow() {
        await supabase.auth.updateUser({
         data: {
           full_name: data.full_name,
-          phone: data.phone_number,
         },
       });
       setCurrentStep((prev) => prev + 1); // Move to final "All Set!" step
@@ -120,8 +117,8 @@ export function OnboardingFlow() {
     <RoleSelectionStep
       onNext={handleRoleSelection}
       onBack={handleBack}
-      onUpdate={(data) => handleUpdateUserData({ role_id: parseInt(data.role, 10) })}
-      currentValue={String(userData.role_id)}
+      onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as 'buyer' | 'seller' | 'sme' | 'trainer' })}
+      currentValue={String(userData.primary_role)}
     />,
     <PersonalDetailsStep
       onNext={handleOnboardingComplete}

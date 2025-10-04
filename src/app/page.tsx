@@ -92,6 +92,7 @@ export default function Home() {
       options: {
         data: {
           full_name: formData.name,
+          email: formData.email, // Pass email in options to be available for profile creation
         },
         emailRedirectTo: `${location.origin}/auth/callback`,
       },
@@ -134,6 +135,7 @@ export default function Home() {
          options: {
             data: {
                 full_name: formData.name,
+                phone_number: formData.phone,
             },
         }
     });
