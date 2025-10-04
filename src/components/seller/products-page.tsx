@@ -11,6 +11,7 @@ import { Skeleton } from '../ui/skeleton';
 import Image from 'next/image';
 import { ProductActions } from './product-actions';
 import type { Product } from '@/app/marketplace/page';
+import { useRouter } from 'next/navigation';
 
 function ProductsSkeleton() {
   return (
@@ -58,6 +59,7 @@ export function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const router = useRouter();
 
   const fetchProducts = async () => {
     setIsLoading(true);
@@ -127,7 +129,7 @@ export function ProductsPage() {
             Manage your product listings and inventory.
           </p>
         </div>
-        <Button>
+        <Button onClick={() => router.push('/(seller)/products/add')}>
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
         </Button>
       </div>
