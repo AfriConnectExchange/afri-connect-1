@@ -44,6 +44,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const supabase = createClient();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
@@ -61,6 +62,13 @@ export function Header({ cartCount = 0 }: HeaderProps) {
           .eq('id', user.id)
           .single();
         setProfile(profileData);
+        
+        const { count } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', user.id)
+            .eq('is_read', false);
+        setNotificationCount(count || 0);
       }
     };
     
@@ -72,6 +80,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
         fetchUserAndProfile();
       } else {
         setProfile(null);
+        setNotificationCount(0);
       }
     });
 
@@ -92,8 +101,6 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     await supabase.auth.signOut();
     router.push('/');
   }
-
-  const notificationCount = 2; // Mock
   
   const canAccessSellerFeatures = profile && [2, 3].includes(profile.role_id);
 

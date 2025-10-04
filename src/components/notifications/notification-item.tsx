@@ -1,11 +1,13 @@
+
 'use client';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { X, Package, TrendingUp, User, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Package, TrendingUp, User, AlertCircle, CheckCircle, Handshake, Truck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 export interface Notification {
   id: string;
-  type: 'order' | 'delivery' | 'promotion' | 'system';
+  type: 'order' | 'delivery' | 'promotion' | 'system' | 'barter' | 'payment';
   title: string;
   message: string;
   timestamp: string;
@@ -14,14 +16,17 @@ export interface Notification {
     label: string;
     onClick: () => void;
   };
+  link_url?: string;
   priority: 'high' | 'medium' | 'low';
 }
 
 const icons = {
     order: Package,
-    delivery: CheckCircle,
+    delivery: Truck,
     promotion: TrendingUp,
     system: User,
+    barter: Handshake,
+    payment: CheckCircle,
     default: AlertCircle
 }
 
@@ -40,33 +45,27 @@ export function NotificationItem({
   onMarkAsRead,
   onDelete,
 }: NotificationItemProps) {
+  const router = useRouter();
   const Icon = icons[notification.type] || icons.default;
 
   const getTypeStyles = (type: Notification['type']) => {
     switch (type) {
-      case 'order':
-        return { bg: 'bg-blue-100', text: 'text-blue-600' };
-      case 'delivery':
-        return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
-      case 'promotion':
-        return { bg: 'bg-purple-100', text: 'text-purple-600' };
-      case 'system':
-        return { bg: 'bg-gray-100', text: 'text-gray-600' };
-      default:
-        return { bg: 'bg-gray-100', text: 'text-gray-600' };
+      case 'order': return { bg: 'bg-blue-100', text: 'text-blue-600' };
+      case 'delivery': return { bg: 'bg-emerald-100', text: 'text-emerald-600' };
+      case 'promotion': return { bg: 'bg-purple-100', text: 'text-purple-600' };
+      case 'barter': return { bg: 'bg-orange-100', text: 'text-orange-600' };
+      case 'payment': return { bg: 'bg-green-100', text: 'text-green-600' };
+      case 'system': return { bg: 'bg-gray-100', text: 'text-gray-600' };
+      default: return { bg: 'bg-gray-100', text: 'text-gray-600' };
     }
   };
 
   const getPriorityColor = (priority: Notification['priority']) => {
     switch (priority) {
-      case 'high':
-        return 'bg-red-500';
-      case 'medium':
-        return 'bg-amber-500';
-      case 'low':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-400';
+      case 'high': return 'bg-red-500';
+      case 'medium': return 'bg-amber-500';
+      case 'low': return 'bg-green-500';
+      default: return 'bg-gray-400';
     }
   };
 
@@ -76,34 +75,34 @@ export function NotificationItem({
   };
 
   const typeStyles = getTypeStyles(notification.type);
+  
+  const handleItemClick = () => {
+    onMarkAsRead(notification.id);
+    if (notification.link_url) {
+      router.push(notification.link_url);
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className={`relative flex items-start gap-4 p-4 transition-colors duration-200 cursor-pointer ${
+      className={`relative flex items-start gap-3 sm:gap-4 p-4 transition-colors duration-200 cursor-pointer ${
         !notification.read ? 'bg-primary/5' : 'bg-transparent'
       } ${!isLast ? 'border-b' : ''} hover:bg-muted/50`}
-      onClick={() => !notification.read && onMarkAsRead(notification.id)}
+      onClick={handleItemClick}
     >
       {!notification.read && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
       )}
 
-      <div className="flex-shrink-0 flex flex-col items-center gap-2 pt-1">
-        <div
-          className={`w-2 h-2 rounded-full ${getPriorityColor(
-            notification.priority
-          )}`}
-        ></div>
-      </div>
-
-      <div
+       <div
         className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${typeStyles.bg}`}
       >
         <Icon className={`w-5 h-5 ${typeStyles.text}`} />
       </div>
+
 
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between mb-1">
@@ -132,7 +131,7 @@ export function NotificationItem({
           </div>
         </div>
 
-        <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+        <p className="text-sm text-muted-foreground mb-3 leading-relaxed line-clamp-2">
           {notification.message}
         </p>
 
