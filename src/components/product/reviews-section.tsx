@@ -4,8 +4,9 @@ import { Star } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { createClient } from '@/lib/supabase/client';
 import { WriteReviewForm } from './write-review-form';
+import { useFirestore, useUser } from '@/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export interface Review {
   id: string;
@@ -27,46 +28,64 @@ export function ReviewsSection({ reviews, productId, sellerId, onReviewSubmit }:
   const [canReview, setCanReview] = useState(false);
   const [hasReviewed, setHasReviewed] = useState(false);
   const [orderId, setOrderId] = useState<string | null>(null);
-  const supabase = createClient();
+  const firestore = useFirestore();
+  const { user } = useUser();
 
   useEffect(() => {
     const checkPurchaseAndReviewStatus = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user || !firestore) return;
       
-      // Check if user has purchased this product
-      const { data: orderItems, error: orderError } = await supabase
-        .from('order_items')
-        .select('order_id')
-        .eq('product_id', productId);
-        // .eq('order.buyer_id', user.id); TODO: Fix this RLS issue, for now we check if any order contains this product.
+      try {
+        // Check if user has purchased this product
+        // This is a simplified check. A real implementation would need more robust logic,
+        // potentially querying a dedicated 'orders' collection where buyer_id is indexed.
+        const ordersQuery = query(
+            collection(firestore, 'orders'), 
+            where('buyer_id', '==', user.uid),
+        );
+        const orderSnapshots = await getDocs(ordersQuery);
+        let purchasedOrderId: string | null = null;
 
-      if (orderError || !orderItems || orderItems.length === 0) {
-        setCanReview(false);
-        return;
-      }
-      
-      // Assuming one review per product purchase for simplicity
-      const purchasedOrderId = orderItems[0].order_id;
-      setOrderId(purchasedOrderId);
+        for (const orderDoc of orderSnapshots.docs) {
+             const itemsQuery = query(
+                collection(firestore, `orders/${orderDoc.id}/order_items`), 
+                where('product_id', '==', productId)
+            );
+            const itemsSnapshot = await getDocs(itemsQuery);
+            if (!itemsSnapshot.empty) {
+                purchasedOrderId = orderDoc.id;
+                break;
+            }
+        }
 
-      // Check if user has already reviewed this product via this order
-      const { data: existingReview, error: reviewError } = await supabase
-        .from('reviews')
-        .select('id')
-        .eq('product_id', productId)
-        .eq('reviewer_id', user.id)
-        .eq('order_id', purchasedOrderId)
-        .limit(1);
-      
-      if (!reviewError && existingReview.length > 0) {
-        setHasReviewed(true);
-      } else {
-        setCanReview(true);
+        if (!purchasedOrderId) {
+            setCanReview(false);
+            return;
+        }
+        
+        setOrderId(purchasedOrderId);
+
+        // Check if user has already reviewed this product for this order
+        const reviewsQuery = query(
+            collection(firestore, 'reviews'),
+            where('product_id', '==', productId),
+            where('reviewer_id', '==', user.uid),
+            where('order_id', '==', purchasedOrderId)
+        );
+        const reviewSnapshot = await getDocs(reviewsQuery);
+        
+        if (!reviewSnapshot.empty) {
+            setHasReviewed(true);
+        } else {
+            setCanReview(true);
+        }
+
+      } catch(error) {
+        console.error("Error checking review status:", error);
       }
     };
     checkPurchaseAndReviewStatus();
-  }, [productId, supabase]);
+  }, [productId, user, firestore]);
 
 
   return (

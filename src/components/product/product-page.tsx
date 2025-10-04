@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/app/marketplace/page';
 import { ProductImageGallery } from './product-image-gallery';
@@ -12,6 +11,8 @@ import { SellerInfoCard } from './seller-info-card';
 import { motion } from 'framer-motion';
 import { Review } from './reviews-section';
 import { Skeleton } from '../ui/skeleton';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface ProductPageProps {
   productId: string;
@@ -57,70 +58,76 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
   const [product, setProduct] = useState<Product | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const fetchProductAndReviews = async () => {
-    if (!productId) return;
+    if (!productId || !firestore) return;
     setLoading(true);
     
-    const { data: productData, error: productError } = await supabase
-      .from('products')
-      .select(`
-        *,
-        seller:profiles ( id, full_name, kyc_status, avatar_url, location, created_at ),
-        category:categories ( name )
-      `)
-      .eq('id', productId)
-      .single();
+    try {
+      const productDocRef = doc(firestore, 'products', productId);
+      const productSnap = await getDoc(productDocRef);
 
-    if (productError || !productData) {
-      toast({
-        variant: 'destructive',
-        title: 'Error fetching product',
-        description: "This product could not be found.",
-      });
-      setProduct(null);
-    } else {
-      const mappedProduct = {
-        ...productData,
-        name: productData.title,
-        image: productData.images?.[0] || 'https://placehold.co/600x600',
-        images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
-        seller: productData.seller?.full_name || 'Unknown Seller',
-        sellerVerified: productData.seller?.kyc_status === 'verified',
-        category: productData.category?.name || 'Uncategorized',
-        isFree: productData.listing_type === 'freebie' || productData.price === 0,
-        rating: productData.average_rating || 0,
-        reviews: productData.review_count || 0,
-        stockCount: productData.quantity_available || 1,
-        sellerDetails: {
-          id: productData.seller?.id,
-          name: productData.seller?.full_name || 'Unknown Seller',
-          avatar: productData.seller?.avatar_url || '',
-          location: productData.seller?.location || 'Unknown',
-          verified: productData.seller?.kyc_status === 'verified',
-          rating: 4.8, // This is still mock data
-          totalSales: 100, // This is still mock data
-          memberSince: productData.seller?.created_at ? new Date(productData.seller.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : 'N/A'
-        },
-        specifications: productData.specifications,
-        shipping_policy: productData.shipping_policy
-      };
-      setProduct(mappedProduct as unknown as Product);
+      if (!productSnap.exists()) {
+        toast({
+          variant: 'destructive',
+          title: 'Error fetching product',
+          description: "This product could not be found.",
+        });
+        setProduct(null);
+      } else {
+        const productData = productSnap.data();
+        // This mapping needs to be improved based on actual data structure
+        const mappedProduct = {
+          ...productData,
+          id: productSnap.id,
+          name: productData.title,
+          image: productData.images?.[0] || 'https://placehold.co/600x600',
+          images: productData.images?.length > 0 ? productData.images : ['https://placehold.co/600x600'],
+          // Mocking seller data for now
+          seller: 'Unknown Seller',
+          sellerVerified: false,
+          category: 'Uncategorized',
+          isFree: productData.listing_type === 'freebie' || productData.price === 0,
+          rating: productData.average_rating || 0,
+          reviews: productData.review_count || 0,
+          stockCount: productData.quantity_available || 1,
+          sellerDetails: { // Mock data
+            id: productData.seller_id,
+            name: 'Unknown Seller',
+            avatar: '',
+            location: 'Unknown',
+            verified: false,
+            rating: 4.8,
+            totalSales: 100,
+            memberSince: 'N/A'
+          },
+          specifications: productData.specifications,
+          shipping_policy: productData.shipping_policy
+        };
+        setProduct(mappedProduct as unknown as Product);
 
-      const res = await fetch(`/api/reviews/product?productId=${productId}`);
-      if(res.ok) {
-          const reviewData = await res.json();
-          setReviews(reviewData);
+        const res = await fetch(`/api/reviews/product?productId=${productId}`);
+        if(res.ok) {
+            const reviewData = await res.json();
+            setReviews(reviewData);
+        }
       }
+    } catch (error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: error.message || "Failed to fetch product details.",
+        });
     }
+
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProductAndReviews();
-  }, [productId, supabase, toast]);
+  }, [productId, firestore, toast]);
   
 
   if (loading) {
@@ -170,7 +177,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
             >
                 <ProductPurchasePanel
                     product={product}
-                    onAddToCart={onAddToCart}
+                    onAddToCart={() => onAddToCart(product)}
                 />
             </motion.div>
         </div>

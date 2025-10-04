@@ -1,86 +1,101 @@
-
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { cookies } from 'next/headers';
+import { initializeApp, getApps, getApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, doc, updateDoc, getDoc } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+  : null;
+
+if (!getApps().length) {
+  if (serviceAccount) {
+    initializeApp({
+      credential: {
+        projectId: serviceAccount.project_id,
+        clientEmail: serviceAccount.client_email,
+        privateKey: serviceAccount.private_key,
+      },
+    });
+  }
+}
+
+const adminAuth = getAuth();
+const adminFirestore = getFirestore();
+
 const shipOrderSchema = z.object({
-  orderId: z.string().uuid(),
+  orderId: z.string().min(1, 'Order ID is required.'),
   courierName: z.string().min(2, 'Courier name is required.'),
   trackingNumber: z.string().min(5, 'Tracking number seems too short.'),
 });
 
-// --- Mock Logistics API ---
-// In a real application, this would be an SDK call to Shippo, AfterShip, etc.
 async function verifyTrackingNumber(courier: string, trackingNumber: string): Promise<{ success: boolean; message: string; }> {
     console.log(`Verifying tracking number ${trackingNumber} with ${courier}...`);
-    
-    // Simulate some latency
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Mock logic: For demonstration, let's say any number containing "INVALID" fails.
     if (trackingNumber.toUpperCase().includes('INVALID')) {
         return { success: false, message: 'This tracking number is not valid with the selected courier.' };
     }
-    
-    // Simulate success
     return { success: true, message: 'Tracking number verified.' };
 }
 
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  if (!serviceAccount) {
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
 
-  if (!user) {
+  const sessionCookie = cookies().get('__session')?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-
-  const body = await request.json();
-  const validation = shipOrderSchema.safeParse(body);
-
-  if (!validation.success) {
-    return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
-  }
-
-  const { orderId, courierName, trackingNumber } = validation.data;
   
-  // TODO: Verify that the current user is the seller for this order before updating.
-  // This is a critical security check missing for now.
+  try {
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const userId = decodedToken.uid;
+    
+    const body = await request.json();
+    const validation = shipOrderSchema.safeParse(body);
 
-  // Step 1: Verify the tracking number with the mock logistics API
-  const verificationResult = await verifyTrackingNumber(courierName, trackingNumber);
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
+    }
+    
+    const { orderId, courierName, trackingNumber } = validation.data;
 
-  if (!verificationResult.success) {
-      return NextResponse.json({ error: verificationResult.message }, { status: 400 });
-  }
+    const orderRef = doc(adminFirestore, 'orders', orderId);
+    const orderSnap = await getDoc(orderRef);
 
-  // Step 2: If verification is successful, update the order in the database
-  const { error } = await supabase
-    .from('orders')
-    .update({
+    if (!orderSnap.exists() || orderSnap.data()?.seller_id !== userId) {
+        return NextResponse.json({ error: 'Order not found or you are not the seller.' }, { status: 403 });
+    }
+
+    const verificationResult = await verifyTrackingNumber(courierName, trackingNumber);
+
+    if (!verificationResult.success) {
+        return NextResponse.json({ error: verificationResult.message }, { status: 400 });
+    }
+
+    await updateDoc(orderRef, {
       status: 'shipped',
-      courier_name: courierName, // This column needs to be added to your 'orders' table
+      courier_name: courierName,
       tracking_number: trackingNumber,
-    })
-    .eq('id', orderId);
-
-  if (error) {
-    console.error('Error shipping order:', error);
-    return NextResponse.json({ error: 'Failed to update order status.', details: error.message }, { status: 500 });
-  }
-  
-  // Step 3: Create a notification for the buyer
-  const { data: orderData } = await supabase.from('orders').select('buyer_id').eq('id', orderId).single();
-  if (orderData?.buyer_id) {
-    await supabase.from('notifications').insert({
-        user_id: orderData.buyer_id,
-        type: 'delivery',
-        title: 'Your Order is on its way!',
-        message: `Your order #${orderId.substring(0,8)} has been shipped via ${courierName}. Tracking: ${trackingNumber}`,
-        link_url: `/tracking?orderId=${orderId}`
+      updated_at: new Date().toISOString(),
     });
+    
+    const orderData = orderSnap.data();
+    if (orderData?.buyer_id) {
+      // In a real app, you'd create a notification document in Firestore.
+      console.log(`Creating notification for buyer ${orderData.buyer_id}`);
+    }
+
+    return NextResponse.json({ success: true, message: 'Order has been marked as shipped.' });
+
+  } catch (error) {
+    console.error('Error shipping order:', error);
+    if (error instanceof z.ZodError) {
+       return NextResponse.json({ error: 'Invalid input', details: error.flatten() }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Failed to update order status.' }, { status: 500 });
   }
-
-
-  return NextResponse.json({ success: true, message: 'Order has been marked as shipped.' });
 }
