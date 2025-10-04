@@ -60,6 +60,12 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
+  // Define public and authentication routes
+  const publicRoutes = ['/']; // The root is the only public page (login/signup)
+  const authRoutes = ['/auth/callback', '/auth/reset-password', '/forgot-password'];
+  const isPublicRoute = publicRoutes.includes(pathname);
+  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+
   // If the user is logged in
   if (user) {
     const { data: profile } = await supabase
@@ -75,14 +81,13 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
     }
 
-    // If onboarding is complete, and they try to access the login page, redirect them to the marketplace.
-    if (isOnboardingComplete && (pathname === '/' || pathname === '/auth')) {
+    // If onboarding is complete, and they try to access a public/auth page, redirect them to the marketplace.
+    if (isOnboardingComplete && (isPublicRoute || pathname === '/onboarding')) {
       return NextResponse.redirect(new URL('/marketplace', request.url))
     }
   } else {
-    // If the user is not logged in and trying to access a protected route, redirect to login.
-    const protectedRoutes = ['/marketplace', '/profile', '/onboarding', '/cart', '/checkout']
-    if (protectedRoutes.some(route => pathname.startsWith(route))) {
+    // If the user is not logged in and trying to access any route that isn't public or an auth utility route
+    if (!isPublicRoute && !isAuthRoute) {
         return NextResponse.redirect(new URL('/', request.url))
     }
   }
@@ -99,6 +104,6 @@ export const config = {
      * - favicon.ico (favicon file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|auth/callback).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)',
   ],
 }
