@@ -60,11 +60,22 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  // Define public and authentication routes
-  const publicRoutes = ['/']; // The root is the only public page (login/signup)
-  const authRoutes = ['/auth/callback', '/auth/reset-password', '/forgot-password'];
-  const isPublicRoute = publicRoutes.includes(pathname);
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+  // Protected routes that require authentication
+  const protectedRoutes = [
+    '/profile',
+    '/adverts',
+    '/sales',
+    '/orders',
+    '/checkout',
+    '/cart',
+    '/notifications',
+    '/transactions',
+    '/barter',
+    '/admin',
+    '/kyc',
+  ];
+
+  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
   // If the user is logged in
   if (user) {
@@ -81,14 +92,17 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/onboarding', request.url))
     }
 
-    // If onboarding is complete, and they try to access a public/auth page, redirect them to the marketplace.
-    if (isOnboardingComplete && (isPublicRoute || pathname === '/onboarding')) {
+    // If onboarding is complete, and they try to access the root auth page, redirect them to the marketplace.
+    if (isOnboardingComplete && pathname === '/') {
       return NextResponse.redirect(new URL('/marketplace', request.url))
     }
   } else {
-    // If the user is not logged in and trying to access any route that isn't public or an auth utility route
-    if (!isPublicRoute && !isAuthRoute) {
-        return NextResponse.redirect(new URL('/', request.url))
+    // If the user is not logged in and trying to access a protected route
+    if (isProtectedRoute) {
+        // Redirect them to the login page, but keep the intended destination in the query params
+        const redirectUrl = new URL('/', request.url);
+        redirectUrl.searchParams.set('redirect_to', pathname);
+        return NextResponse.redirect(redirectUrl);
     }
   }
 
@@ -101,9 +115,11 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
+     * - api (API routes)
+     * - auth/callback (Supabase auth callback)
      * - favicon.ico (favicon file)
      * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.png$).*)',
+    '/((?!_next/static|_next/image|api|auth/callback|favicon.ico|.*\\.png$).*)',
   ],
 }
