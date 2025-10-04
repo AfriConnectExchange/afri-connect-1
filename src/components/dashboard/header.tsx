@@ -215,7 +215,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
             
             <div className="hidden md:flex items-center gap-2">
                <Button asChild variant="outline" size="sm">
-                <Link href="/adverts">Sell on AfriConnect</Link>
+                <Link href="/(seller)/dashboard">Sell on AfriConnect</Link>
               </Button>
             </div>
 
@@ -284,7 +284,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                             <>
                               <DropdownMenuSeparator />
                               <Link href="/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
-                              <Link href="/adverts"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
+                              <Link href="/(seller)/products"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
                             </>
                            )}
                            <DropdownMenuSeparator />

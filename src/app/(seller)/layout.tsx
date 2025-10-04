@@ -38,7 +38,7 @@ export default function SellerLayout({
 
   // For the login page, we don't want the sidebar
   if (isAuthPage || !user) {
-    return <main>{children}</main>;
+    return <main className="bg-gray-100">{children}</main>;
   }
 
   return (
