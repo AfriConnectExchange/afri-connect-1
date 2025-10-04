@@ -215,7 +215,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
             
             <div className="hidden md:flex items-center gap-2">
                <Button asChild variant="outline" size="sm">
-                <Link href="/(seller)/dashboard">Sell on AfriConnect</Link>
+                <Link href="/(seller)">Sell on AfriConnect</Link>
               </Button>
             </div>
 
