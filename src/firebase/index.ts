@@ -14,10 +14,11 @@ export function initializeFirebase() {
 
 export {
   FirebaseProvider,
-  FirebaseClientProvider,
   useFirebase,
   useFirebaseApp,
   useAuth,
   useFirestore,
 } from './provider';
+
+export { FirebaseClientProvider } from './client-provider';
 export { useUser } from './auth/use-user';
