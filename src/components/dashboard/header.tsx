@@ -283,7 +283,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                            {canAccessSellerFeatures && (
                             <>
                               <DropdownMenuSeparator />
-                              <Link href="/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
+                              <Link href="/seller/sales"><DropdownMenuItem><TrendingUp className="mr-2 h-4 w-4" /><span>My Sales</span></DropdownMenuItem></Link>
                               <Link href="/seller/products"><DropdownMenuItem><Package className="mr-2 h-4 w-4" /><span>My Listings</span></DropdownMenuItem></Link>
                             </>
                            )}
