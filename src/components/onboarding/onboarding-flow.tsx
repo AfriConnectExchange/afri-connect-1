@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -20,7 +19,7 @@ export function OnboardingFlow() {
   const [currentStep, setCurrentStep] = useState(0);
 
   const [userData, setUserData] = useState({
-    role_id: '1',
+    role_id: 1, // Default to Buyer
     full_name: '',
     phone_number: '',
     location: '',
@@ -28,21 +27,13 @@ export function OnboardingFlow() {
 
   useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       setUser(user);
       if (user) {
-        let userPhone = user.phone || '';
-        // FIX: Ensure phone number is in E.164 format for the input component
-        if (userPhone && !userPhone.startsWith('+')) {
-            userPhone = `+${userPhone}`;
-        }
-        
         setUserData((prev) => ({
           ...prev,
           full_name: user.user_metadata.full_name || user.email || '',
-          phone_number: userPhone,
+          phone_number: user.phone || '',
           location: user.user_metadata.location || '',
         }));
       }
@@ -52,112 +43,88 @@ export function OnboardingFlow() {
 
   const handleRoleSelection = async (data: { role: string }) => {
     const roleId = parseInt(data.role, 10);
-    handleUpdateUserData({ role_id: data.role });
+    handleUpdateUserData({ role_id: roleId });
 
-    if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'You must be logged in.',
-      });
-      return;
-    }
-
-    // Save the role immediately
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role_id: roleId })
-      .eq('id', user.id);
-
-    if (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to Save Role',
-        description: error.message,
-      });
-      return;
-    }
-
-    // --- DYNAMIC FLOW LOGIC ---
+    // For Buyers, we just move to the next step in the UI.
     if (roleId === 1) {
-      // Buyer: proceed to the next step in the modal
       setCurrentStep((prev) => prev + 1);
     } else {
-      // Seller, SME, Trainer: redirect to KYC page
+      // For Sellers, SMEs, Trainers, redirect to a dedicated, more detailed verification flow.
+      // We'll save their chosen role first.
+      if (user) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ role_id: roleId })
+            .eq('id', user.id);
+          if (error) {
+               toast({
+                variant: 'destructive',
+                title: 'Failed to Save Role',
+                description: error.message,
+                });
+                return;
+          }
+      }
       toast({
-        title: 'Verification Required',
-        description: "Let's get you verified to start selling.",
+        title: 'Seller Verification Required',
+        description: "You'll be redirected to complete your seller profile.",
       });
-      router.push('/kyc');
+      router.push('/kyc'); // The KYC page will handle its own multi-step flow.
     }
   };
-  
+
   const handleOnboardingComplete = async (data: {
-    role_id: string;
     full_name: string;
     phone_number: string;
     location: string;
   }) => {
-     if (!user) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'You must be logged in to complete onboarding.',
-      });
+    if (!user) {
+      toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
       return;
     }
 
-    // This operation will now either INSERT a new profile or UPDATE an existing one.
-    const { error } = await supabase.rpc('upsert_profile', {
-      p_id: user.id,
-      p_full_name: data.full_name,
-      p_phone_number: data.phone_number,
-      p_location: data.location,
-      p_role_id: parseInt(data.role_id, 10),
-      p_onboarding_completed: true,
-    });
-
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: data.full_name,
+        phone_number: data.phone_number,
+        // Using address_line1 for simplicity as per new schema.
+        // A more complex form could map to city, country etc.
+        address_line1: data.location, 
+        onboarding_completed: true,
+        role_id: userData.role_id, // ensure role is saved
+      })
+      .eq('id', user.id);
 
     if (error) {
-       toast({
-        variant: 'destructive',
-        title: 'Failed to Save Profile',
-        description: error.message,
-      });
+      toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });
     } else {
-       // Also update the auth user's metadata as a fallback/sync
-      await supabase.auth.updateUser({
+       await supabase.auth.updateUser({
         data: {
           full_name: data.full_name,
           phone: data.phone_number,
-          location: data.location,
         },
       });
-      setCurrentStep((prev) => prev + 1);
+      setCurrentStep((prev) => prev + 1); // Move to final "All Set!" step
     }
   };
-
 
   const handleBack = () => setCurrentStep((prev) => prev - 1);
 
   const handleUpdateUserData = (data: Partial<typeof userData>) => {
     setUserData((prev) => ({ ...prev, ...data }));
   };
-
-  const handleBuyerDetailsSubmit = async (finalData: { full_name: string; phone_number: string; location: string; }) => {
-    await handleOnboardingComplete({ ...userData, ...finalData });
-  };
-
+  
   const steps = [
     <WelcomeStep onNext={() => setCurrentStep(1)} />,
     <RoleSelectionStep
       onNext={handleRoleSelection}
       onBack={handleBack}
-      onUpdate={(data) => handleUpdateUserData({ role_id: data.role })}
-      currentValue={userData.role_id}
+      onUpdate={(data) => handleUpdateUserData({ role_id: parseInt(data.role, 10) })}
+      currentValue={String(userData.role_id)}
     />,
     <PersonalDetailsStep
-      onNext={handleBuyerDetailsSubmit}
+      onNext={handleOnboardingComplete}
       onBack={handleBack}
       defaultValues={{
         fullName: userData.full_name,
