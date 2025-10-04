@@ -3,8 +3,7 @@
 import { Header } from '@/components/dashboard/header';
 import { BarterManagementPage } from '@/components/barter/barter-management-page';
 import { PageLoader } from '@/components/ui/loader';
-import { useState, useEffect } from 'react';
-import type { User } from 'firebase/auth';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/firebase';
 

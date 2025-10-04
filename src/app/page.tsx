@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Logo } from '@/components/logo';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
@@ -69,18 +69,26 @@ export default function Home() {
       const checkOnboarding = async () => {
         if (!firestore) return;
         const profileDocRef = doc(firestore, "profiles", firebaseUser.uid);
-        const profileDoc = await getDoc(profileDocRef);
         
-        if (profileDoc.exists()) {
-            if (profileDoc.data().onboarding_completed) {
-                router.replace('/marketplace');
+        try {
+            const profileDoc = await getDoc(profileDocRef);
+            
+            if (profileDoc.exists()) {
+                if (profileDoc.data().onboarding_completed) {
+                    router.replace('/marketplace');
+                } else {
+                    router.replace('/onboarding');
+                }
             } else {
+                // This is a new user (e.g. from phone sign-in), create their profile and send to onboarding
+                await createProfileDocument(firebaseUser);
                 router.replace('/onboarding');
             }
-        } else {
-            // This is a new user (e.g. from phone sign-in), create their profile and send to onboarding
-            await createProfileDocument(firebaseUser);
-            router.replace('/onboarding');
+        } catch (error) {
+            console.error("Error checking onboarding status:", error);
+            // Don't redirect, maybe show an error to the user
+            setIsRedirecting(false);
+            showAlert('destructive', 'Error', 'Could not verify your profile. Please try again.');
         }
       };
       checkOnboarding();
@@ -99,7 +107,7 @@ export default function Home() {
           if(intervalId) clearInterval(intervalId);
           toast({ title: 'Email Verified!', description: 'Redirecting you to complete your profile.' });
           setIsRedirecting(true);
-          router.replace('/onboarding');
+          // Don't check for profile here, let the main useEffect handle it
         }
       }, 3000); // Check every 3 seconds
     }
@@ -139,6 +147,7 @@ export default function Home() {
       full_name: user.displayName || formData.name,
       phone_number: user.phoneNumber,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
       onboarding_completed: false,
       primary_role: 'buyer',
       ...additionalData,
@@ -176,7 +185,8 @@ export default function Home() {
   };
 
   const setupRecaptcha = () => {
-    if (!window.recaptchaVerifier) {
+    // Ensure it's run only on the client
+    if (typeof window !== 'undefined' && !window.recaptchaVerifier) {
       window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
         'size': 'invisible',
         'callback': (response: any) => {

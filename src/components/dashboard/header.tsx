@@ -31,8 +31,10 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { HeaderSearchBar } from '../marketplace/header-search-bar';
+import { doc, getDoc } from 'firebase/firestore';
+
 
 interface HeaderProps {
     cartCount?: number;
@@ -40,6 +42,7 @@ interface HeaderProps {
 
 export function Header({ cartCount = 0 }: HeaderProps) {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user } = useUser();
   const [profile, setProfile] = useState<any>(null);
   const [notificationCount, setNotificationCount] = useState(0);
@@ -50,7 +53,15 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   
   useEffect(() => {
     const fetchProfile = async () => {
-        // Firestore logic to fetch profile will go here
+        if (!user || !firestore) return;
+        try {
+          const profileDoc = await getDoc(doc(firestore, "profiles", user.uid));
+          if (profileDoc.exists()) {
+              setProfile(profileDoc.data());
+          }
+        } catch (error) {
+          console.error("Failed to fetch user profile:", error);
+        }
     };
     
     if (user) {
@@ -60,7 +71,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
         setNotificationCount(0);
     }
 
-  }, [user]);
+  }, [user, firestore]);
 
   useEffect(() => {
     if (cartCount > 0) {
@@ -75,8 +86,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
     router.push('/');
   }
   
-  // This needs to be updated with Firestore logic
-  const canAccessSellerFeatures = false;
+  const canAccessSellerFeatures = profile?.primary_role === 'seller' || profile?.primary_role === 'sme';
 
   const menuItems = {
       mobile: [
@@ -251,7 +261,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                             <Avatar className="h-9 w-9">
-                                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email} />
+                                <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email || ''} />
                                 <AvatarFallback>{user?.email?.[0]?.toUpperCase() || 'A'}</AvatarFallback>
                             </Avatar>
                         </Button>
