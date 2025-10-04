@@ -27,27 +27,27 @@ export function SellerSidebar() {
 
   const navItems = [
     {
-      href: '/(seller)/sales',
+      href: '/seller/sales',
       label: 'Orders',
       icon: ShoppingCart,
     },
     {
-      href: '/(seller)/products',
+      href: '/seller/products',
       label: 'Products',
       icon: Package,
     },
     {
-      href: '/(seller)/promotions',
+      href: '/seller/promotions',
       label: 'Promotions',
       icon: BadgePercent,
     },
     {
-      href: '/(seller)/advertise',
+      href: '/seller/advertise',
       label: 'Advertising',
       icon: Megaphone,
     },
      {
-      href: '/(seller)/reports',
+      href: '/seller/reports',
       label: 'Reports',
       icon: LineChart,
     },
@@ -57,7 +57,7 @@ export function SellerSidebar() {
     <div className="hidden border-r bg-background md:block">
       <div className="flex h-full max-h-screen flex-col gap-2">
         <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-          <Link href="/(seller)/dashboard" className="flex items-center gap-2 font-semibold">
+          <Link href="/seller/dashboard" className="flex items-center gap-2 font-semibold">
             <div className="w-8 h-8 bg-orange-500 rounded-md flex items-center justify-center">
                  <span className="font-bold text-white text-sm">VC</span>
             </div>
@@ -82,9 +82,9 @@ export function SellerSidebar() {
           </nav>
         </div>
         <div className="mt-auto p-4 border-t space-y-4">
-            <Link href="/(seller)/shop-settings" className={cn(
+            <Link href="/seller/shop-settings" className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground transition-all hover:text-primary',
-                 pathname === "/(seller)/shop-settings" && 'bg-orange-100 text-orange-600'
+                 pathname === "/seller/shop-settings" && 'bg-orange-100 text-orange-600'
             )}>
                 <Store className="h-4 w-4" />
                 Shop Settings

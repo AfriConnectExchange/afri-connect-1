@@ -129,7 +129,7 @@ export function ProductsPage() {
             Manage your product listings and inventory.
           </p>
         </div>
-        <Button onClick={() => router.push('/(seller)/products/add')}>
+        <Button onClick={() => router.push('/seller/products/add')}>
           <PlusCircle className="mr-2 h-4 w-4" /> Add New Product
         </Button>
       </div>
