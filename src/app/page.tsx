@@ -9,7 +9,7 @@ import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
@@ -20,10 +20,13 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
   ConfirmationResult,
+  updateProfile,
 } from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
@@ -38,9 +41,11 @@ declare global {
 
 export default function Home() {
   const auth = useAuth();
+  const firestore = useFirestore();
   const { user: firebaseUser, isLoading: isUserLoading } = useUser();
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -57,12 +62,44 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Main redirect logic for already logged-in users
   useEffect(() => {
-    if (!isUserLoading && firebaseUser) {
+    if (firebaseUser && !isUserLoading) {
       setIsRedirecting(true);
-      router.replace('/marketplace');
+      const checkOnboarding = async () => {
+        const profileDoc = await getDoc(doc(firestore, "profiles", firebaseUser.uid));
+        if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
+          router.replace('/marketplace');
+        } else {
+          router.replace('/onboarding');
+        }
+      };
+      checkOnboarding();
     }
-  }, [firebaseUser, isUserLoading, router]);
+  }, [firebaseUser, isUserLoading, router, firestore]);
+
+  // Email verification listener
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null;
+    if (authMode === 'awaiting-verification' && firebaseUser && !firebaseUser.emailVerified) {
+      setIsVerifying(true);
+      intervalId = setInterval(async () => {
+        await firebaseUser.reload();
+        if (firebaseUser.emailVerified) {
+          setIsVerifying(false);
+          if(intervalId) clearInterval(intervalId);
+          toast({ title: 'Email Verified!', description: 'Redirecting you to complete your profile.' });
+          setIsRedirecting(true);
+          router.replace('/onboarding');
+        }
+      }, 3000); // Check every 3 seconds
+    }
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [authMode, firebaseUser, router, toast]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -82,6 +119,21 @@ export default function Home() {
       confirmPassword: '',
     }));
   };
+  
+  const createProfileDocument = async (user: any, additionalData = {}) => {
+    const profileRef = doc(firestore, 'profiles', user.uid);
+    const profileData = {
+      id: user.uid,
+      auth_user_id: user.uid,
+      email: user.email,
+      full_name: user.displayName || formData.name,
+      phone_number: user.phoneNumber,
+      created_at: new Date().toISOString(),
+      onboarding_completed: false,
+      ...additionalData,
+    };
+    await setDoc(profileRef, profileData, { merge: true });
+  }
 
   const handleEmailRegistration = async () => {
     if (formData.password !== formData.confirmPassword) {
@@ -96,7 +148,10 @@ export default function Home() {
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      await updateProfile(userCredential.user, { displayName: formData.name });
       await sendEmailVerification(userCredential.user);
+      await createProfileDocument(userCredential.user);
+
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       setAuthMode('awaiting-verification');
     } catch (error: any) {
@@ -162,9 +217,15 @@ export default function Home() {
         throw new Error("No confirmation result found. Please try sending the OTP again.");
       }
       const result = await confirmationResult.confirm(otp);
+      
+      // If this was a sign-up, create profile now
+      if (formData.name) {
+          await updateProfile(result.user, { displayName: formData.name });
+          await createProfileDocument(result.user);
+      }
+      
       showAlert('default', 'Verification Successful!', 'Redirecting...');
-      setIsRedirecting(true);
-      router.refresh();
+      // The main useEffect will handle the redirect
     } catch (error: any) {
        showAlert('destructive', 'Verification Failed', error.message);
        setIsLoading(false);
@@ -181,10 +242,14 @@ export default function Home() {
         showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
         setIsLoading(false);
       } else {
-        router.refresh();
+        // The main useEffect will handle the redirect
       }
     } catch (error: any) {
-      showAlert('destructive', 'Login Failed', error.message);
+       if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            showAlert('destructive', 'Login Failed', 'Invalid email or password. Please try again.');
+       } else {
+            showAlert('destructive', 'Login Failed', error.message);
+       }
       setIsLoading(false);
     }
   };
@@ -201,7 +266,7 @@ export default function Home() {
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
-      setFormData(prev => ({...prev, email: '', name: ''}));
+      setFormData(prev => ({...prev, email: '', name: ''})); // Clear name to indicate it's a login
       setAuthMode('otp');
     } catch (error: any) {
       showAlert('destructive', 'Failed to Send OTP', error.message);
@@ -214,15 +279,16 @@ export default function Home() {
     setIsLoading(true);
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
-      await signInWithPopup(auth, provider);
-      router.refresh();
+      const result = await signInWithPopup(auth, provider);
+      await createProfileDocument(result.user);
+      // The main useEffect will handle the redirect
     } catch (error: any) {
       showAlert('destructive', 'Login Failed', error.message);
       setIsLoading(false);
     }
   }
 
-  if (isUserLoading || firebaseUser) {
+  if (isUserLoading || isRedirecting) {
     return <PageLoader />;
   }
 
@@ -247,9 +313,6 @@ export default function Home() {
 
 
   const renderAuthCard = () => {
-    if (isRedirecting) {
-        return <RedirectingCard />;
-    }
     switch (authMode) {
       case 'signin':
         return (
@@ -288,7 +351,7 @@ export default function Home() {
           <CheckEmailCard
             email={formData.email}
             onBack={() => setAuthMode('signin')}
-            isVerifying={isLoading}
+            isVerifying={isVerifying}
           />
         );
         case 'otp':

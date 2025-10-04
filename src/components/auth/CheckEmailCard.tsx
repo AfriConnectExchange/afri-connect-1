@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { MailCheck } from 'lucide-react';
+import { MailCheck, Loader2 } from 'lucide-react';
 import { AnimatedButton } from '../ui/animated-button';
 
 interface CheckEmailCardProps {
@@ -26,19 +26,23 @@ export default function CheckEmailCard({ email, onBack, isVerifying }: CheckEmai
           check your inbox and follow the link to activate your account.
         </p>
 
-        <p className="text-xs text-muted-foreground mb-6">
-        This page will automatically redirect after you verify your email.
-        </p>
-        
-        <AnimatedButton
-          onClick={onBack}
-          size="lg"
-          className="w-full"
-          variant="outline"
-          disabled={isVerifying}
-        >
-          Back to Sign In
-        </AnimatedButton>
+        {isVerifying ? (
+          <div className="flex flex-col items-center justify-center space-y-3">
+             <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">
+              Waiting for verification... This page will redirect automatically.
+            </p>
+          </div>
+        ) : (
+          <AnimatedButton
+            onClick={onBack}
+            size="lg"
+            className="w-full"
+            variant="outline"
+          >
+            Back to Sign In
+          </AnimatedButton>
+        )}
          <p className="text-xs text-muted-foreground mt-6">
           Didn't receive an email? Check your spam folder or try registering again.
         </p>
