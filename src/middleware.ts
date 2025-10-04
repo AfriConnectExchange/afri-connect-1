@@ -1,30 +1,83 @@
-import { NextResponse, type NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl
+import { NextResponse, type NextRequest } from 'next/server';
+
+// List of routes that are protected and require authentication.
+const protectedRoutes = [
+  '/profile',
+  '/orders',
+  '/checkout',
+  '/adverts',
+  '/kyc',
+  '/barter',
+  '/notifications',
+  '/sales',
+  '/transactions',
+  '/admin',
+];
+
+// List of routes that are public and do not require authentication.
+const publicRoutes = [
+  '/',
+  '/marketplace',
+  '/product',
+  '/forgot-password',
+  '/auth/reset-password',
+  '/help',
+  '/support',
+  '/tracking'
+];
+
+async function getSessionStatus(request: NextRequest) {
+  const url = new URL('/api/auth/session-status', request.url);
+  try {
+    const response = await fetch(url, {
+      headers: {
+        'Cookie': request.headers.get('Cookie') || '',
+      },
+    });
+    if (response.ok) {
+      return await response.json();
+    }
+    return { isAuthenticated: false, onboardingComplete: false };
+  } catch (error) {
+    console.error("Error fetching session status:", error);
+    return { isAuthenticated: false, onboardingComplete: false };
+  }
+}
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
   
-  // This is a placeholder for your actual session cookie name from Firebase Auth
-  const hasAuthCookie = request.cookies.has('__session');
+  // Skip middleware for API routes, static files, etc.
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next') || pathname.endsWith('.ico') || pathname.endsWith('.png')) {
+    return NextResponse.next();
+  }
 
+  const { isAuthenticated, onboardingComplete } = await getSessionStatus(request);
   const isAuthPage = pathname === '/';
-  
-  if (isAuthPage) {
-    if (hasAuthCookie) {
-      return NextResponse.redirect(new URL('/marketplace', request.url))
+
+  if (isAuthenticated) {
+    // If the user is authenticated but hasn't completed onboarding,
+    // force them to the onboarding page, unless they are already there.
+    if (!onboardingComplete && pathname !== '/onboarding') {
+      return NextResponse.redirect(new URL('/onboarding', request.url));
     }
-    return NextResponse.next()
+
+    // If the user is authenticated and onboarding is complete,
+    // they should not be able to access the main login page.
+    if (isAuthPage) {
+      return NextResponse.redirect(new URL('/marketplace', request.url));
+    }
+  } else {
+    // If the user is not authenticated, they can only access public routes.
+    // All other routes are protected.
+    const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+    if (isProtectedRoute) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
   }
 
-  if (!hasAuthCookie && pathname !== '/') {
-    // You might want to allow access to other public pages here
-    const publicPaths = ['/marketplace', '/product', '/forgot-password', '/auth/reset-password'];
-    if (publicPaths.some(p => pathname.startsWith(p))) {
-        return NextResponse.next();
-    }
-    return NextResponse.redirect(new URL('/', request.url))
-  }
-  
-  return NextResponse.next()
+  return NextResponse.next();
 }
 
 export const config = {
@@ -33,11 +86,9 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - api (API routes)
-     * - auth/callback (auth callbacks)
+     * - api/auth/session-status (the session status check itself)
      * - favicon.ico (favicon file)
-     * Feel free to modify this pattern to include more paths.
      */
-    '/((?!_next/static|_next/image|api|favicon.ico|.*\\.png$).*)',
+    '/((?!api/auth/session-status|_next/static|_next/image|favicon.ico).*)',
   ],
-}
+};
