@@ -67,11 +67,20 @@ export default function Home() {
     if (firebaseUser && !isUserLoading) {
       setIsRedirecting(true);
       const checkOnboarding = async () => {
-        const profileDoc = await getDoc(doc(firestore, "profiles", firebaseUser.uid));
-        if (profileDoc.exists() && profileDoc.data().onboarding_completed) {
-          router.replace('/marketplace');
+        if (!firestore) return;
+        const profileDocRef = doc(firestore, "profiles", firebaseUser.uid);
+        const profileDoc = await getDoc(profileDocRef);
+        
+        if (profileDoc.exists()) {
+            if (profileDoc.data().onboarding_completed) {
+                router.replace('/marketplace');
+            } else {
+                router.replace('/onboarding');
+            }
         } else {
-          router.replace('/onboarding');
+            // This is a new user (e.g. from phone sign-in), create their profile and send to onboarding
+            await createProfileDocument(firebaseUser);
+            router.replace('/onboarding');
         }
       };
       checkOnboarding();
@@ -121,6 +130,7 @@ export default function Home() {
   };
   
   const createProfileDocument = async (user: any, additionalData = {}) => {
+    if (!firestore) return;
     const profileRef = doc(firestore, 'profiles', user.uid);
     const profileData = {
       id: user.uid,
@@ -130,6 +140,7 @@ export default function Home() {
       phone_number: user.phoneNumber,
       created_at: new Date().toISOString(),
       onboarding_completed: false,
+      primary_role: 'buyer',
       ...additionalData,
     };
     await setDoc(profileRef, profileData, { merge: true });
@@ -149,8 +160,8 @@ export default function Home() {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.name });
-      await sendEmailVerification(userCredential.user);
       await createProfileDocument(userCredential.user);
+      await sendEmailVerification(userCredential.user);
 
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       setAuthMode('awaiting-verification');
@@ -218,14 +229,13 @@ export default function Home() {
       }
       const result = await confirmationResult.confirm(otp);
       
-      // If this was a sign-up, create profile now
+      // If this was a sign-up with a name provided, update profile
       if (formData.name) {
           await updateProfile(result.user, { displayName: formData.name });
-          await createProfileDocument(result.user);
       }
       
       showAlert('default', 'Verification Successful!', 'Redirecting...');
-      // The main useEffect will handle the redirect
+      // The main useEffect will handle the rest: profile creation check and redirection.
     } catch (error: any) {
        showAlert('destructive', 'Verification Failed', error.message);
        setIsLoading(false);
@@ -280,8 +290,7 @@ export default function Home() {
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      await createProfileDocument(result.user);
-      // The main useEffect will handle the redirect
+      // Let the main useEffect handle profile creation and redirection
     } catch (error: any) {
       showAlert('destructive', 'Login Failed', error.message);
       setIsLoading(false);
