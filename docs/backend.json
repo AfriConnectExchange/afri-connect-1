@@ -1,0 +1,71 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Represents a user's profile information.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The user's unique ID, matching their Firebase Auth UID."
+        },
+        "auth_user_id": {
+          "type": "string",
+          "description": "The Firebase Auth UID."
+        },
+        "full_name": {
+          "type": "string",
+          "description": "The user's full name."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "phone_number": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "avatar_url": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL of the user's profile picture."
+        },
+        "address_line1": {
+            "type": "string",
+            "description": "User's primary address."
+        },
+        "primary_role": {
+          "type": "string",
+          "enum": ["buyer", "seller", "sme", "trainer", "admin"],
+          "description": "The user's primary role in the application."
+        },
+        "onboarding_completed": {
+          "type": "boolean",
+          "description": "Flag indicating if the user has completed the onboarding process."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "auth_user_id", "email", "primary_role", "onboarding_completed"]
+    }
+  },
+  "auth": {
+    "providers": ["anonymous", "email", "phone"]
+  },
+  "firestore": {
+    "/profiles/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserProfile"
+      },
+      "description": "Stores public and private user profile information."
+    }
+  }
+}
