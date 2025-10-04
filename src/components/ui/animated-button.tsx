@@ -39,7 +39,7 @@ const AnimatedButton = forwardRef<HTMLButtonElement, AnimatedButtonProps>(
       >
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <Loader2 className="animate-spin h-5 w-5" />
+            <Loader2 className="animate-spin h-5 w-5 text-primary-foreground" />
           </div>
         )}
         <span className={cn(
