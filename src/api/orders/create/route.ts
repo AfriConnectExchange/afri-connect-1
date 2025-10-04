@@ -2,6 +2,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { getFirestore, collection, addDoc } from "firebase/firestore";
+import { initializeFirebase } from '@/firebase';
+
+const { firestore } = initializeFirebase();
 
 const orderItemSchema = z.object({
   product_id: z.string().uuid(),
@@ -23,6 +27,16 @@ const createOrderSchema = z.object({
       phone: z.string(),
   })
 });
+
+// Function to send a message via the Twilio extension
+async function sendSms(to: string, body: string) {
+  if (!firestore) {
+    console.error("Firestore not initialized for SMS service.");
+    return;
+  }
+  await addDoc(collection(firestore, 'messages'), { to, body });
+}
+
 
 export async function POST(request: Request) {
   const supabase = createClient();
@@ -104,10 +118,17 @@ export async function POST(request: Request) {
         provider: paymentMethod,
     });
     
-    // 5. Create notifications for seller(s)
+    // 5. Create notifications for seller(s) and send SMS
     const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
     for (const sellerId of sellerIds) {
         if (sellerId === user.id) continue;
+
+        // Fetch seller profile to get their phone number
+        const { data: sellerProfile } = await supabase
+          .from('profiles')
+          .select('phone_number, full_name')
+          .eq('id', sellerId)
+          .single();
         
         await supabase.from('notifications').insert({
             user_id: sellerId,
@@ -116,6 +137,12 @@ export async function POST(request: Request) {
             message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${user.user_metadata.full_name || 'a buyer'}.`,
             link_url: '/sales'
         });
+
+        // ** NEW: Send SMS Notification via Twilio Extension **
+        if (sellerProfile && sellerProfile.phone_number) {
+            const smsBody = `AfriConnect: New Sale! You have an order for £${total.toFixed(2)} from ${user.user_metadata.full_name || 'a buyer'}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
+            await sendSms(sellerProfile.phone_number, smsBody);
+        }
     }
     
     // 6. Create notification for buyer

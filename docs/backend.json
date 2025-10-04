@@ -55,6 +55,41 @@
         }
       },
       "required": ["id", "auth_user_id", "email", "primary_role", "onboarding_completed"]
+    },
+    "Message": {
+      "title": "Twilio Message",
+      "description": "Represents an SMS or WhatsApp message to be sent by the Twilio extension.",
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "string",
+          "description": "The E.164 formatted phone number to send the message to."
+        },
+        "body": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "from": {
+          "type": "string",
+          "description": "Optional. A Twilio phone number or Messaging Service SID to send from."
+        },
+        "delivery": {
+          "type": "object",
+          "description": "State of the message delivery, managed by the Twilio extension.",
+          "properties": {
+            "state": {
+              "type": "string",
+              "enum": ["PENDING", "PROCESSING", "SUCCESS", "ERROR"]
+            },
+            "startTime": { "type": "string", "format": "date-time" },
+            "endTime": { "type": "string", "format": "date-time" },
+            "errorCode": { "type": "string" },
+            "errorMessage": { "type": "string" },
+            "info": { "type": "object" }
+          }
+        }
+      },
+      "required": ["to", "body"]
     }
   },
   "auth": {
@@ -66,6 +101,12 @@
         "$ref": "#/entities/UserProfile"
       },
       "description": "Stores public and private user profile information."
+    },
+    "/messages/{messageId}": {
+      "schema": {
+        "$ref": "#/entities/Message"
+      },
+      "description": "Collection monitored by the Twilio Send Messages extension to trigger SMS/WhatsApp messages."
     }
   }
 }
