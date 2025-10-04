@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -160,7 +159,7 @@ export function TransactionHistoryPage() {
                     {transactions.map((tx) => (
                     <TableRow key={tx.id} className={tx.order_id ? "cursor-pointer" : ""} onClick={() => tx.order_id && router.push(`/tracking?orderId=${tx.order_id}`)}>
                         <TableCell>{new Date(tx.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="font-medium">{tx.description}</TableCell>
+                        <TableCell className="font-medium">{tx.description || tx.type.replace(/_/g, ' ')}</TableCell>
                         <TableCell>
                             <Badge variant={getTypeVariant(tx.type)} className="capitalize">{tx.type.replace(/_/g, ' ')}</Badge>
                         </TableCell>

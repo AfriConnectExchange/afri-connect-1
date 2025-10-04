@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -27,8 +26,8 @@ import {
 } from '@/components/ui/sheet';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import type { User as AuthUser } from 'firebase/auth';
+import { useAuth, useUser } from '@/firebase';
 
 interface DashboardHeaderProps {
   title: string;
@@ -36,47 +35,27 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
-  const supabase = createClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const auth = useAuth();
+  const { user } = useUser();
   const [profile, setProfile] = useState<any>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   
   useEffect(() => {
-    const fetchUserAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('avatar_url, full_name')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
-      }
+    const fetchProfile = async () => {
+      // This logic will need to be re-implemented with Firestore
     };
     
-    fetchUserAndProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if(session?.user) {
-        fetchUserAndProfile();
-      } else {
-        setProfile(null);
-        router.push('/');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase, router]);
+    if (user) {
+      fetchProfile();
+    } else {
+      setProfile(null);
+    }
+  }, [user]);
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await auth.signOut();
     router.push('/');
   }
 

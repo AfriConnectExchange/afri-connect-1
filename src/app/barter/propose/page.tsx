@@ -1,4 +1,3 @@
-
 'use client';
 import { Suspense } from 'react';
 import { ProposeBarterPage } from '@/components/barter/propose-barter-page';

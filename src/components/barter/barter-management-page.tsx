@@ -9,8 +9,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Handshake, Repeat, Check, X, Package, ArrowRight, Loader2, Info } from 'lucide-react';
 import Image from 'next/image';
 import { Badge } from '../ui/badge';
-import { createClient } from '@/lib/supabase/client';
 import { ConfirmationModal } from '../ui/confirmation-modal';
+import { useUser } from '@/firebase';
 
 interface BarterProposal {
     id: string;
@@ -52,23 +52,14 @@ export function BarterManagementPage() {
     const [proposals, setProposals] = useState<BarterProposal[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'received' | 'sent'>('received');
-    const [userId, setUserId] = useState<string | null>(null);
+    const { user } = useUser();
     const [showConfirmModal, setShowConfirmModal] = useState<{ proposal: BarterProposal; action: 'accepted' | 'rejected' } | null>(null);
     const [isResponding, setIsResponding] = useState(false);
 
     const { toast } = useToast();
-    const supabase = createClient();
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) setUserId(user.id);
-        };
-        fetchUser();
-    }, [supabase]);
-
-    useEffect(() => {
-        if (!userId) return;
+        if (!user) return;
 
         const fetchProposals = async () => {
             setIsLoading(true);
@@ -85,7 +76,7 @@ export function BarterManagementPage() {
         };
 
         fetchProposals();
-    }, [activeTab, userId, toast]);
+    }, [activeTab, user, toast]);
 
     const handleRespond = (proposal: BarterProposal, action: 'accepted' | 'rejected') => {
         setShowConfirmModal({ proposal, action });
@@ -119,7 +110,7 @@ export function BarterManagementPage() {
     };
 
     const ProposalCard = ({ proposal }: { proposal: BarterProposal }) => {
-        const isReceived = proposal.recipient_id === userId;
+        const isReceived = proposal.recipient_id === user?.uid;
         const myItem = isReceived ? proposal.recipient_product : proposal.proposer_product;
         const theirItem = isReceived ? proposal.proposer_product : proposal.recipient_product;
         const theirName = isReceived ? proposal.proposer.full_name : proposal.recipient.full_name;

@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { AnimatedButton } from '../ui/animated-button';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
-import { createClient } from '@/lib/supabase/client';
+import { useUser } from '@/firebase';
 import { useEffect } from 'react';
 
 const formSchema = z.object({
@@ -33,23 +33,19 @@ interface PersonalDetailsStepProps {
 }
 
 export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
-  const supabase = createClient();
+  const { user } = useUser();
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
   
   useEffect(() => {
-    const getUserMetadata = async () => {
-      const {data: { user }} = await supabase.auth.getUser();
-      form.reset({
-        fullName: user?.user_metadata.full_name || defaultValues.fullName || '',
-        phoneNumber: user?.phone || defaultValues.phoneNumber || '',
-        location: user?.user_metadata.location || defaultValues.location || '',
+    form.reset({
+        fullName: user?.displayName || defaultValues.fullName || '',
+        phoneNumber: user?.phoneNumber || defaultValues.phoneNumber || '',
+        location: defaultValues.location || '',
       })
-    }
-    getUserMetadata();
-  }, [supabase, form, defaultValues])
+  }, [user, form, defaultValues])
 
   const onSubmit = (values: PersonalDetailsFormValues) => {
     onNext({

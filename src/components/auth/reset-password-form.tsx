@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -21,11 +20,12 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
 import { AnimatedButton } from '../ui/animated-button';
 import { PasswordStrength } from './PasswordStrength';
 import { Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { useAuth } from '@/firebase';
+import { confirmPasswordReset } from 'firebase/auth';
 
 const formSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters.'),
@@ -37,26 +37,25 @@ const formSchema = z.object({
 
 export function ResetPasswordForm() {
   const { toast } = useToast();
-  const supabase = createClient();
+  const auth = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [passwordUpdated, setPasswordUpdated] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [oobCode, setOobCode] = useState<string | null>(null);
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'PASSWORD_RECOVERY') {
-        // The user is on the reset page, no action needed here until form submission.
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-
+    // Firebase sends the oobCode (out-of-band code) in the URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('oobCode');
+    if (code) {
+      setOobCode(code);
+    } else {
+      setError('Invalid or missing password reset code. Please request a new link.');
+    }
+  }, []);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -64,27 +63,37 @@ export function ResetPasswordForm() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!oobCode) {
+      setError('Password reset code is missing. Please use the link from your email again.');
+      return;
+    }
+    
     setIsLoading(true);
     setError(null);
-    const { error } = await supabase.auth.updateUser({
-      password: values.password,
-    });
 
-    if (error) {
-      setError(error.message);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message,
-      });
-    } else {
+    try {
+      await confirmPasswordReset(auth, oobCode, values.password);
       toast({
         title: 'Password Updated',
         description: 'Your password has been successfully updated. You can now log in.',
       });
       setPasswordUpdated(true);
       setTimeout(() => router.push('/'), 3000);
+    } catch (error: any) {
+        let errorMessage = "An unknown error occurred.";
+        if (error.code === 'auth/invalid-action-code') {
+            errorMessage = 'The password reset link is invalid or has expired. Please request a new one.';
+        } else {
+            errorMessage = error.message;
+        }
+        setError(errorMessage);
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: errorMessage,
+        });
     }
+
     setIsLoading(false);
   }
   
@@ -179,7 +188,7 @@ export function ResetPasswordForm() {
 
              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <AnimatedButton type="submit" className="w-full" isLoading={isLoading}>
+            <AnimatedButton type="submit" className="w-full" isLoading={isLoading} disabled={!oobCode}>
               Update Password
             </AnimatedButton>
           </form>

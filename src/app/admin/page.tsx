@@ -1,62 +1,34 @@
-
 'use client';
 
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
 import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { User } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
 import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { useUser } from '@/firebase';
 
 export default function AdminPage() {
-  const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isLoading: isUserLoading } = useUser();
   const [profile, setProfile] = useState<any | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    const fetchUserAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('role_id')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
-      }
-      setIsUserLoading(false);
-    };
-
-    fetchUserAndProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if (!session?.user) {
-        router.push('/');
-      } else {
-         fetchUserAndProfile();
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
+    if (!isUserLoading && !user) {
+      router.push('/');
+    }
+    // The profile fetching logic will need to be re-implemented with Firestore
+  }, [user, isUserLoading, router]);
 
   if (isUserLoading || !user) {
     return <PageLoader />;
   }
 
-  // Assuming role_id 5 is for Admin
-  const canAccess = profile && profile.role_id === 5;
+  // This logic needs to be updated with Firestore data
+  const canAccess = false; 
   
   const navItems = [
     { id: 'user-management', label: 'User Management', href: '#', icon: UserIcon },

@@ -3,29 +3,19 @@ import { KycFlow } from '@/components/kyc/kyc-flow';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
 import { useState, useEffect } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { User } from 'firebase/auth';
+import { useUser } from '@/firebase';
 
 export default function KycPage() {
-  const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const { user, isLoading: isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
+    if (!isUserLoading && !user) {
+      router.push('/');
+    }
+  }, [user, isUserLoading, router]);
 
 
   if (isUserLoading || !user) {

@@ -2,7 +2,6 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -20,10 +19,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Mail } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
+import { Mail, MailCheck } from 'lucide-react';
 import { useState } from 'react';
 import { AnimatedButton } from '../ui/animated-button';
+import { useAuth } from '@/firebase';
+import { sendPasswordResetEmail } from 'firebase/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -31,7 +31,7 @@ const formSchema = z.object({
 
 export function ForgotPasswordForm() {
   const { toast } = useToast();
-  const supabase = createClient();
+  const auth = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
 
@@ -42,23 +42,20 @@ export function ForgotPasswordForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(values.email, {
-      redirectTo: `${location.origin}/auth/reset-password`,
-    });
-
-    if (error) {
+    try {
+      await sendPasswordResetEmail(auth, values.email);
        toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: error.message,
-      });
-    } else {
-      toast({
         title: 'Password Reset Link Sent',
         description:
           'If an account exists for this email, you will receive a password reset link.',
       });
       setEmailSent(true);
+    } catch (error: any) {
+        toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error.message,
+      });
     }
     setIsLoading(false);
   }
@@ -119,6 +116,3 @@ export function ForgotPasswordForm() {
     </Card>
   );
 }
-
-// Add MailCheck icon for the success state, needs to be imported
-import { MailCheck } from 'lucide-react';

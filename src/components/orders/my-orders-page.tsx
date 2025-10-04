@@ -145,7 +145,7 @@ export function MyOrdersPage() {
                                 {order.status}
                             </Badge>
                         </TableCell>
-                        <TableCell>{order.order_items.length} item(s)</TableCell>
+                        <TableCell>{order.order_items?.length || 0} item(s)</TableCell>
                         <TableCell className="text-right">£{parseFloat(order.total_amount).toFixed(2)}</TableCell>
                     </TableRow>
                     ))}

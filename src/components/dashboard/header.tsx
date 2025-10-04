@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -32,8 +31,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { createClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useUser, useAuth } from '@/firebase';
 import { HeaderSearchBar } from '../marketplace/header-search-bar';
 
 interface HeaderProps {
@@ -41,8 +39,8 @@ interface HeaderProps {
 }
 
 export function Header({ cartCount = 0 }: HeaderProps) {
-  const supabase = createClient();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const auth = useAuth();
+  const { user } = useUser();
   const [profile, setProfile] = useState<any>(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -51,43 +49,18 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const [isCartAnimating, setIsCartAnimating] = useState(false);
   
   useEffect(() => {
-    const fetchUserAndProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (user) {
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('role_id, avatar_url, full_name')
-          .eq('id', user.id)
-          .single();
-        setProfile(profileData);
-        
-        const { count } = await supabase
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id)
-            .eq('is_read', false);
-        setNotificationCount(count || 0);
-      }
+    const fetchProfile = async () => {
+        // Firestore logic to fetch profile will go here
     };
     
-    fetchUserAndProfile();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      if(session?.user) {
-        fetchUserAndProfile();
-      } else {
+    if (user) {
+        fetchProfile();
+    } else {
         setProfile(null);
         setNotificationCount(0);
-      }
-    });
+    }
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
+  }, [user]);
 
   useEffect(() => {
     if (cartCount > 0) {
@@ -98,11 +71,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await auth.signOut();
     router.push('/');
   }
   
-  const canAccessSellerFeatures = profile && [2, 3].includes(profile.role_id);
+  // This needs to be updated with Firestore logic
+  const canAccessSellerFeatures = false;
 
   const menuItems = {
       mobile: [

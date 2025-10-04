@@ -16,7 +16,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Textarea } from '../ui/textarea';
-import { createClient } from '@/lib/supabase/client';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 
@@ -33,7 +34,8 @@ interface PersonalInfoFormProps {
 }
 
 export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
-  const supabase = createClient();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,52 +50,42 @@ export function PersonalInfoForm({ onFeedback }: PersonalInfoFormProps) {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
-
       if (user) {
-        const { data: profile, error } = await supabase
-          .from('profiles')
-          .select('full_name, phone_number, location')
-          .eq('id', user.id)
-          .single();
-        
-        if (profile) {
-            form.reset({
+        const docRef = doc(firestore, "profiles", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const profile = docSnap.data();
+           form.reset({
               full_name: profile.full_name || '',
               phone_number: profile.phone_number || '',
-              location: profile.location || '',
+              location: profile.address_line1 || '',
             });
         }
       }
       setIsLoading(false);
     };
     fetchProfile();
-  }, [supabase, form]);
+  }, [user, firestore, form]);
 
   const onSubmit = async (values: PersonalInfoFormValues) => {
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
         onFeedback('error', 'You must be logged in to update your profile.');
         setIsSaving(false);
         return;
     }
 
-    const { error } = await supabase
-        .from('profiles')
-        .update({ 
+    try {
+        await setDoc(doc(firestore, "profiles", user.uid), {
             full_name: values.full_name,
             location: values.location,
             phone_number: values.phone_number,
-        })
-        .eq('id', user.id);
-    
-    if (error) {
-        onFeedback('error', error.message);
-    } else {
+        }, { merge: true });
         onFeedback('success', 'Profile updated successfully!');
-        setTimeout(() => window.location.reload(), 1500);
+        // Consider if a reload is necessary or if state can be managed locally
+        // setTimeout(() => window.location.reload(), 1500);
+    } catch(error: any) {
+        onFeedback('error', error.message);
     }
     setIsSaving(false);
   };

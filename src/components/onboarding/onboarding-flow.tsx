@@ -8,14 +8,15 @@ import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
 import { useToast } from '@/hooks/use-toast';
-import { createClient } from '@/lib/supabase/client';
-import { type User } from '@supabase/supabase-js';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
+
 
 export function OnboardingFlow() {
-  const supabase = createClient();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
-  const [user, setUser] = useState<User | null>(null);
   const [currentStep, setCurrentStep] = useState(0);
 
   const [userData, setUserData] = useState({
@@ -26,50 +27,35 @@ export function OnboardingFlow() {
   });
 
   useEffect(() => {
-    const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      if (user) {
-        setUserData((prev) => ({
-          ...prev,
-          full_name: user.user_metadata.full_name || user.email || '',
-          phone_number: user.phone || '',
-          location: user.user_metadata.location || '',
-        }));
-      }
-    };
-    getUser();
-  }, [supabase]);
+    if (user) {
+      setUserData((prev) => ({
+        ...prev,
+        full_name: user.displayName || user.email || '',
+        phone_number: user.phoneNumber || '',
+      }));
+    }
+  }, [user]);
 
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
     handleUpdateUserData({ primary_role: role });
 
-    // For Buyers, we just move to the next step in the UI.
     if (role === 'buyer') {
       setCurrentStep((prev) => prev + 1);
     } else {
-      // For Sellers, SMEs, Trainers, redirect to a dedicated, more detailed verification flow.
-      // We'll save their chosen role first.
       if (user) {
-          const { error } = await supabase
-            .from('profiles')
-            .update({ primary_role: role })
-            .eq('id', user.id);
-          if (error) {
-               toast({
-                variant: 'destructive',
-                title: 'Failed to Save Role',
-                description: error.message,
-                });
-                return;
+          try {
+            await setDoc(doc(firestore, "profiles", user.uid), { primary_role: role }, { merge: true });
+          } catch(error: any) {
+              toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
+              return;
           }
       }
       toast({
         title: 'Seller Verification Required',
         description: "You'll be redirected to complete your seller profile.",
       });
-      router.push('/kyc'); // The KYC page will handle its own multi-step flow.
+      router.push('/kyc');
     }
   };
 
@@ -83,26 +69,21 @@ export function OnboardingFlow() {
       return;
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
+    try {
+      await setDoc(doc(firestore, "profiles", user.uid), {
         full_name: data.full_name,
         phone_number: data.phone_number,
         address_line1: data.location, 
         onboarding_completed: true,
         primary_role: userData.primary_role,
-      })
-      .eq('id', user.id);
+        email: user.email,
+        id: user.uid,
+        auth_user_id: user.uid,
+      }, { merge: true });
 
-    if (error) {
+      setCurrentStep((prev) => prev + 1);
+    } catch(error: any) {
       toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });
-    } else {
-       await supabase.auth.updateUser({
-        data: {
-          full_name: data.full_name,
-        },
-      });
-      setCurrentStep((prev) => prev + 1); // Move to final "All Set!" step
     }
   };
 

@@ -3,29 +3,19 @@ import { Header } from '@/components/dashboard/header';
 import { ProfilePage } from '@/components/profile/profile-page';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
 import { useEffect, useState } from 'react';
-import type { User } from '@supabase/supabase-js';
+import type { User } from 'firebase/auth';
+import { useUser } from '@/firebase';
 
 export default function UserProfilePage() {
-  const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [isUserLoading, setIsUserLoading] = useState(true);
+  const { user, isLoading: isUserLoading } = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setIsUserLoading(false);
-      if (!session?.user) {
-        router.push('/');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [router, supabase]);
+    if (!isUserLoading && !user) {
+      router.push('/');
+    }
+  }, [user, isUserLoading, router]);
 
    if (isUserLoading || !user) {
     return <PageLoader />;

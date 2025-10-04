@@ -10,7 +10,8 @@ import { Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Separator } from '../ui/separator';
 import { Switch } from '../ui/switch';
-import { createClient } from '@/lib/supabase/client';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   language: z.string(),
@@ -29,7 +30,8 @@ interface PreferencesFormProps {
 }
 
 export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
-  const supabase = createClient();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -49,59 +51,51 @@ export function PreferencesForm({ onFeedback }: PreferencesFormProps) {
   useEffect(() => {
     const fetchPreferences = async () => {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('language, timezone, notifications')
-          .eq('id', user.id)
-          .single();
+        const docRef = doc(firestore, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
 
-        if (profile) {
+        if (docSnap.exists()) {
+          const profile = docSnap.data();
           form.reset({
             language: profile.language || 'en',
             timezone: profile.timezone || 'UTC',
-            notifications_email_marketing: profile.notifications?.email_marketing ?? true,
-            notifications_push_marketing: profile.notifications?.push_marketing ?? false,
-            notifications_email_orders: profile.notifications?.email_orders ?? true,
-            notifications_push_orders: profile.notifications?.push_orders ?? true,
-            notifications_sms_orders: profile.notifications?.sms_orders ?? false,
+            notifications_email_marketing: profile.notification_preferences?.email_marketing ?? true,
+            notifications_push_marketing: profile.notification_preferences?.push_marketing ?? false,
+            notifications_email_orders: profile.notification_preferences?.email_orders ?? true,
+            notifications_push_orders: profile.notification_preferences?.push_orders ?? true,
+            notifications_sms_orders: profile.notification_preferences?.sms_orders ?? false,
           });
         }
       }
       setIsLoading(false);
     };
     fetchPreferences();
-  }, [supabase, form]);
+  }, [user, firestore, form]);
 
   const onSubmit = async (values: PreferencesFormValues) => {
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       onFeedback('error', 'User not found.');
       setIsSaving(false);
       return;
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        language: values.language,
-        timezone: values.timezone,
-        notifications: {
-          email_marketing: values.notifications_email_marketing,
-          push_marketing: values.notifications_push_marketing,
-          email_orders: values.notifications_email_orders,
-          push_orders: values.notifications_push_orders,
-          sms_orders: values.notifications_sms_orders,
-        },
-      })
-      .eq('id', user.id);
-
-    if (error) {
-      onFeedback('error', 'Failed to update preferences: ' + error.message);
-    } else {
-      onFeedback('success', 'Preferences updated successfully!');
+    try {
+        await setDoc(doc(firestore, "profiles", user.uid), {
+            language: values.language,
+            timezone: values.timezone,
+            notification_preferences: {
+            email_marketing: values.notifications_email_marketing,
+            push_marketing: values.notifications_push_marketing,
+            email_orders: values.notifications_email_orders,
+            push_orders: values.notifications_push_orders,
+            sms_orders: values.notifications_sms_orders,
+            },
+        }, { merge: true });
+        onFeedback('success', 'Preferences updated successfully!');
+    } catch(error: any) {
+        onFeedback('error', 'Failed to update preferences: ' + error.message);
     }
     setIsSaving(false);
   };

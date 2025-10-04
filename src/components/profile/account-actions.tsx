@@ -7,7 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useAuth } from '@/firebase';
 
 
 interface AccountActionsProps {
@@ -15,7 +15,7 @@ interface AccountActionsProps {
 }
 
 export function AccountActions({ onFeedback }: AccountActionsProps) {
-  const supabase = createClient();
+  const auth = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   
@@ -28,7 +28,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
   
   const confirmDeactivate = async () => {
      try {
-      await supabase.auth.signOut();
+      await auth.signOut();
       toast({ title: 'Account Deactivated', description: 'You have been signed out. Sign in again to reactivate.' });
       router.push('/');
     } catch (e: any) {
@@ -44,9 +44,7 @@ export function AccountActions({ onFeedback }: AccountActionsProps) {
 
   const confirmDelete = async () => {
     onFeedback('error', 'Account deletion is a server-side operation and not implemented in this demo.');
-    // In a real app, this would call a Supabase Edge Function to delete user data
-    // from all tables before deleting the auth user.
-    // const { error } = await supabase.rpc('delete_user_account');
+    // In a real app, this would call a Firebase Function to delete user data
     setShowDeleteConfirm(false);
   };
 

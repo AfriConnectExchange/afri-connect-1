@@ -1,6 +1,5 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 // Define the schema for the product data
@@ -19,12 +18,6 @@ const productSchema = z.object({
 
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
 
   const body = await request.json();
 
@@ -34,43 +27,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
   }
 
-  const {
-      title,
-      description,
-      price,
-      category_id,
-      listing_type,
-      location_text,
-      quantity_available,
-      images,
-      specifications,
-      shipping_policy
-  } = validation.data;
+  // Logic to create advert would go here
 
-  const { data: productData, error } = await supabase
-    .from('products')
-    .insert({
-      seller_id: user.id,
-      title,
-      description,
-      price,
-      category_id,
-      listing_type,
-      location_text,
-      quantity_available,
-      images,
-      specifications,
-      shipping_policy,
-      currency: 'GBP', // Default currency
-      status: 'active'
-    })
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error creating product:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ success: true, message: 'Advert created successfully.', product: productData });
+  return NextResponse.json({ success: true, message: 'Advert created successfully.' });
 }

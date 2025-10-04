@@ -17,10 +17,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Loader2, Shield } from 'lucide-react';
 import { Alert, AlertDescription } from '../ui/alert';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
-  role_id: z.string().min(1, 'Please select a role.'),
+  primary_role: z.string().min(1, 'Please select a role.'),
 });
 
 type RoleFormValues = z.infer<typeof formSchema>;
@@ -30,7 +31,8 @@ interface AccountRoleFormProps {
 }
 
 export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
-  const supabase = createClient();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -38,52 +40,45 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      role_id: '1',
+      primary_role: 'buyer',
     },
   });
 
   useEffect(() => {
     const fetchProfile = async () => {
       setIsLoading(true);
-      const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role_id')
-          .eq('id', user.id)
-          .single();
+        const docRef = doc(firestore, 'profiles', user.uid);
+        const docSnap = await getDoc(docRef);
         
-        if (profile) {
+        if (docSnap.exists()) {
+          const profile = docSnap.data();
           form.reset({
-            role_id: String(profile.role_id || '1'),
+            primary_role: profile.primary_role || 'buyer',
           });
         }
       }
       setIsLoading(false);
     };
     fetchProfile();
-  }, [form, supabase]);
+  }, [form, user, firestore]);
 
   const onSubmit = async (values: RoleFormValues) => {
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       onFeedback('error', 'User not found');
       setIsSaving(false);
       return;
     }
     
-    const { error } = await supabase
-      .from('profiles')
-      .update({ role_id: parseInt(values.role_id) })
-      .eq('id', user.id);
-
-    if (error) {
-      onFeedback('error', error.message);
-    } else {
-      onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
-      setTimeout(() => window.location.reload(), 1500);
+    try {
+        await setDoc(doc(firestore, "profiles", user.uid), { primary_role: values.primary_role }, { merge: true });
+        onFeedback('success', 'Role updated successfully! Refreshing to apply changes.');
+        setTimeout(() => window.location.reload(), 1500);
+    } catch(error: any) {
+        onFeedback('error', error.message);
     }
+    
     setIsSaving(false);
   };
   
@@ -101,8 +96,8 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
     )
   }
   
-  const selectedRole = form.watch('role_id');
-  const requiresKyc = ['2', '3', '4'].includes(selectedRole);
+  const selectedRole = form.watch('primary_role');
+  const requiresKyc = ['seller', 'sme', 'trainer'].includes(selectedRole);
 
   return (
     <Card>
@@ -115,7 +110,7 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
           <CardContent className="space-y-4">
             <FormField
               control={form.control}
-              name="role_id"
+              name="primary_role"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Account Type</FormLabel>
@@ -126,10 +121,10 @@ export function AccountRoleForm({ onFeedback }: AccountRoleFormProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="1">Buyer</SelectItem>
-                      <SelectItem value="2">Seller</SelectItem>
-                      <SelectItem value="3">SME Business</SelectItem>
-                      <SelectItem value="4">Trainer/Educator</SelectItem>
+                      <SelectItem value="buyer">Buyer</SelectItem>
+                      <SelectItem value="seller">Seller</SelectItem>
+                      <SelectItem value="sme">SME Business</SelectItem>
+                      <SelectItem value="trainer">Trainer/Educator</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

@@ -21,7 +21,7 @@ import {
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { useFirebase } from '@/lib/firebase';
+import { useUser } from '@/firebase';
 import { UserNav } from './UserNav';
 
 interface HeaderProps {
@@ -30,7 +30,7 @@ interface HeaderProps {
 
 export function Header({ cartCount = 0 }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, auth } = useFirebase();
+  const { user } = useUser();
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
@@ -44,8 +44,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    await auth.signOut();
-    router.push('/');
+    // This will be handled by UserNav now
   }
 
   const notificationCount = 2;
@@ -185,7 +184,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                             </Button>
                         </>
                     ) : (
-                         <Link href="/auth" passHref>
+                         <Link href="/" passHref>
                             <Button
                                 className="w-full justify-start"
                                 onClick={handleMobileLinkClick}
@@ -280,7 +279,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </div>
             ) : (
                 <div className="hidden md:flex">
-                     <Link href="/auth" passHref>
+                     <Link href="/" passHref>
                         <Button>Sign In</Button>
                      </Link>
                 </div>

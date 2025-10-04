@@ -9,18 +9,36 @@ import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { createClient } from '@/lib/supabase/client';
-// Import AuthApiError to perform more robust error checking
-import { type User, type Session, AuthApiError } from '@supabase/supabase-js';
+import { useAuth, useUser } from '@/firebase';
+import {
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  ConfirmationResult,
+} from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2 } from 'lucide-react';
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
+// Declare recaptchaVerifier outside the component to persist it
+declare global {
+  interface Window {
+    recaptchaVerifier: RecaptchaVerifier;
+    confirmationResult: ConfirmationResult;
+  }
+}
+
+
 export default function Home() {
-  const supabase = createClient();
-  const [isClient, setIsClient] = useState(false);
+  const auth = useAuth();
+  const { user: firebaseUser, isLoading: isUserLoading } = useUser();
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -40,21 +58,11 @@ export default function Home() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   useEffect(() => {
-    // This ensures the component only renders on the client, avoiding hydration errors
-    // with authentication logic.
-    setIsClient(true);
-    
-    // Check if the user is already logged in, the middleware should handle redirects,
-    // but this can provide a smoother experience if the user lands here momentarily.
-    const checkUser = async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-            router.replace('/marketplace');
-        }
+    if (!isUserLoading && firebaseUser) {
+      setIsRedirecting(true);
+      router.replace('/marketplace');
     }
-    checkUser();
-
-  }, [router, supabase]);
+  }, [firebaseUser, isUserLoading, router]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
@@ -86,39 +94,39 @@ export default function Home() {
     }
     setIsLoading(true);
 
-    const { error } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: {
-          full_name: formData.name,
-          email: formData.email, // Pass email in options to be available for profile creation
-        },
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
-    });
-
-    if (error) {
-        // **UPDATED:** More robust error check for existing user.
-        // A 409 Conflict error is the standard for a user already existing.
-        if (error instanceof AuthApiError && error.status === 409) {
-          showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
-        } else {
-          showAlert('destructive', 'Registration Failed', error.message);
-        }
-    } else {
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      await sendEmailVerification(userCredential.user);
       showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
       setAuthMode('awaiting-verification');
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
+      } else {
+        showAlert('destructive', 'Registration Failed', error.message);
+      }
     }
     setIsLoading(false);
   };
+
+  const setupRecaptcha = () => {
+    if (!window.recaptchaVerifier) {
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        'size': 'invisible',
+        'callback': (response: any) => {
+          // reCAPTCHA solved, allow signInWithPhoneNumber.
+        }
+      });
+    }
+    return window.recaptchaVerifier;
+  }
   
   const handlePhoneRegistration = async () => {
     if (!formData.phone) {
       showAlert('destructive', 'Error', 'Phone number is required.');
       return;
     }
-     if (formData.password !== formData.confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       showAlert('destructive', 'Error', 'Passwords do not match.');
       return;
     }
@@ -127,78 +135,57 @@ export default function Home() {
       return;
     }
     setIsLoading(true);
-    
-    // This flow is designed to send OTP first, then create user on verification.
-    const { data, error } = await supabase.auth.signUp({
-        phone: formData.phone,
-        password: formData.password,
-         options: {
-            data: {
-                full_name: formData.name,
-                phone_number: formData.phone,
-            },
-        }
-    });
 
-    if (error) {
-        // **UPDATED:** More robust error check for existing user.
-        if (error instanceof AuthApiError && error.status === 409) {
-            showAlert('destructive', 'Registration Failed', 'This phone number is already linked to another account. Please Log In with your phone number to continue.');
-        } else {
-            showAlert('destructive', 'Failed to Start Signup', error.message);
-        }
-    } else {
-      // Onus is now on the user to verify, by entering the OTP. The user is not logged in.
+    try {
+      const appVerifier = setupRecaptcha();
+      const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
+      window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone to complete signup.');
-      setAuthMode('otp'); // Move to OTP entry screen
+      setAuthMode('otp');
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-phone-number') {
+        showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');
+      } else {
+        showAlert('destructive', 'Failed to Start Signup', error.message);
+      }
     }
+
     setIsLoading(false);
   };
   
   const handleOtpVerification = async (otp: string) => {
     setIsLoading(true);
     
-    // This function now handles verification for both login and signup flows.
-    const { data: { session }, error } = await supabase.auth.verifyOtp({
-      phone: formData.phone,
-      token: otp,
-      type: 'sms', // <-- CORRECT: The type for phone verification is always 'sms'
-    });
-
-    if (error) {
-        showAlert('destructive', 'Verification Failed', error.message);
-        setIsLoading(false); // Only stop loading on error
-    } else if (session) {
-        showAlert('default', 'Verification Successful!', 'Redirecting...');
-        setIsLoading(false);
-        setIsRedirecting(true); // Show redirecting UI
-        router.refresh(); // This will trigger middleware to redirect to onboarding/marketplace
-    } else {
-        showAlert('destructive', 'Verification Failed', 'Could not log you in. Please try again.');
-        setIsLoading(false); // Stop loading on failure
+    try {
+      const confirmationResult = window.confirmationResult;
+      if (!confirmationResult) {
+        throw new Error("No confirmation result found. Please try sending the OTP again.");
+      }
+      const result = await confirmationResult.confirm(otp);
+      showAlert('default', 'Verification Successful!', 'Redirecting...');
+      setIsRedirecting(true);
+      router.refresh();
+    } catch (error: any) {
+       showAlert('destructive', 'Verification Failed', error.message);
+       setIsLoading(false);
     }
   }
 
 
   const handleEmailLogin = async () => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: formData.email,
-      password: formData.password,
-    });
-
-    if (error) {
-        if (error.message === 'Email not confirmed') {
-            setAuthMode('awaiting-verification');
-            showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
-        } else {
-            showAlert('destructive', 'Login Failed', error.message);
-        }
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      if (!userCredential.user.emailVerified) {
+        setAuthMode('awaiting-verification');
+        showAlert('destructive', 'Verification Required', 'Please check your email to verify your account before signing in.');
         setIsLoading(false);
-    } else {
-       // On successful login, the middleware will handle the redirect.
-       // We can force a reload to trigger the middleware check.
-       router.refresh();
+      } else {
+        router.refresh();
+      }
+    } catch (error: any) {
+      showAlert('destructive', 'Login Failed', error.message);
+      setIsLoading(false);
     }
   };
   
@@ -208,44 +195,34 @@ export default function Home() {
       return;
     }
     setIsLoading(true);
-    
-    // For phone login, we just send the OTP.
-    const { error } = await supabase.auth.signInWithOtp({
-        phone: formData.phone,
-    });
 
-    if (error) {
-        showAlert('destructive', 'Failed to Send OTP', error.message);
-        setIsLoading(false);
-    } else {
-        showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
-        setFormData(prev => ({...prev, email: '', name: ''})); // Clear other fields for login flow
-        setAuthMode('otp');
-        setIsLoading(false);
+    try {
+      const appVerifier = setupRecaptcha();
+      const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
+      window.confirmationResult = confirmationResult;
+      showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
+      setFormData(prev => ({...prev, email: '', name: ''}));
+      setAuthMode('otp');
+    } catch (error: any) {
+      showAlert('destructive', 'Failed to Send OTP', error.message);
     }
+    
+    setIsLoading(false);
   };
 
-  const handleSocialLogin = async (provider: 'google' | 'facebook') => {
+  const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-        provider,
-        options: {
-            redirectTo: `${location.origin}/auth/callback`,
-        },
-    });
-
-    if (error) {
-        if (error instanceof AuthApiError && error.status === 409) {
-          showAlert('destructive', 'Login Failed', "An account with this email address already exists. Please try another sign in method.");
-        } else {
-            showAlert('destructive', 'Login Failed', error.message);
-        }
-        setIsLoading(false);
+    const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+      router.refresh();
+    } catch (error: any) {
+      showAlert('destructive', 'Login Failed', error.message);
+      setIsLoading(false);
     }
   }
 
-
-  if (!isClient) {
+  if (isUserLoading || firebaseUser) {
     return <PageLoader />;
   }
 
@@ -331,6 +308,7 @@ export default function Home() {
 
   return (
     <div className="w-full bg-background">
+      <div id="recaptcha-container"></div>
       <div className="relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 p-0">
         <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
           {authBgImage && (

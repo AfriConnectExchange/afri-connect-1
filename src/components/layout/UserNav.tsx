@@ -15,14 +15,15 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { LogOut, Settings, User } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useFirebase } from '@/lib/firebase';
+import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 
 export function UserNav() {
   const router = useRouter();
   const { toast } = useToast();
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
-  const { user, auth } = useFirebase();
+  const { user } = useUser();
+  const auth = useAuth();
 
   const handleLogout = async () => {
     try {
@@ -40,6 +41,8 @@ export function UserNav() {
       });
     }
   };
+
+  if (!user) return null;
 
   return (
     <DropdownMenu>
