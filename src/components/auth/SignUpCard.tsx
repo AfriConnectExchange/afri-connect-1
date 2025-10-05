@@ -27,7 +27,7 @@ import {
 type Props = {
     onSwitch: () => void;
     onAuthSuccess: (user: FirebaseUser) => void;
-    onNeedsOtp: (phone: string) => void;
+    onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
 };
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -100,7 +100,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
-      onNeedsOtp(formData.phone);
+      onNeedsOtp(formData.phone, handlePhoneRegistration);
     } catch (error: any) {
       if (error.code === 'auth/invalid-phone-number') {
         showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');

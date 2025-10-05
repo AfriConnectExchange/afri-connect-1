@@ -25,7 +25,7 @@ import {
 type Props = {
     onSwitch: () => void;
     onAuthSuccess: (user: User) => void;
-    onNeedsOtp: (phone: string) => void;
+    onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
 };
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -99,7 +99,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
 
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
-      onNeedsOtp(formData.phone);
+      onNeedsOtp(formData.phone, handlePhoneLogin);
     } catch (error: any) {
       showAlert('destructive', 'Failed to Send OTP', error.message);
       if (window.recaptchaVerifier) {

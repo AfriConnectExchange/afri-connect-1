@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useRef, ChangeEvent, KeyboardEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, KeyboardEvent, useEffect } from 'react';
 import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -9,13 +9,24 @@ interface Props {
   phone: string;
   onAuthSuccess: (user: User) => void;
   onBack: () => void;
+  onResend: () => Promise<void>;
 }
 
-export function OTPVerification({ phone, onAuthSuccess, onBack }: Props) {
+export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Props) {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [resendCooldown, setResendCooldown] = useState(30);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (resendCooldown > 0) {
+      timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
     const value = e.target.value;
@@ -48,7 +59,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack }: Props) {
         throw new Error("No confirmation result found. Please try sending the OTP again.");
       }
       const result = await confirmationResult.confirm(otpValue);
-      toast({ default: 'default', title: 'Verification Successful!', description: 'Redirecting...' });
+      toast({ title: 'Verification Successful!', description: 'Redirecting...' });
       onAuthSuccess(result.user);
     } catch (error: any) {
        toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
@@ -56,9 +67,18 @@ export function OTPVerification({ phone, onAuthSuccess, onBack }: Props) {
     }
   }
   
-  const handleResendOTP = () => {
-    // This logic would need to be passed in from the parent to re-trigger the phone login/signup flow
-    toast({ title: 'Info', description: 'Resend OTP functionality not implemented yet.' });
+  const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    setIsLoading(true);
+    try {
+        await onResend();
+        setResendCooldown(30); // Reset cooldown
+        toast({ title: 'OTP Resent', description: `A new code has been sent to ${phone}.`});
+    } catch (error) {
+        // Error is already handled in the onResend implementation (SignIn/Up cards)
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -105,8 +125,8 @@ export function OTPVerification({ phone, onAuthSuccess, onBack }: Props) {
 
           <div className="mt-4 text-sm">
             Didn't receive the code?{' '}
-            <button onClick={handleResendOTP} disabled={isLoading} className="text-primary hover:underline font-semibold disabled:text-muted-foreground disabled:cursor-not-allowed">
-              Resend OTP
+            <button onClick={handleResendOTP} disabled={isLoading || resendCooldown > 0} className="text-primary hover:underline font-semibold disabled:text-muted-foreground disabled:cursor-not-allowed">
+              Resend OTP {resendCooldown > 0 ? `(${resendCooldown}s)` : ''}
             </button>
           </div>
         </div>

@@ -33,6 +33,7 @@ export default function Home() {
   const [emailForVerification, setEmailForVerification] = useState('');
   const [phoneForVerification, setPhoneForVerification] = useState('');
   const [authAction, setAuthAction] = useState<'signin' | 'signup'>('signin');
+  const [resendOtp, setResendOtp] = useState<(() => Promise<void>) | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -141,12 +142,16 @@ export default function Home() {
         setEmailForVerification(user.email || '');
         setAuthMode('awaiting-verification');
         showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+    } else {
+        // For all other successful logins/signups, just trigger the redirect
+        setIsRedirecting(true);
     }
   }
 
-  const handleNeedsOtp = (action: 'signin' | 'signup', phone: string) => {
-    setAuthAction(action);
+  const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
+    setAuthAction(authAction);
     setPhoneForVerification(phone);
+    setResendOtp(() => resend); // Store the resend function
     setAuthMode('otp');
   }
 
@@ -181,7 +186,7 @@ export default function Home() {
           <SignInCard
             onSwitch={() => handleSwitchMode('signup')}
             onAuthSuccess={handleAuthSuccess}
-            onNeedsOtp={(phone) => handleNeedsOtp('signin', phone)}
+            onNeedsOtp={handleNeedsOtp}
           />
         );
       case 'signup':
@@ -189,7 +194,7 @@ export default function Home() {
           <SignUpCard
             onSwitch={() => handleSwitchMode('signin')}
             onAuthSuccess={handleAuthSuccess}
-            onNeedsOtp={(phone) => handleNeedsOtp('signup', phone)}
+            onNeedsOtp={handleNeedsOtp}
           />
         );
         case 'awaiting-verification':
@@ -206,6 +211,7 @@ export default function Home() {
                 phone={phoneForVerification}
                 onAuthSuccess={handleAuthSuccess}
                 onBack={() => setAuthMode(authAction)}
+                onResend={resendOtp!}
             />
         )
       default:
