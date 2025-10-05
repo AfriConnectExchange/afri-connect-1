@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Logo } from '@/components/logo';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
@@ -34,8 +34,8 @@ type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 // Declare recaptchaVerifier outside the component to persist it
 declare global {
   interface Window {
-    recaptchaVerifier: RecaptchaVerifier;
-    confirmationResult: ConfirmationResult;
+    recaptchaVerifier?: RecaptchaVerifier;
+    confirmationResult?: ConfirmationResult;
   }
 }
 
@@ -198,12 +198,16 @@ export default function Home() {
       if (window.recaptchaVerifier) {
         window.recaptchaVerifier.clear();
       }
-      window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
-        'size': 'invisible',
-        'callback': (response: any) => {
-          // reCAPTCHA solved, allow signInWithPhoneNumber.
-        }
-      });
+      try {
+        window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
+          'size': 'invisible',
+          'callback': (response: any) => {
+            // reCAPTCHA solved, allow signInWithPhoneNumber.
+          }
+        });
+      } catch (error) {
+        console.error("Recaptcha Verifier error", error);
+      }
     }
     return window.recaptchaVerifier;
   }
@@ -225,6 +229,8 @@ export default function Home() {
 
     try {
       const appVerifier = setupRecaptcha(auth);
+      if (!appVerifier) throw new Error("Could not create Recaptcha Verifier");
+      
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone to complete signup.');
@@ -234,6 +240,10 @@ export default function Home() {
         showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');
       } else {
         showAlert('destructive', 'Failed to Start Signup', error.message);
+      }
+      // Clean up failed recaptcha
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
       }
     }
 
@@ -294,6 +304,8 @@ export default function Home() {
 
     try {
       const appVerifier = setupRecaptcha(auth);
+      if (!appVerifier) throw new Error("Could not create Recaptcha Verifier");
+
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
@@ -301,6 +313,10 @@ export default function Home() {
       setAuthMode('otp');
     } catch (error: any) {
       showAlert('destructive', 'Failed to Send OTP', error.message);
+       // Clean up failed recaptcha
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
     }
     
     setIsLoading(false);
