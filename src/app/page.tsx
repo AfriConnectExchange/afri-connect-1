@@ -194,7 +194,10 @@ export default function Home() {
 
   const setupRecaptcha = (authInstance: Auth) => {
     // Ensure it's run only on the client
-    if (typeof window !== 'undefined' && !window.recaptchaVerifier) {
+    if (typeof window !== 'undefined') {
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
       window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
         'size': 'invisible',
         'callback': (response: any) => {
@@ -309,6 +312,7 @@ export default function Home() {
     try {
       await signInWithPopup(auth, provider);
       // Let the main useEffect handle profile creation and redirection
+      setIsRedirecting(true);
     } catch (error: any) {
       // Don't show a toast if the user simply closed the popup, but do stop loading.
       if (error.code !== 'auth/popup-closed-by-user') {
