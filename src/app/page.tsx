@@ -306,10 +306,14 @@ export default function Home() {
     setIsLoading(true);
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
-      const result = await signInWithPopup(auth, provider);
+      await signInWithPopup(auth, provider);
       // Let the main useEffect handle profile creation and redirection
     } catch (error: any) {
-      showAlert('destructive', 'Login Failed', error.message);
+      // Don't show an error toast if the user simply closed the popup
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showAlert('destructive', 'Login Failed', error.message);
+      }
+    } finally {
       setIsLoading(false);
     }
   }
