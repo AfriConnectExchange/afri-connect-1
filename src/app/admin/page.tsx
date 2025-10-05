@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AdminDashboard } from '@/components/admin/admin-dashboard';
@@ -20,7 +21,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!isUserLoading && !user) {
-      router.push('/');
+      router.push('/auth');
       return;
     }
 
@@ -71,7 +72,7 @@ export default function AdminPage() {
                         <p className="text-muted-foreground mb-6">
                             You do not have permission to access the admin dashboard.
                         </p>
-                         <Button className="w-full" onClick={() => router.push('/marketplace')}>
+                         <Button className="w-full" onClick={() => router.push('/')}>
                             Go to Marketplace
                         </Button>
                     </CardContent>

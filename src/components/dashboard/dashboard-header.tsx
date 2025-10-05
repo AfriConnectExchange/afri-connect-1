@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -87,7 +88,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
                 <div className="flex flex-col h-full">
                   <div className="flex items-center gap-2 mb-6 px-2">
                     <Link
-                      href="/marketplace"
+                      href="/"
                       className="flex items-center gap-2"
                       onClick={handleMobileLinkClick}
                     >
@@ -116,7 +117,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
                       ))}
                     </div>
                     <div className="border-t my-4"></div>
-                      <Link href="/marketplace" passHref>
+                      <Link href="/" passHref>
                           <Button
                             variant={'ghost'}
                             className="w-full justify-start text-base py-6"
@@ -147,7 +148,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
 
             {/* Logo & Title */}
             <div className="flex items-center gap-4 cursor-pointer flex-1 lg:flex-none justify-center lg:justify-start min-w-0">
-              <Link href="/marketplace" className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
                   <span className="text-white font-bold text-base">AE</span>
                 </div>
@@ -160,7 +161,7 @@ export function DashboardHeader({ title, navItems }: DashboardHeaderProps) {
           {/* Action Icons */}
           <div className="flex items-center gap-2 shrink-0">
             <Button variant="outline" size="sm" asChild>
-                <Link href="/marketplace">Marketplace</Link>
+                <Link href="/">Marketplace</Link>
             </Button>
             {user && (
               <div className="hidden md:flex items-center gap-4">

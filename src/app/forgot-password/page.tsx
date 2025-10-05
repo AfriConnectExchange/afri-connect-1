@@ -1,3 +1,4 @@
+
 import { ForgotPasswordForm } from '@/components/auth/forgot-password-form';
 import { Logo } from '@/components/logo';
 import Link from 'next/link';
@@ -13,7 +14,7 @@ export default function ForgotPasswordPage() {
         <ForgotPasswordForm />
         <div className="text-center text-sm">
           <Link
-            href="/"
+            href="/auth"
             className="inline-flex items-center gap-1 underline underline-offset-4 hover:text-primary"
           >
             <ChevronLeft className="h-4 w-4" />

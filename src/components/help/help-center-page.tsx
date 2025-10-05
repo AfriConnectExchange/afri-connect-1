@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -75,7 +76,7 @@ export function HelpCenterPage({ onNavigate }: HelpCenterPageProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => onNavigate('/marketplace')}
+              onClick={() => onNavigate('/')}
               className="flex items-center gap-2"
             >
               <ArrowLeft className="w-4 h-4" />

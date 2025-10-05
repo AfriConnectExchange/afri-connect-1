@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -78,7 +79,7 @@ export function ResetPasswordForm() {
         description: 'Your password has been successfully updated. You can now log in.',
       });
       setPasswordUpdated(true);
-      setTimeout(() => router.push('/'), 3000);
+      setTimeout(() => router.push('/auth'), 3000);
     } catch (error: any) {
         let errorMessage = "An unknown error occurred.";
         if (error.code === 'auth/invalid-action-code') {

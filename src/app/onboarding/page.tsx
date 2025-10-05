@@ -1,3 +1,4 @@
+
 'use client';
 import { OnboardingFlow } from '@/components/onboarding/onboarding-flow';
 import { useRouter } from 'next/navigation';
@@ -11,7 +12,7 @@ export default function OnboardingPage() {
 
     useEffect(() => {
         if (!isLoading && !user) {
-            router.push('/');
+            router.push('/auth');
         }
     }, [user, isLoading, router]);
 

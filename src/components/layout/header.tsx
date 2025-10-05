@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -50,7 +51,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const notificationCount = 2;
 
   const navigationItems = [
-    { id: '/marketplace', label: 'Marketplace', href: '/marketplace' },
+    { id: '/', label: 'Marketplace', href: '/' },
     { id: '/remittance', label: 'Send Money', href: '/remittance' },
     { id: '/adverts', label: 'My Adverts', icon: TrendingUp, href: '/adverts' },
   ];
@@ -184,7 +185,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                             </Button>
                         </>
                     ) : (
-                         <Link href="/" passHref>
+                         <Link href="/auth" passHref>
                             <Button
                                 className="w-full justify-start"
                                 onClick={handleMobileLinkClick}
@@ -279,7 +280,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </div>
             ) : (
                 <div className="hidden md:flex">
-                     <Link href="/" passHref>
+                     <Link href="/auth" passHref>
                         <Button>Sign In</Button>
                      </Link>
                 </div>

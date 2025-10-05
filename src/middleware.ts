@@ -6,25 +6,13 @@ const protectedRoutes = [
   '/profile',
   '/orders',
   '/checkout',
-  '/adverts',
+  '/onboarding',
   '/kyc',
   '/barter',
   '/notifications',
-  '/sales',
+  '/seller',
   '/transactions',
   '/admin',
-];
-
-// List of routes that are public and do not require authentication.
-const publicRoutes = [
-  '/',
-  '/marketplace',
-  '/product',
-  '/forgot-password',
-  '/auth/reset-password',
-  '/help',
-  '/support',
-  '/tracking'
 ];
 
 async function getSessionStatus(request: NextRequest) {
@@ -54,7 +42,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const { isAuthenticated, onboardingComplete } = await getSessionStatus(request);
-  const isAuthPage = pathname === '/';
+  const isAuthPage = pathname === '/auth';
 
   if (isAuthenticated) {
     // If the user is authenticated but hasn't completed onboarding,
@@ -64,16 +52,16 @@ export async function middleware(request: NextRequest) {
     }
 
     // If the user is authenticated and onboarding is complete,
-    // they should not be able to access the main login page.
+    // they should not be able to access the auth page.
     if (isAuthPage) {
-      return NextResponse.redirect(new URL('/marketplace', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
   } else {
     // If the user is not authenticated, they can only access public routes.
     // All other routes are protected.
     const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
     if (isProtectedRoute) {
-      return NextResponse.redirect(new URL('/', request.url));
+      return NextResponse.redirect(new URL('/auth', request.url));
     }
   }
 

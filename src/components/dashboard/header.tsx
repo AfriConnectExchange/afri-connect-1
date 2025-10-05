@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -90,7 +91,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
   const menuItems = {
       mobile: [
-        { id: '/marketplace', label: 'Marketplace', href: '/marketplace', show: true, icon: ShoppingCart },
+        { id: '/', label: 'Marketplace', href: '/', show: true, icon: ShoppingCart },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
@@ -129,7 +130,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               <div className="flex flex-col h-full">
                 <div className="flex items-center gap-2 mb-6 px-2">
                   <Link
-                    href="/marketplace"
+                    href="/"
                     className="flex items-center gap-2"
                     onClick={handleMobileLinkClick}
                   >
@@ -172,7 +173,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                           </Button>
                         </>
                     ) : (
-                         <Link href="/" passHref>
+                         <Link href="/auth" passHref>
                             <Button
                                 className="w-full justify-start"
                                 onClick={handleMobileLinkClick}
@@ -190,7 +191,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
 
           {/* Logo */}
           <div className="flex items-center gap-2 cursor-pointer flex-1 lg:flex-none justify-center lg:justify-start min-w-0">
-            <Link href="/marketplace" className="flex items-center gap-2">
+            <Link href="/" className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
                 <span className="text-white font-bold text-base">AE</span>
               </div>
@@ -301,7 +302,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               </div>
             ) : (
                 <div className="hidden md:flex">
-                     <Link href="/" passHref>
+                     <Link href="/auth" passHref>
                         <Button>Sign In</Button>
                      </Link>
                 </div>

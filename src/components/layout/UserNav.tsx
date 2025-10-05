@@ -1,3 +1,4 @@
+
 'use client';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -32,7 +33,7 @@ export function UserNav() {
         title: 'Logged Out',
         description: 'You have been successfully logged out.',
       });
-      router.push('/');
+      router.push('/auth');
     } catch (error) {
        toast({
         variant: 'destructive',
