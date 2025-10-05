@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import {
+  Auth,
   createUserWithEmailAndPassword,
   sendEmailVerification,
   signInWithEmailAndPassword,
@@ -191,10 +192,10 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  const setupRecaptcha = () => {
+  const setupRecaptcha = (authInstance: Auth) => {
     // Ensure it's run only on the client
     if (typeof window !== 'undefined' && !window.recaptchaVerifier) {
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
         'size': 'invisible',
         'callback': (response: any) => {
           // reCAPTCHA solved, allow signInWithPhoneNumber.
@@ -220,7 +221,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const appVerifier = setupRecaptcha();
+      const appVerifier = setupRecaptcha(auth);
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone to complete signup.');
@@ -289,7 +290,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const appVerifier = setupRecaptcha();
+      const appVerifier = setupRecaptcha(auth);
       const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
       window.confirmationResult = confirmationResult;
       showAlert('default', 'OTP Sent!', 'Please enter the code sent to your phone.');
@@ -309,7 +310,7 @@ export default function Home() {
       await signInWithPopup(auth, provider);
       // Let the main useEffect handle profile creation and redirection
     } catch (error: any) {
-      // Don't show an error toast if the user simply closed the popup
+      // Don't show a toast if the user simply closed the popup, but do stop loading.
       if (error.code !== 'auth/popup-closed-by-user') {
         showAlert('destructive', 'Login Failed', error.message);
       }
