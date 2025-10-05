@@ -1,18 +1,34 @@
 'use client';
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
 import { AnimatedButton } from '../ui/animated-button';
 import { Separator } from '../ui/separator';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
 import { PasswordStrength } from './PasswordStrength';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  User as FirebaseUser,
+  Auth
+} from 'firebase/auth';
 
-type Props = any;
+type Props = {
+    onSwitch: () => void;
+    onAuthSuccess: (user: FirebaseUser) => void;
+    onNeedsOtp: (phone: string) => void;
+};
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
@@ -29,30 +45,107 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export default function SignUpCard({
-  formData,
-  setFormData,
-  showPassword,
-  setShowPassword,
-  showConfirmPassword,
-  setShowConfirmPassword,
-  isLoading,
-  handleEmailRegistration,
-  handlePhoneRegistration,
-  handleGoogleLogin,
-  handleFacebookLogin,
-  onSwitch,
-}: Props) {
-    const [signupMethod, setSignupMethod] = useState('email');
+export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
+  const auth = useAuth();
+  const { toast } = useToast();
 
-    const handleFormSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if(signupMethod === 'email') {
-            handleEmailRegistration();
-        } else {
-            handlePhoneRegistration();
-        }
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '', acceptTerms: false });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [signupMethod, setSignupMethod] = useState('email');
+
+  const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
+    toast({ variant, title, description });
+  };
+  
+  const setupRecaptcha = (authInstance: Auth) => {
+    if (typeof window !== 'undefined') {
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+      try {
+        window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
+          'size': 'invisible',
+          'callback': () => {},
+        });
+      } catch (error) {
+        console.error("Recaptcha Verifier error", error);
+      }
     }
+    return window.recaptchaVerifier;
+  }
+  
+  const handleEmailRegistration = async () => {
+    setIsLoading(true);
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      await updateProfile(userCredential.user, { displayName: formData.name });
+      onAuthSuccess(userCredential.user);
+    } catch (error: any) {
+      if (error.code === 'auth/email-already-in-use') {
+        showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
+      } else {
+        showAlert('destructive', 'Registration Failed', error.message);
+      }
+    }
+    setIsLoading(false);
+  };
+  
+  const handlePhoneRegistration = async () => {
+    setIsLoading(true);
+    try {
+      const appVerifier = setupRecaptcha(auth);
+      if (!appVerifier) throw new Error("Could not create Recaptcha Verifier");
+      
+      const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
+      window.confirmationResult = confirmationResult;
+      onNeedsOtp(formData.phone);
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-phone-number') {
+        showAlert('destructive', 'Failed to Start Signup', 'Invalid phone number provided.');
+      } else {
+        showAlert('destructive', 'Failed to Start Signup', error.message);
+      }
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
+    setIsLoading(true);
+    const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      onAuthSuccess(result.user);
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showAlert('destructive', 'Sign Up Failed', error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (formData.password !== formData.confirmPassword) {
+        showAlert('destructive', 'Error', 'Passwords do not match.');
+        return;
+      }
+      if (!formData.acceptTerms) {
+        showAlert('destructive', 'Error', 'You must accept the terms and conditions.');
+        return;
+      }
+
+      if(signupMethod === 'email') {
+          handleEmailRegistration();
+      } else {
+          handlePhoneRegistration();
+      }
+  }
 
   return (
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
@@ -73,7 +166,7 @@ export default function SignUpCard({
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={handleGoogleLogin}
+                onClick={() => handleSocialLogin('google')}
                 isLoading={isLoading}
             >
                 <GoogleIcon className="mr-2" />
@@ -82,7 +175,7 @@ export default function SignUpCard({
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={handleFacebookLogin}
+                onClick={() => handleSocialLogin('facebook')}
                 isLoading={isLoading}
             >
                 <FacebookIcon className="mr-2 text-[#1877F2]" />

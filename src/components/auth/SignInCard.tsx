@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { Mail, Eye, EyeOff, Phone } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -9,8 +9,24 @@ import { Separator } from '../ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import 'react-phone-number-input/style.css';
 import PhoneInput from 'react-phone-number-input';
+import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/firebase';
+import {
+  signInWithEmailAndPassword,
+  GoogleAuthProvider,
+  FacebookAuthProvider,
+  signInWithPopup,
+  signInWithPhoneNumber,
+  RecaptchaVerifier,
+  User,
+  Auth
+} from 'firebase/auth';
 
-type Props = any;
+type Props = {
+    onSwitch: () => void;
+    onAuthSuccess: (user: User) => void;
+    onNeedsOtp: (phone: string) => void;
+};
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
     <svg {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="24px" height="24px">
@@ -28,18 +44,86 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-export default function SignInCard({
-  formData,
-  setFormData,
-  showPassword,
-  setShowPassword,
-  isLoading,
-  handleEmailLogin,
-  handlePhoneLogin,
-  handleGoogleLogin,
-  handleFacebookLogin,
-  onSwitch,
-}: Props) {
+export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
+  const auth = useAuth();
+  const { toast } = useToast();
+  const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
+    toast({ variant, title, description });
+  };
+  
+  const setupRecaptcha = (authInstance: Auth) => {
+    if (typeof window !== 'undefined') {
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+      try {
+        window.recaptchaVerifier = new RecaptchaVerifier(authInstance, 'recaptcha-container', {
+          'size': 'invisible',
+          'callback': () => {},
+        });
+      } catch (error) {
+        console.error("Recaptcha Verifier error", error);
+      }
+    }
+    return window.recaptchaVerifier;
+  }
+
+  const handleEmailLogin = async () => {
+    setIsLoading(true);
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, formData.email, formData.password);
+      onAuthSuccess(userCredential.user);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        showAlert('destructive', 'Login Failed', 'Invalid email or password. Please try again.');
+      } else {
+        showAlert('destructive', 'Login Failed', error.message);
+      }
+    }
+    setIsLoading(false);
+  };
+
+  const handlePhoneLogin = async () => {
+    if (!formData.phone) {
+      showAlert('destructive', 'Error', 'Phone number is required.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const appVerifier = setupRecaptcha(auth);
+      if (!appVerifier) throw new Error("Could not create Recaptcha Verifier");
+
+      const confirmationResult = await signInWithPhoneNumber(auth, formData.phone, appVerifier);
+      window.confirmationResult = confirmationResult;
+      onNeedsOtp(formData.phone);
+    } catch (error: any) {
+      showAlert('destructive', 'Failed to Send OTP', error.message);
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+      }
+    }
+    setIsLoading(false);
+  };
+  
+  const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
+    setIsLoading(true);
+    const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+    try {
+      const result = await signInWithPopup(auth, provider);
+      onAuthSuccess(result.user);
+    } catch (error: any) {
+      if (error.code !== 'auth/popup-closed-by-user') {
+        showAlert('destructive', 'Login Failed', error.message);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
   return (
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
       <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
@@ -59,7 +143,7 @@ export default function SignInCard({
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={handleGoogleLogin}
+                onClick={() => handleSocialLogin('google')}
                 isLoading={isLoading}
             >
                 <GoogleIcon className="mr-2" />
@@ -68,14 +152,13 @@ export default function SignInCard({
             <AnimatedButton
                 variant="outline"
                 className="w-full"
-                onClick={handleFacebookLogin}
+                onClick={() => handleSocialLogin('facebook')}
                 isLoading={isLoading}
             >
                 <FacebookIcon className="mr-2 text-[#1877F2]" />
                 Facebook
             </AnimatedButton>
         </div>
-
 
         <div className="flex items-center my-6">
             <Separator className="flex-1" />

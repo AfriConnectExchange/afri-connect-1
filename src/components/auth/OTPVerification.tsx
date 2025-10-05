@@ -2,18 +2,20 @@
 import React, { useState, useRef, ChangeEvent, KeyboardEvent } from 'react';
 import { AnimatedButton } from '../ui/animated-button';
 import { ArrowLeft } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { User, updateProfile } from 'firebase/auth';
 
 interface Props {
-  formData: any;
-  handleOTPComplete: (otp: string) => void;
-  handleResendOTP: () => void;
-  isLoading: boolean;
+  phone: string;
+  onAuthSuccess: (user: User) => void;
   onBack: () => void;
 }
 
-export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, isLoading, onBack }: Props) {
+export function OTPVerification({ phone, onAuthSuccess, onBack }: Props) {
   const [otp, setOtp] = useState<string[]>(Array(6).fill(''));
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>, index: number) => {
     const value = e.target.value;
@@ -27,7 +29,7 @@ export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, 
       }
 
       if(newOtp.every(digit => digit !== '')) {
-        handleOTPComplete(newOtp.join(''));
+        handleOtpVerification(newOtp.join(''));
       }
     }
   };
@@ -37,6 +39,27 @@ export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, 
       inputsRef.current[index - 1]?.focus();
     }
   };
+  
+  const handleOtpVerification = async (otpValue: string) => {
+    setIsLoading(true);
+    try {
+      const confirmationResult = window.confirmationResult;
+      if (!confirmationResult) {
+        throw new Error("No confirmation result found. Please try sending the OTP again.");
+      }
+      const result = await confirmationResult.confirm(otpValue);
+      toast({ default: 'default', title: 'Verification Successful!', description: 'Redirecting...' });
+      onAuthSuccess(result.user);
+    } catch (error: any) {
+       toast({ variant: 'destructive', title: 'Verification Failed', description: error.message });
+       setIsLoading(false);
+    }
+  }
+  
+  const handleResendOTP = () => {
+    // This logic would need to be passed in from the parent to re-trigger the phone login/signup flow
+    toast({ title: 'Info', description: 'Resend OTP functionality not implemented yet.' });
+  }
 
   return (
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden w-full max-w-md">
@@ -51,7 +74,7 @@ export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, 
           </AnimatedButton>
           <h2 className="text-2xl font-bold mb-2 pt-8">Verify Your Phone</h2>
           <p className="text-muted-foreground text-sm mb-6">
-            Enter the 6-digit code sent to {formData.phone}.
+            Enter the 6-digit code sent to {phone}.
           </p>
 
           <div className="flex justify-center gap-2 mb-6">
@@ -71,7 +94,7 @@ export function OTPVerification({ formData, handleOTPComplete, handleResendOTP, 
           </div>
           
           <AnimatedButton
-            onClick={() => handleOTPComplete(otp.join(''))}
+            onClick={() => handleOtpVerification(otp.join(''))}
             isLoading={isLoading}
             disabled={otp.some(digit => digit === '')}
             className="w-full"
