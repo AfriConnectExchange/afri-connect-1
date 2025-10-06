@@ -93,10 +93,10 @@ export function Header({ cartCount = 0 }: HeaderProps) {
         { id: '/', label: 'Marketplace', href: '/', show: true, icon: ShoppingCart },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
-        { id: '/', label: 'My Account', href: '/', show: true, icon: User },
+        { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
       ],
       dropdown: [
-        { id: '/', label: 'My Account', href: '/', show: true, icon: User },
+        { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/barter', label: 'My Barter Proposals', href: '/barter', show: true, icon: Handshake },
         { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
@@ -288,7 +288,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                             </>
                            )}
                            <DropdownMenuSeparator />
-                           <Link href="/"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
+                           <Link href="/profile"><DropdownMenuItem><Settings className="mr-2 h-4 w-4" /><span>Settings</span></DropdownMenuItem></Link>
                         </DropdownMenuGroup>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>
