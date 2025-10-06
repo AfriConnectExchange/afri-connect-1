@@ -1,84 +1,108 @@
+
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { cookies } from 'next/headers';
+
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+  : null;
+
+if (!getApps().length && serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount as any),
+    });
+}
+
 
 const reviewSchema = z.object({
-  productId: z.string().uuid(),
-  orderId: z.string().uuid(),
-  sellerId: z.string().uuid(),
+  productId: z.string(),
+  orderId: z.string(),
+  sellerId: z.string(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().min(10, 'Comment must be at least 10 characters').max(1000, 'Comment must be 1000 characters or less'),
 });
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!getApps().length) {
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
+  const adminAuth = getAuth();
+  const adminFirestore = getFirestore();
+  const sessionCookie = cookies().get('__session')?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
-  const validation = reviewSchema.safeParse(body);
+  try {
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const user = await adminAuth.getUser(decodedToken.uid);
+  
+    const body = await request.json();
+    const validation = reviewSchema.safeParse(body);
 
-  if (!validation.success) {
-    return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
-  }
+    if (!validation.success) {
+      return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
+    }
 
-  const { productId, orderId, sellerId, rating, comment } = validation.data;
+    const { productId, orderId, sellerId, rating, comment } = validation.data;
 
-  // 1. Verify user purchased this product via this order
-  const { data: orderItem, error: orderItemError } = await supabase
-    .from('order_items')
-    .select('order_id')
-    .eq('order_id', orderId)
-    .eq('product_id', productId)
-    .single();
+    // 1. Verify user purchased this product via this order
+    const orderItemsQuery = await adminFirestore.collection('orders').doc(orderId).collection('order_items').where('product_id', '==', productId).get();
 
-  if (orderItemError || !orderItem) {
-    return NextResponse.json({ error: 'Purchase not verified. You can only review products you have bought.' }, { status: 403 });
-  }
+    if (orderItemsQuery.empty) {
+      return NextResponse.json({ error: 'Purchase not verified. You can only review products you have bought.' }, { status: 403 });
+    }
 
-  // 2. Verify a review for this order doesn't already exist
-  const { data: existingReview, error: existingReviewError } = await supabase
-    .from('reviews')
-    .select('id')
-    .eq('order_id', orderId)
-    .single();
+    // 2. Verify a review for this order item doesn't already exist
+    const existingReviewQuery = await adminFirestore.collection('reviews')
+        .where('order_id', '==', orderId)
+        .where('product_id', '==', productId)
+        .where('reviewer_id', '==', user.uid)
+        .get();
 
-  if (existingReview) {
-    return NextResponse.json({ error: 'You have already submitted a review for this purchase.' }, { status: 409 });
-  }
+    if (!existingReviewQuery.empty) {
+      return NextResponse.json({ error: 'You have already submitted a review for this purchase.' }, { status: 409 });
+    }
 
-  // 3. Insert the new review
-  const { data: newReview, error: insertError } = await supabase
-    .from('reviews')
-    .insert({
+    // 3. Insert the new review
+    const newReviewRef = await adminFirestore.collection('reviews').add({
       order_id: orderId,
-      reviewer_id: user.id,
+      reviewer_id: user.uid,
       reviewee_id: sellerId,
       product_id: productId,
       rating,
       comment,
-    })
-    .select()
-    .single();
+      created_at: new Date().toISOString(),
+    });
 
-  if (insertError) {
-    console.error('Error creating review:', insertError);
-    return NextResponse.json({ error: 'Failed to submit review.', details: insertError.message }, { status: 500 });
+    // 4. Update the product's average rating and review count
+    const productRef = adminFirestore.collection('products').doc(productId);
+    await adminFirestore.runTransaction(async (transaction) => {
+        const productDoc = await transaction.get(productRef);
+        if (!productDoc.exists) {
+            throw "Product not found";
+        }
+        const productData = productDoc.data()!;
+        const newReviewCount = (productData.review_count || 0) + 1;
+        const newAverageRating = ((productData.average_rating || 0) * (newReviewCount - 1) + rating) / newReviewCount;
+        
+        transaction.update(productRef, {
+            review_count: newReviewCount,
+            average_rating: newAverageRating,
+        });
+    });
+
+
+    return NextResponse.json({ success: true, message: 'Review submitted successfully.', reviewId: newReviewRef.id });
+
+  } catch (error: any) {
+    console.error('Error creating review:', error);
+    if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/session-cookie-revoked') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Failed to submit review.', details: error.message }, { status: 500 });
   }
-
-  // 4. Update the product's average rating and review count
-  // This is a great candidate for a database function/trigger for atomicity
-  const { error: updateError } = await supabase.rpc('update_product_rating', {
-    prod_id: productId,
-  });
-
-  if (updateError) {
-    // Log the error, but don't fail the request as the review was already created
-    console.error('Failed to update product rating:', updateError);
-  }
-
-  return NextResponse.json({ success: true, message: 'Review submitted successfully.', review: newReview });
 }

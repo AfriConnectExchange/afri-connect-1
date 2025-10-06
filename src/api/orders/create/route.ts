@@ -1,17 +1,31 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 import { getFirestore, collection, addDoc } from "firebase/firestore";
 import { initializeFirebase } from '@/firebase';
+import { getAuth } from 'firebase-admin/auth';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { cookies } from 'next/headers';
+
 
 const { firestore } = initializeFirebase();
 
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+  : null;
+
+if (!getApps().length && serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount as any),
+    });
+}
+
+
 const orderItemSchema = z.object({
-  product_id: z.string().uuid(),
+  product_id: z.string(),
   quantity: z.number().int().positive(),
   price: z.number(),
-  seller_id: z.string().uuid(),
+  seller_id: z.string(),
 });
 
 const createOrderSchema = z.object({
@@ -39,119 +53,124 @@ async function sendSms(to: string, body: string) {
 
 
 export async function POST(request: Request) {
-  const supabase = createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  if (!getApps().length) {
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
+  const adminAuth = getAuth();
+  const adminFirestore = getFirestore();
+  const sessionCookie = cookies().get('__session')?.value;
+  if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
-  const body = await request.json();
-  const validation = createOrderSchema.safeParse(body);
-
-  if (!validation.success) {
-    console.error('Order validation failed:', validation.error.flatten());
-    return NextResponse.json({
-        error: 'Invalid input data provided.',
-        details: validation.error.flatten().fieldErrors,
-      },
-      { status: 400 }
-    );
-  }
-
-  const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
-
   try {
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const user = await adminAuth.getUser(decodedToken.uid);
+
+    const body = await request.json();
+    const validation = createOrderSchema.safeParse(body);
+
+    if (!validation.success) {
+      console.error('Order validation failed:', validation.error.flatten());
+      return NextResponse.json({
+          error: 'Invalid input data provided.',
+          details: validation.error.flatten().fieldErrors,
+        },
+        { status: 400 }
+      );
+    }
+
+    const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
+
     // 1. Pre-flight check: Verify stock for all items
     for (const item of cartItems) {
-      const { data: product, error } = await supabase
-        .from('products')
-        .select('quantity_available, title')
-        .eq('id', item.product_id)
-        .single();
-      
-      if (error || !product) {
+      const productDoc = await adminFirestore.collection('products').doc(item.product_id).get();
+      if (!productDoc.exists) {
         throw new Error(`Product with ID ${item.product_id} not found.`);
       }
+      const product = productDoc.data() as any;
       if (product.quantity_available < item.quantity) {
         throw new Error(`Not enough stock for "${product.title}". Requested: ${item.quantity}, Available: ${product.quantity_available}.`);
       }
     }
 
-    // 2. Call the RPC function to create the order and its items atomically
-    const { data: newOrderId, error: rpcError } = await supabase.rpc('create_order_with_items', {
-        buyer_id_param: user.id,
-        total_amount_param: total,
-        payment_method_param: paymentMethod,
-        shipping_address_param: shippingAddress,
-        items: cartItems,
+    // 2. Create the order
+    const orderRef = await adminFirestore.collection('orders').add({
+        buyer_id: user.uid,
+        total_amount: total,
+        payment_method: paymentMethod,
+        shipping_address: shippingAddress,
+        status: 'processing',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
     });
+    const newOrderId = orderRef.id;
 
-    if (rpcError) {
-      console.error('Supabase RPC error:', rpcError);
-      throw new Error(`Order creation RPC failed: ${rpcError.message}`);
-    }
-    
-    if (!newOrderId) {
-        throw new Error('Order creation RPC did not return an order ID.');
-    }
+    const batch = adminFirestore.batch();
 
-    // 3. Update product stock (decrement quantity_available)
+    // 3. Create order items and update product stock
     for (const item of cartItems) {
-      const { error: stockUpdateError } = await supabase.rpc('decrement_product_quantity', {
-          p_id: item.product_id,
-          p_quantity: item.quantity
+      const orderItemRef = adminFirestore.collection('orders').doc(newOrderId).collection('order_items').doc();
+      batch.set(orderItemRef, {
+        product_id: item.product_id,
+        quantity: item.quantity,
+        price_at_purchase: item.price,
+        seller_id: item.seller_id,
       });
-      if (stockUpdateError) {
-          console.warn(`Could not update stock for product ${item.product_id}: ${stockUpdateError.message}`);
-          // Decide on rollback strategy. For now, we'll log a warning.
-      }
+
+      const productRef = adminFirestore.collection('products').doc(item.product_id);
+      const productDoc = await productRef.get();
+      const currentQuantity = productDoc.data()?.quantity_available || 0;
+      batch.update(productRef, { quantity_available: currentQuantity - item.quantity });
     }
+
+    await batch.commit();
 
     // 4. Create a 'transactions' record (optional, but good practice)
-    await supabase.from('transactions').insert({
+    await adminFirestore.collection('transactions').add({
         order_id: newOrderId,
-        profile_id: user.id,
+        profile_id: user.uid,
         type: 'purchase',
         amount: total,
         status: 'completed',
         provider: paymentMethod,
+        created_at: new Date().toISOString(),
     });
     
     // 5. Create notifications for seller(s) and send SMS
     const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
     for (const sellerId of sellerIds) {
-        if (sellerId === user.id) continue;
+        if (sellerId === user.uid) continue;
 
         // Fetch seller profile to get their phone number
-        const { data: sellerProfile } = await supabase
-          .from('profiles')
-          .select('phone_number, full_name')
-          .eq('id', sellerId)
-          .single();
+        const sellerProfileDoc = await adminFirestore.collection('profiles').doc(sellerId).get();
+        const sellerProfile = sellerProfileDoc.data();
         
-        await supabase.from('notifications').insert({
+        await adminFirestore.collection('notifications').add({
             user_id: sellerId,
             type: 'order',
             title: 'New Sale!',
-            message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${user.user_metadata.full_name || 'a buyer'}.`,
-            link_url: '/sales'
+            message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${user.displayName || 'a buyer'}.`,
+            link_url: '/sales',
+            read: false,
+            created_at: new Date().toISOString(),
         });
 
-        // ** NEW: Send SMS Notification via Twilio Extension **
         if (sellerProfile && sellerProfile.phone_number) {
-            const smsBody = `AfriConnect: New Sale! You have an order for £${total.toFixed(2)} from ${user.user_metadata.full_name || 'a buyer'}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
+            const smsBody = `AfriConnect: New Sale! You have an order for £${total.toFixed(2)} from ${user.displayName || 'a buyer'}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
             await sendSms(sellerProfile.phone_number, smsBody);
         }
     }
     
     // 6. Create notification for buyer
-    await supabase.from('notifications').insert({
-        user_id: user.id,
+    await adminFirestore.collection('notifications').add({
+        user_id: user.uid,
         type: 'order',
         title: 'Order Confirmed!',
         message: `Your order #${String(newOrderId).substring(0, 8)} for £${total.toFixed(2)} has been confirmed.`,
-        link_url: `/tracking?orderId=${newOrderId}`
+        link_url: `/tracking?orderId=${newOrderId}`,
+        read: false,
+        created_at: new Date().toISOString(),
     });
 
 
@@ -159,6 +178,9 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error('Full order creation failed:', error.message);
+    if (error.code === 'auth/session-cookie-expired' || error.code === 'auth/session-cookie-revoked') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     return NextResponse.json(
       {
         error: 'Order Creation Failed',

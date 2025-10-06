@@ -1,8 +1,19 @@
 
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
-import type { User } from '@supabase/supabase-js';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { getAuth, User } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+  : null;
+
+if (!getApps().length && serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount as any),
+    });
+}
 
 type LogLevel = 'info' | 'warn' | 'error';
 
@@ -22,10 +33,14 @@ interface LogPayload {
  * @param payload - The data to be logged.
  */
 export async function logSystemEvent(user: User, payload: LogPayload) {
-  const supabase = createClient();
+  if (!getApps().length) {
+    console.error("CRITICAL: Failed to log system event - Firebase Admin not initialized");
+    return;
+  }
+  const adminFirestore = getFirestore();
 
-  const { error } = await supabase.from('transactions').insert({
-    profile_id: user.id,
+  const { error } = await adminFirestore.collection('transactions').add({
+    profile_id: user.uid,
     type: payload.type,
     status: payload.status || 'completed',
     amount: payload.amount || 0,
@@ -33,6 +48,7 @@ export async function logSystemEvent(user: User, payload: LogPayload) {
     order_id: payload.order_id,
     provider: 'system', // Indicates this is an internal system log
     metadata: payload.metadata || {},
+    created_at: new Date().toISOString()
   });
 
   if (error) {

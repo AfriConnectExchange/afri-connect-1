@@ -18,66 +18,63 @@ if (!getApps().length) {
     });
   } else {
     console.error("Firebase service account key is not set. This API route will not work during development.");
-          credential: cert(serviceAccount as any),
+  }
 }
 
 export async function GET() {
   if (!serviceAccount) {
     return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
-    export async function GET() {
-      if (!serviceAccount) {
-        return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
-      }
+  }
 
-      // Ensure the admin app is initialized before using SDK services.
-      if (!getApps().length) {
-        console.error('Firebase admin app is not initialized.');
-        return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
-      }
+  // Ensure the admin app is initialized before using SDK services.
+  if (!getApps().length) {
+    console.error('Firebase admin app is not initialized.');
+    return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
+  }
 
-      const adminAuth = getAuth();
-      const adminFirestore = getFirestore();
+  const adminAuth = getAuth();
+  const adminFirestore = getFirestore();
 
-      // cookies() can be async in some environments; await to be safe
-      const cookieStore = await cookies();
-      const sessionCookie = cookieStore.get('__session')?.value;
+  // cookies() can be async in some environments; await to be safe
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
 
-      if (!sessionCookie) {
-        return NextResponse.json({ isAuthenticated: false, onboardingComplete: false });
-      }
+  if (!sessionCookie) {
+    return NextResponse.json({ isAuthenticated: false, onboardingComplete: false });
+  }
 
-      try {
-        const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
-        const userId = decodedToken.uid;
+  try {
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+    const userId = decodedToken.uid;
 
-        const profileDoc = await adminFirestore.collection('profiles').doc(userId).get();
+    const profileDoc = await adminFirestore.collection('profiles').doc(userId).get();
 
-        if (!profileDoc.exists) {
-          // This is a new user who just signed up, or a user whose profile creation failed.
-          // We will create their profile now.
-          const userRecord = await adminAuth.getUser(userId);
-          const profileData = {
-            id: userId,
-            auth_user_id: userId,
-            email: userRecord.email,
-            full_name: userRecord.displayName || '',
-            phone_number: userRecord.phoneNumber || '',
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-            onboarding_completed: false,
-            primary_role: 'buyer',
-          };
-          await adminFirestore.collection('profiles').doc(userId).set(profileData);
-          return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
-        }
-
-        const profileData = profileDoc.data();
-        const onboardingComplete = profileData?.onboarding_completed === true;
-
-        return NextResponse.json({ isAuthenticated: true, onboardingComplete });
-
-      } catch (error) {
-        // Session cookie is invalid or expired.
-        return NextResponse.json({ isAuthenticated: false, onboardingComplete: false });
-      }
+    if (!profileDoc.exists) {
+      // This is a new user who just signed up, or a user whose profile creation failed.
+      // We will create their profile now.
+      const userRecord = await adminAuth.getUser(userId);
+      const profileData = {
+        id: userId,
+        auth_user_id: userId,
+        email: userRecord.email,
+        full_name: userRecord.displayName || '',
+        phone_number: userRecord.phoneNumber || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        onboarding_completed: false,
+        primary_role: 'buyer',
+      };
+      await adminFirestore.collection('profiles').doc(userId).set(profileData);
+      return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
     }
+
+    const profileData = profileDoc.data();
+    const onboardingComplete = profileData?.onboarding_completed === true;
+
+    return NextResponse.json({ isAuthenticated: true, onboardingComplete });
+
+  } catch (error) {
+    // Session cookie is invalid or expired.
+    return NextResponse.json({ isAuthenticated: false, onboardingComplete: false });
+  }
+}

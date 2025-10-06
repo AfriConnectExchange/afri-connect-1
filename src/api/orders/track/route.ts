@@ -1,10 +1,25 @@
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { type OrderDetails, type TrackingEvent } from '@/components/tracking/types';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
+  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
+  : null;
+
+if (!getApps().length && serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount as any),
+    });
+}
 
 export async function GET(request: Request) {
-  const supabase = createClient();
+  if (!getApps().length) {
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
+  const adminFirestore = getFirestore();
+
   const { searchParams } = new URL(request.url);
   const orderId = searchParams.get('orderId');
 
@@ -12,40 +27,68 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Order ID is required' }, { status: 400 });
   }
 
-  const { data: orderData, error: orderError } = await supabase
-    .from('orders')
-    .select(`
-      id,
-      tracking_number,
-      courier_name,
-      status,
-      created_at,
-      actual_delivery_date,
-      shipping_address,
-      total_amount,
-      payment_method,
-      buyer:profiles (full_name)
-    `)
-    .or(`id.eq.${orderId},tracking_number.eq.${orderId}`)
-    .single();
+  let orderQuery;
+  if (orderId.length > 20) { // Assume it's a doc ID
+      orderQuery = adminFirestore.collection('orders').doc(orderId);
+  } else { // Assume it's a tracking number
+      orderQuery = adminFirestore.collection('orders').where('tracking_number', '==', orderId).limit(1);
+  }
+  
+  const orderSnap = await orderQuery.get();
+  
+  let orderData: any;
+  if ('docs' in orderSnap) { // It's a QuerySnapshot
+    if (orderSnap.empty) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    orderData = orderSnap.docs[0].data();
+    orderData.id = orderSnap.docs[0].id;
+  } else { // It's a DocumentSnapshot
+    if (!orderSnap.exists) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+    orderData = orderSnap.data();
+    orderData.id = orderSnap.id;
+  }
 
-  if (orderError || !orderData) {
-    console.error('Tracking error:', orderError);
+
+  if (!orderData) {
     return NextResponse.json({ error: 'Order not found' }, { status: 404 });
   }
   
-  const { data: itemsData, error: itemsError } = await supabase
-    .from('order_items')
-    .select(`
-      quantity,
-      price_at_purchase,
-      product:products (id, title, images, seller:profiles(id, full_name))
-    `)
-    .eq('order_id', orderData.id);
+  const itemsSnap = await adminFirestore.collection('orders').doc(orderData.id).collection('order_items').get();
 
-  if (itemsError) {
-    console.error('Order items error:', itemsError);
-    return NextResponse.json({ error: 'Failed to fetch order items' }, { status: 500 });
+  const itemsDataPromises = itemsSnap.docs.map(async (itemDoc) => {
+    const itemData = itemDoc.data();
+    const productSnap = await adminFirestore.collection('products').doc(itemData.product_id).get();
+    const productData = productSnap.data();
+
+    let sellerName = 'Unknown Seller';
+    if(productData?.seller_id) {
+        const sellerSnap = await adminFirestore.collection('profiles').doc(productData.seller_id).get();
+        sellerName = sellerSnap.data()?.full_name || 'Unknown Seller';
+    }
+    
+    return {
+      ...itemData,
+      product: {
+        id: productSnap.id,
+        title: productData?.title || 'Unknown Product',
+        images: productData?.images || [],
+        seller: {
+          id: productData?.seller_id,
+          full_name: sellerName
+        }
+      }
+    };
+  });
+  
+  const itemsData = await Promise.all(itemsDataPromises);
+
+  let buyerName = 'N/A';
+  if(orderData.buyer_id) {
+    const buyerSnap = await adminFirestore.collection('profiles').doc(orderData.buyer_id).get();
+    buyerName = buyerSnap.data()?.full_name || 'N/A';
   }
 
   const shippingAddress = orderData.shipping_address as any;
@@ -103,7 +146,7 @@ export async function GET(request: Request) {
       }
     })),
     shippingAddress: {
-      name: orderData.buyer?.full_name || shippingAddress?.name || 'N/A',
+      name: buyerName || shippingAddress?.name || 'N/A',
       street: shippingAddress?.street || 'N/A',
       city: shippingAddress?.city || 'N/A',
       postcode: shippingAddress?.postcode || 'N/A',
@@ -112,7 +155,7 @@ export async function GET(request: Request) {
     payment: {
         method: orderData.payment_method || 'Card',
         subtotal: subtotal,
-        deliveryFee: deliveryFee,
+        deliveryFee: deliveryFee > 0 ? deliveryFee : 0,
         total: orderData.total_amount,
     },
     events: events.reverse(),
