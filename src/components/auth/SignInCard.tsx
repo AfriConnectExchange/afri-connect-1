@@ -25,6 +25,7 @@ import {
   Auth,
   getAdditionalUserInfo
 } from 'firebase/auth';
+import AccountLinkModal from './AccountLinkModal';
 
 type Props = {
     onSwitch: () => void;
@@ -54,6 +55,10 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [linkModalOpen, setLinkModalOpen] = useState(false);
+  const [pendingCredential, setPendingCredential] = useState<any | null>(null);
+  const [conflictEmail, setConflictEmail] = useState<string | undefined>(undefined);
+  const [conflictMethods, setConflictMethods] = useState<string[]>([]);
 
   const showAlert = (variant: 'default' | 'destructive', title: string, description: string) => {
     toast({ variant, title, description });
@@ -136,12 +141,23 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       } else if (error.code === 'auth/account-exists-with-different-credential') {
         // The email for this account already exists with a different sign-in method.
         const email = error.customData?.email || error.email;
-        console.debug('[auth] account exists with different credential for email=', email);
+        console.debug('[auth] account exists with different credential for email=', email, 'error=', error);
+        // Attempt to extract pending credential
+        let cred = null;
+        try {
+          // firebase SDK provides helper credentialFromError for providers, but error.credential may exist
+          cred = (error as any).credential || null;
+        } catch (e) {
+          cred = null;
+        }
+
         if (email) {
           try {
             const methods = await fetchSignInMethodsForEmail(auth, email);
-            const friendly = methods.join(', ') || 'another provider';
-            showAlert('destructive', 'Account Conflict', `An account already exists for ${email} using: ${friendly}. Please sign in with that method and link accounts in account settings.`);
+            setConflictEmail(email);
+            setConflictMethods(methods);
+            setPendingCredential(cred);
+            setLinkModalOpen(true);
           } catch (mErr: any) {
             console.error('[auth] fetchSignInMethodsForEmail failed', mErr);
             showAlert('destructive', 'Account Conflict', 'An account already exists with the same email. Please sign in with the original method.');
@@ -162,6 +178,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   }
 
   return (
+    <>
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
       <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
         <div className="flex items-center justify-center gap-2 mb-4">
@@ -321,5 +338,15 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
         </div>
       </div>
     </div>
+    <AccountLinkModal
+      open={linkModalOpen}
+      onClose={() => setLinkModalOpen(false)}
+      auth={auth as Auth}
+      email={conflictEmail}
+      methods={conflictMethods}
+      pendingCredential={pendingCredential}
+      onLinked={(user) => onAuthSuccess(user)}
+    />
+    </>
   );
 }
