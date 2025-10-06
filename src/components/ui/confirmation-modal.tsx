@@ -110,12 +110,7 @@ export function ConfirmationModal({
               <IconComponent className={`w-6 h-6 ${config.iconColor}`} />
             </motion.div>
             <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <AlertDialogTitle className="text-base">{title}</AlertDialogTitle>
-                <Badge variant={config.badgeVariant} className="text-xs">
-                  {config.badgeText}
-                </Badge>
-              </div>
+              <AlertDialogTitle className="text-lg">{title}</AlertDialogTitle>
             </div>
           </div>
 
@@ -166,7 +161,7 @@ export function ConfirmationModal({
           </div>
         )}
 
-        <AlertDialogFooter className="flex flex-col sm:flex-row gap-2">
+        <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 pt-4">
           <AlertDialogCancel asChild>
             <Button variant="outline" disabled={isLoading} className="w-full sm:w-auto">
               {cancelText}

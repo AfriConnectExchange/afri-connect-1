@@ -6,14 +6,19 @@ export async function GET(request: NextRequest) {
     await requireAdmin(request);
     const firestore = getAdminFirestore();
 
-    const snap = await firestore.collection('flags').orderBy('created_at', 'desc').limit(200).get();
+    const snap = await firestore.collection('flags').orderBy('created_at', 'desc').limit(50).get();
     const flags = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Enrich with listing data (if exists)
     const results = await Promise.all(flags.map(async (f: any) => {
-      const listingRef = firestore.collection('products').doc(f.listing_id);
-      const listingDoc = await listingRef.get();
-      return { flag: f, listing: listingDoc.exists ? listingDoc.data() : null };
+      let listingData = null;
+      if (f.target_type === 'product' && f.target_id) {
+        const listingRef = firestore.collection('products').doc(f.target_id);
+        const listingDoc = await listingRef.get();
+        if (listingDoc.exists) {
+            listingData = { id: listingDoc.id, ...listingDoc.data() };
+        }
+      }
+      return { flag: f, listing: listingData };
     }));
 
     return NextResponse.json({ results });
