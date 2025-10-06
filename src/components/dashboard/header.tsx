@@ -199,7 +199,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
                 <span className="text-white font-bold text-base">AE</span>
               </div>
-              <span className="text-lg lg:text-xl font-bold text-primary truncate">
+              <span className="hidden sm:inline-block text-lg lg:text-xl font-bold text-primary truncate">
                 AfriConnect Exchange
               </span>
             </Link>
@@ -219,9 +219,15 @@ export function Header({ cartCount = 0 }: HeaderProps) {
             </div>
             
             <div className="hidden md:flex items-center gap-2">
-               <Button asChild variant="outline" size="sm">
-                <Link href="/seller">Sell on AfriConnect</Link>
-              </Button>
+              {canAccessSellerFeatures ? (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/seller/dashboard">Seller Dashboard</Link>
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm">
+                  <Link href="/kyc">Sell on AfriConnect</Link>
+                </Button>
+              )}
             </div>
 
             {user ? (
