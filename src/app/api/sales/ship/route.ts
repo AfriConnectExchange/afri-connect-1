@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
-import { initializeApp, getApps, getApp } from 'firebase-admin/app';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, doc, updateDoc, getDoc } from 'firebase-admin/firestore';
 import { z } from 'zod';
@@ -12,17 +12,10 @@ const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
 if (!getApps().length) {
   if (serviceAccount) {
     initializeApp({
-      credential: {
-        projectId: serviceAccount.project_id,
-        clientEmail: serviceAccount.client_email,
-        privateKey: serviceAccount.private_key,
-      },
+      credential: cert(serviceAccount as any),
     });
   }
 }
-
-const adminAuth = getAuth();
-const adminFirestore = getFirestore();
 
 const shipOrderSchema = z.object({
   orderId: z.string().min(1, 'Order ID is required.'),
@@ -44,8 +37,16 @@ export async function POST(request: Request) {
   if (!serviceAccount) {
     return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
   }
+  if (!getApps().length) {
+    console.error('Firebase admin app is not initialized.');
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
 
-  const sessionCookie = cookies().get('__session')?.value;
+  const adminAuth = getAuth();
+  const adminFirestore = getFirestore();
+
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
   if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -61,14 +62,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid input', details: validation.error.flatten() }, { status: 400 });
     }
     
-    const { orderId, courierName, trackingNumber } = validation.data;
+  const { orderId, courierName, trackingNumber } = validation.data;
 
-    const orderRef = doc(adminFirestore, 'orders', orderId);
-    const orderSnap = await getDoc(orderRef);
+  const orderRef = adminFirestore.collection('orders').doc(orderId);
+  const orderSnap = await orderRef.get();
 
-    if (!orderSnap.exists() || orderSnap.data()?.seller_id !== userId) {
-        return NextResponse.json({ error: 'Order not found or you are not the seller.' }, { status: 403 });
-    }
+  const orderData = orderSnap.data() as any;
+  if (!orderSnap.exists || orderData?.seller_id !== userId) {
+    return NextResponse.json({ error: 'Order not found or you are not the seller.' }, { status: 403 });
+  }
 
     const verificationResult = await verifyTrackingNumber(courierName, trackingNumber);
 
@@ -76,14 +78,13 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: verificationResult.message }, { status: 400 });
     }
 
-    await updateDoc(orderRef, {
+    await orderRef.update({
       status: 'shipped',
       courier_name: courierName,
       tracking_number: trackingNumber,
       updated_at: new Date().toISOString(),
     });
     
-    const orderData = orderSnap.data();
     if (orderData?.buyer_id) {
       // In a real app, you'd create a notification document in Firestore.
       console.log(`Creating notification for buyer ${orderData.buyer_id}`);
