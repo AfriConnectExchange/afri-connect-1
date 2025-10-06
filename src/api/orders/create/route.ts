@@ -1,23 +1,27 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getFirestore, collection, addDoc } from "firebase/firestore";
-import { initializeFirebase } from '@/firebase';
-import { getAuth } from 'firebase-admin/auth';
+import { collection, addDoc } from "firebase/firestore";
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
+import { getFirestore } from 'firebase-admin/firestore';
 import { cookies } from 'next/headers';
 
 
-const { firestore } = initializeFirebase();
+const serviceAccount = {
+  projectId: process.env.PROJECT_ID,
+  clientEmail: process.env.CLIENT_EMAIL,
+  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
-
-if (!getApps().length && serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+if (!getApps().length) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
 }
 
 
@@ -44,10 +48,11 @@ const createOrderSchema = z.object({
 
 // Function to send a message via the Twilio extension
 async function sendSms(to: string, body: string) {
-  if (!firestore) {
+  if (!getApps().length) {
     console.error("Firestore not initialized for SMS service.");
     return;
   }
+  const firestore = getFirestore();
   await addDoc(collection(firestore, 'messages'), { to, body });
 }
 

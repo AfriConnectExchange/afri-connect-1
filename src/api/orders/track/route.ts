@@ -4,14 +4,20 @@ import { type OrderDetails, type TrackingEvent } from '@/components/tracking/typ
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
+const serviceAccount = {
+  projectId: process.env.PROJECT_ID,
+  clientEmail: process.env.CLIENT_EMAIL,
+  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
 
-if (!getApps().length && serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+if (!getApps().length) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
 }
 
 export async function GET(request: Request) {

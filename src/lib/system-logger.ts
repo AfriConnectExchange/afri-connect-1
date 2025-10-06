@@ -5,14 +5,20 @@ import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getAuth, User } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
+const serviceAccount = {
+  projectId: process.env.PROJECT_ID,
+  clientEmail: process.env.CLIENT_EMAIL,
+  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
 
-if (!getApps().length && serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+if (!getApps().length) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
 }
 
 type LogLevel = 'info' | 'warn' | 'error';
@@ -39,19 +45,19 @@ export async function logSystemEvent(user: User, payload: LogPayload) {
   }
   const adminFirestore = getFirestore();
 
-  const { error } = await adminFirestore.collection('transactions').add({
-    profile_id: user.uid,
-    type: payload.type,
-    status: payload.status || 'completed',
-    amount: payload.amount || 0,
-    description: payload.description,
-    order_id: payload.order_id,
-    provider: 'system', // Indicates this is an internal system log
-    metadata: payload.metadata || {},
-    created_at: new Date().toISOString()
-  });
-
-  if (error) {
+  try {
+    await adminFirestore.collection('transactions').add({
+      profile_id: user.uid,
+      type: payload.type,
+      status: payload.status || 'completed',
+      amount: payload.amount || 0,
+      description: payload.description,
+      order_id: payload.order_id,
+      provider: 'system', // Indicates this is an internal system log
+      metadata: payload.metadata || {},
+      created_at: new Date().toISOString()
+    });
+  } catch (error) {
     console.error('CRITICAL: Failed to log system event:', error);
     // In a production environment, you might want to send an alert here
     // as failing to log is a security/audit concern.
