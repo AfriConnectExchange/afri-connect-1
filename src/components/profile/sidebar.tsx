@@ -5,21 +5,16 @@ import { usePathname } from 'next/navigation';
 import {
   User,
   Package,
-  Inbox,
-  Star,
   Heart,
-  Users,
-  Clock,
   CreditCard,
-  Book,
-  Mail,
   LogOut,
-  XCircle,
+  ShieldCheck,
+  Lock
 } from 'lucide-react';
 import { Card, CardContent } from '../ui/card';
 import { Separator } from '../ui/separator';
 import { cn } from '@/lib/utils';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 
@@ -37,23 +32,18 @@ export function ProfileSidebar() {
     {
       title: 'My Account',
       items: [
-        { href: '/profile', label: 'Account Overview', icon: User },
-        { href: '/orders', label: 'Orders', icon: Package },
-        { href: '#', label: 'Inbox', icon: Inbox },
-        { href: '#', label: 'Pending Reviews', icon: Star },
-        { href: '#', label: 'Voucher', icon: '🎁' },
-        { href: '#', label: 'Wishlist', icon: Heart },
-        { href: '#', label: 'Followed Sellers', icon: Users },
-        { href: '#', label: 'Recently Viewed', icon: Clock },
+        { href: '/profile', label: 'Overview', icon: User },
+        { href: '/orders', label: 'My Orders', icon: Package },
+        { href: '/profile/wishlist', label: 'Wishlist', icon: Heart },
       ],
     },
     {
-      title: 'Account Management',
+      title: 'Settings',
       items: [
-        { href: '#', label: 'Payment Settings', icon: CreditCard },
-        { href: '#', label: 'Address Book', icon: Book },
-        { href: '#', label: 'Newsletter Preferences', icon: Mail },
-        { href: '#', label: 'Close Account', icon: XCircle },
+        { href: '/profile/edit', label: 'Profile Details', icon: User },
+        { href: '/profile/security', label: 'Security', icon: Lock },
+        { href: '/profile/payments', label: 'Payment Methods', icon: CreditCard },
+        { href: '/profile/verification', label: 'Verification (KYC)', icon: ShieldCheck },
       ],
     },
   ];
@@ -79,11 +69,7 @@ export function ProfileSidebar() {
                         : 'text-foreground/70 hover:bg-muted hover:text-foreground'
                     )}
                   >
-                    {typeof item.icon === 'string' ? (
-                      <span className="text-lg">{item.icon}</span>
-                    ) : (
-                      <item.icon className="h-4 w-4" />
-                    )}
+                    <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
                 ))}

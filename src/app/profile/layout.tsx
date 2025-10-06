@@ -25,16 +25,11 @@ export default function ProfileLayout({
   }
 
   return (
-    <div className="min-h-screen bg-muted/40">
+    <div className="min-h-screen bg-background">
       <Header />
-      <div className="container mx-auto py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div className="md:col-span-1">
-            <ProfileSidebar />
-          </div>
-          <div className="md:col-span-3">{children}</div>
-        </div>
-      </div>
+      <main>
+        {children}
+      </main>
     </div>
   );
 }
