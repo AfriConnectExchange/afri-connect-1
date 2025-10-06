@@ -134,19 +134,23 @@ export default function AuthPage() {
     await setDoc(profileRef, profileData, { merge: true });
   }
 
-  const handleAuthSuccess = async (user: User) => {
-    // This function is called from child components on successful login/signup
-    // The useEffect [firebaseUser] will handle the redirection.
-    // For email signup, we trigger verification flow.
+  const handleAuthSuccess = async (user: User, isNewUser: boolean = false) => {
+    // For email signup, trigger verification flow.
     if (authAction === 'signup' && user.providerData[0].providerId === 'password' && !user.emailVerified) {
         await sendEmailVerification(user);
         setEmailForVerification(user.email || '');
         setAuthMode('awaiting-verification');
         showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
-    } else {
-        // For all other successful logins/signups, just trigger the redirect
-        setIsRedirecting(true);
+        return;
     }
+
+    // For new social logins, create their profile document immediately
+    if (isNewUser) {
+        await createProfileDocument(user);
+    }
+
+    // For all other successful logins/signups, just trigger the redirect
+    setIsRedirecting(true);
   }
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {

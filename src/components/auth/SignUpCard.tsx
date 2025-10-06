@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState } from 'react';
 import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
@@ -21,12 +22,13 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
   User as FirebaseUser,
-  Auth
+  Auth,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 
 type Props = {
     onSwitch: () => void;
-    onAuthSuccess: (user: FirebaseUser) => void;
+    onAuthSuccess: (user: FirebaseUser, isNewUser?: boolean) => void;
     onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
 };
 
@@ -81,7 +83,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
       await updateProfile(userCredential.user, { displayName: formData.name });
-      onAuthSuccess(userCredential.user);
+      onAuthSuccess(userCredential.user, true);
     } catch (error: any) {
       if (error.code === 'auth/email-already-in-use') {
         showAlert('destructive', 'Registration Failed', "An account with this email address already exists. Please Log In or use the 'Forgot Password' link.");
@@ -119,7 +121,8 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      onAuthSuccess(result.user);
+      const additionalInfo = getAdditionalUserInfo(result);
+      onAuthSuccess(result.user, additionalInfo?.isNewUser);
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
         showAlert('destructive', 'Sign Up Failed', error.message);
@@ -210,7 +213,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                         className="pl-10"
                         value={formData.email}
                         onChange={(e) =>
-                        setFormData((prev: any) => ({ ...prev, email: e.target.value }))
+                        setFormData((prev) => ({ ...prev, email: e.target.value }))
                         }
                         required={signupMethod === 'email'}
                     />
@@ -226,7 +229,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                         international
                         defaultCountry="GB"
                         value={formData.phone}
-                        onChange={(value) => setFormData((prev: any) => ({ ...prev, phone: value || ''}))}
+                        onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                         required={signupMethod === 'phone'}
                     />
                 </div>
@@ -243,7 +246,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                   className="pl-10"
                   value={formData.name}
                   onChange={(e) =>
-                    setFormData((prev: any) => ({ ...prev, name: e.target.value }))
+                    setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   required
                 />
@@ -259,7 +262,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                 placeholder="Enter your password"
                 value={formData.password}
                 onChange={(e) =>
-                  setFormData((prev: any) => ({ ...prev, password: e.target.value }))
+                  setFormData((prev) => ({ ...prev, password: e.target.value }))
                 }
                 required
               />
@@ -286,7 +289,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                 placeholder="Confirm your password"
                 value={formData.confirmPassword}
                 onChange={(e) =>
-                  setFormData((prev: any) => ({
+                  setFormData((prev) => ({
                     ...prev,
                     confirmPassword: e.target.value,
                   }))
@@ -311,7 +314,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
               id="terms"
               checked={formData.acceptTerms}
               onCheckedChange={(checked) =>
-                setFormData((prev: any) => ({
+                setFormData((prev) => ({
                   ...prev,
                   acceptTerms: Boolean(checked),
                 }))

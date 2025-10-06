@@ -20,12 +20,13 @@ import {
   signInWithPhoneNumber,
   RecaptchaVerifier,
   User,
-  Auth
+  Auth,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 
 type Props = {
     onSwitch: () => void;
-    onAuthSuccess: (user: User) => void;
+    onAuthSuccess: (user: User, isNewUser?: boolean) => void;
     onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
 };
 
@@ -115,7 +116,8 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     try {
       const result = await signInWithPopup(auth, provider);
-      onAuthSuccess(result.user);
+      const additionalInfo = getAdditionalUserInfo(result);
+      onAuthSuccess(result.user, additionalInfo?.isNewUser);
     } catch (error: any) {
       if (error.code !== 'auth/popup-closed-by-user') {
         showAlert('destructive', 'Login Failed', error.message);
@@ -191,7 +193,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                                 className="pl-10"
                                 value={formData.email}
                                 onChange={(e) =>
-                                setFormData((prev: any) => ({ ...prev, email: e.target.value }))
+                                setFormData((prev) => ({ ...prev, email: e.target.value }))
                                 }
                                 required
                             />
@@ -206,7 +208,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                                 placeholder="Enter your password"
                                 value={formData.password}
                                 onChange={(e) =>
-                                setFormData((prev: any) => ({ ...prev, password: e.target.value }))
+                                setFormData((prev) => ({ ...prev, password: e.target.value }))
                                 }
                                 required
                             />
@@ -248,7 +250,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                             international
                             defaultCountry="GB"
                             value={formData.phone}
-                            onChange={(value) => setFormData((prev: any) => ({ ...prev, phone: value || ''}))}
+                            onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                             required
                         />
                     </div>
