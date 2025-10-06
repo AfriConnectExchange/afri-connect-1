@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import {
@@ -82,8 +83,12 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
+    // First, call the server to clear the session cookie
+    await fetch('/api/auth/signout', { method: 'POST' });
+    // Then, sign out from the client-side Firebase instance
     await auth.signOut();
-    router.push('/');
+    // Redirect to home. The page will reload and see the signed-out state.
+    window.location.href = '/';
   }
   
   const canAccessSellerFeatures = profile?.primary_role === 'seller' || profile?.primary_role === 'sme';
