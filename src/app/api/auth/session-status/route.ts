@@ -6,29 +6,28 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // This is a server-side only file. NEVER import it on the client.
-
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
+const serviceAccount = {
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
+};
 
 if (!getApps().length) {
-  if (serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
   } else {
     console.error("Firebase service account key is not set. This API route will not work during development.");
   }
 }
 
 export async function GET() {
-  if (!serviceAccount) {
-    return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
-  }
-
-  // Ensure the admin app is initialized before using SDK services.
   if (!getApps().length) {
-    console.error('Firebase admin app is not initialized.');
     return NextResponse.json({ isAuthenticated: false, onboardingComplete: false }, { status: 500 });
   }
 

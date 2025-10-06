@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
@@ -5,15 +6,23 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, doc, updateDoc, getDoc } from 'firebase-admin/firestore';
 import { z } from 'zod';
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
+const serviceAccount = {
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
+};
 
 if (!getApps().length) {
-  if (serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
+  } else {
+      console.log('Firebase Admin SDK service account credentials not set.');
   }
 }
 
@@ -34,9 +43,6 @@ async function verifyTrackingNumber(courier: string, trackingNumber: string): Pr
 
 
 export async function POST(request: Request) {
-  if (!serviceAccount) {
-    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
-  }
   if (!getApps().length) {
     console.error('Firebase admin app is not initialized.');
     return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });

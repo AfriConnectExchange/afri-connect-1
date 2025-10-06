@@ -7,14 +7,24 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { cookies } from 'next/headers';
 
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : null;
+const serviceAccount = {
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
+};
 
-if (!getApps().length && serviceAccount) {
-    initializeApp({
-      credential: cert(serviceAccount as any),
-    });
+if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
+  } else {
+      console.log('Firebase Admin SDK service account credentials not set.');
+  }
 }
 
 
