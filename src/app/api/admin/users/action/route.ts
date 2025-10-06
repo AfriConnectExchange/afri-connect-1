@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireAdmin, getAdminAuth, getAdminFirestore } from '@/lib/admin-utils';
@@ -11,7 +12,7 @@ const actionSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAdmin(request);
+    const adminUser = await requireAdmin(request);
     const body = await request.json();
     const parsed = actionSchema.safeParse(body);
     if (!parsed.success) {
@@ -27,9 +28,8 @@ export async function POST(request: NextRequest) {
       await adminAuth.updateUser(uid, { disabled });
       await adminFirestore.collection('profiles').doc(uid).set({ disabled }, { merge: true });
 
-      // log
       try {
-        await logSystemEvent({ uid }, { type: 'admin_user_update', status: 'success', description: `${action} user ${uid}` });
+        await logSystemEvent({ uid: adminUser.uid }, { type: 'admin_user_update', status: 'success', description: `${action} user ${uid}` });
       } catch (e) {
         console.error('Failed to log admin user action', e);
       }
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       await adminFirestore.collection('profiles').doc(uid).set({ primary_role: newRole }, { merge: true });
 
       try {
-        await logSystemEvent({ uid }, { type: 'admin_user_role_change', status: 'success', description: `${action} user ${uid} -> ${newRole}` });
+        await logSystemEvent({ uid: adminUser.uid }, { type: 'admin_user_role_change', status: 'success', description: `${action} user ${uid} -> ${newRole}` });
       } catch (e) {
         console.error('Failed to log admin role action', e);
       }

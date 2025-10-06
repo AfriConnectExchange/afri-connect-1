@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin, getAdminFirestore } from '@/lib/admin-utils';
 
@@ -9,7 +10,7 @@ export async function POST(request: NextRequest) {
     // For the initial scaffold, return simple counts.
     const usersSnap = await firestore.collection('profiles').get();
     const productsSnap = await firestore.collection('products').get();
-    const salesSnap = await firestore.collection('sales').get();
+    const salesSnap = await firestore.collection('orders').get(); // Assuming sales are in 'orders'
 
     return NextResponse.json({
       totalUsers: usersSnap.size,

@@ -6,7 +6,7 @@ import { DashboardHeader } from '@/components/dashboard/dashboard-header';
 import { PageLoader } from '@/components/ui/loader';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { AlertCircle, User as UserIcon, Shield, BarChart2 } from 'lucide-react';
+import { AlertCircle, User as UserIcon, Shield, BarChart2, BookOpen } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore } from '@/firebase';
@@ -54,7 +54,7 @@ export default function AdminPage() {
     { id: 'user-management', label: 'User Management', href: '/admin/users', icon: UserIcon },
     { id: 'content-moderation', label: 'Content Moderation', href: '/admin/content', icon: Shield },
     { id: 'analytics', label: 'Platform Analytics', href: '/admin/analytics', icon: BarChart2 },
-    { id: 'logs', label: 'System Logs', href: '/admin/logs', icon: AlertCircle },
+    { id: 'logs', label: 'System Logs', href: '/admin/logs', icon: BookOpen },
   ];
 
   if (!canAccess) {

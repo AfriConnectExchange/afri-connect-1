@@ -1,3 +1,4 @@
+
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin, getAdminFirestore } from '@/lib/admin-utils';
 
@@ -6,7 +7,7 @@ export async function GET(request: NextRequest) {
     await requireAdmin(request);
     const firestore = getAdminFirestore();
 
-    const snap = await firestore.collection('flags').orderBy('created_at', 'desc').limit(50).get();
+    const snap = await firestore.collection('flags').where('status', '==', 'pending').orderBy('created_at', 'desc').limit(50).get();
     const flags = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
     const results = await Promise.all(flags.map(async (f: any) => {
