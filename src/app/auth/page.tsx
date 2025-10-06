@@ -112,13 +112,26 @@ export default function AuthPage() {
         if (isNewUser) {
             await createProfileDocument(user);
         }
-        // After successful login/signup, the session cookie will be set.
-        // We just need to refresh the page to make the browser send the new cookie
-        // and trigger the middleware to handle the redirection.
-        router.refresh();
+
+        // Get the Firebase ID token.
+        const idToken = await user.getIdToken();
+
+        // Send the token to our API route to create a session cookie.
+        await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ idToken }),
+        });
+        
+        // Now that the session cookie is set, we can redirect.
+        // The middleware will pick up the cookie and handle routing to onboarding or the homepage.
+        window.location.href = '/';
+
     } catch (err: any) {
-        console.error('Failed to ensure profile document exists:', err);
-        showAlert('destructive', 'Error', 'Could not create your user profile. Please try again.');
+        console.error('Failed during auth success handling:', err);
+        showAlert('destructive', 'Error', 'Could not complete sign-in. Please try again.');
     }
   }
 
