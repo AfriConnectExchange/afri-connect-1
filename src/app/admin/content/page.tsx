@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
 export default function AdminContentPage() {
   const [flaggedItems, setFlaggedItems] = useState<any[]>([]);
@@ -34,7 +35,7 @@ export default function AdminContentPage() {
 
   useEffect(() => {
     fetchFlaggedItems();
-  }, []);
+  }, [toast]);
 
   const handleAction = async () => {
     if (!confirmAction) return;
@@ -65,36 +66,43 @@ export default function AdminContentPage() {
   if (loading) return <PageLoader />;
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Content Moderation</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">Content Moderation Queue</h2>
       {flaggedItems.length === 0 ? (
-        <p className="text-muted-foreground">No items currently flagged for review.</p>
+        <Card className="text-center py-12 border-dashed">
+            <CardContent>
+                <h3 className="text-lg font-semibold">Queue is Empty</h3>
+                <p className="text-muted-foreground">No items currently flagged for review.</p>
+            </CardContent>
+        </Card>
       ) : (
-        <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {flaggedItems.map(({ flag, listing }) => (
-            <div key={flag.id} className="border rounded-lg p-4">
-              <div className="flex justify-between items-start mb-2">
-                <Badge variant="secondary" className="capitalize">{flag.target_type}: {flag.target_id.substring(0, 8)}...</Badge>
-                <p className="text-xs text-muted-foreground">{new Date(flag.created_at).toLocaleString()}</p>
-              </div>
-              <p className="font-medium mb-2">Reason: <span className="text-red-600">{flag.reason}</span></p>
-              <p className="text-sm mb-4">Reported by: User {flag.reporter_uid.substring(0,8)}...</p>
+            <Card key={flag.id}>
+              <CardHeader className="flex flex-row justify-between items-start pb-2">
+                  <Badge variant="secondary" className="capitalize">{flag.target_type}: {flag.target_id.substring(0, 8)}...</Badge>
+                  <p className="text-xs text-muted-foreground">{new Date(flag.created_at).toLocaleString()}</p>
+              </CardHeader>
+              <CardContent>
+                <p className="font-medium mb-2">Reason: <span className="text-red-600">{flag.reason}</span></p>
+                <p className="text-sm text-muted-foreground mb-4">Reported by: User {flag.reporter_uid.substring(0,8)}...</p>
 
-              {listing && (
-                <div className="bg-muted/50 p-3 rounded-md mb-4 flex items-start gap-4">
-                  <Image src={listing.images?.[0] || '/placeholder.svg'} alt={listing.title} width={80} height={80} className="rounded-md object-cover" />
-                  <div>
-                    <h4 className="font-semibold">{listing.title}</h4>
-                    <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
-                  </div>
+                {listing && (
+                    <div className="bg-muted/50 p-3 rounded-md mb-4 flex items-start gap-4">
+                    <Image src={listing.images?.[0] || '/placeholder.svg'} alt={listing.title} width={80} height={80} className="rounded-md object-cover" />
+                    <div>
+                        <h4 className="font-semibold">{listing.title}</h4>
+                        <p className="text-sm text-muted-foreground line-clamp-2">{listing.description}</p>
+                    </div>
+                    </div>
+                )}
+                
+                <div className="flex gap-2">
+                    <Button size="sm" variant="destructive" onClick={() => setConfirmAction({ listing_id: listing.id, flag_id: flag.id, action: 'remove_listing' })}>Remove Listing</Button>
+                    <Button size="sm" variant="outline" onClick={() => setConfirmAction({ listing_id: listing.id, flag_id: flag.id, action: 'clear_flag' })}>Clear Flag</Button>
                 </div>
-              )}
-              
-              <div className="flex gap-2">
-                <Button size="sm" variant="destructive" onClick={() => setConfirmAction({ listing_id: listing.id, flag_id: flag.id, action: 'remove_listing' })}>Remove Listing</Button>
-                <Button size="sm" variant="outline" onClick={() => setConfirmAction({ listing_id: listing.id, flag_id: flag.id, action: 'clear_flag' })}>Clear Flag</Button>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           ))}
         </div>
       )}

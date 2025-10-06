@@ -2,9 +2,10 @@
 "use server";
 
 import { NextRequest } from 'next/server';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
+import { cookies } from 'next/headers';
 
 const serviceAccount = {
   projectId: process.env.project_id,
@@ -12,11 +13,13 @@ const serviceAccount = {
   privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
 };
 
+let adminApp: App | null = null;
+
 export function initAdminIfNeeded() {
   if (!getApps().length) {
     if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
       try {
-        initializeApp({
+        adminApp = initializeApp({
           credential: cert(serviceAccount),
         });
       } catch (e) {
@@ -25,25 +28,24 @@ export function initAdminIfNeeded() {
     } else {
       console.error('Firebase Admin SDK service account credentials not set.');
     }
+  } else {
+    adminApp = getApps()[0];
   }
 }
 
 export async function requireAdmin(request: NextRequest) {
   initAdminIfNeeded();
-  if (!getApps().length) {
+  if (!adminApp) {
     throw new Error('Firebase Admin not configured');
   }
 
-  const adminAuth = getAuth();
-  const adminFirestore = getFirestore();
+  const adminAuth = getAuth(adminApp);
+  const adminFirestore = getFirestore(adminApp);
 
-  // Read session cookie from incoming request headers
-  const cookieHeader = request.headers.get('cookie') || '';
-  const match = cookieHeader.match(/__session=([^;]+)/);
-  const sessionCookie = match ? decodeURIComponent(match[1]) : null;
-
+  const sessionCookie = cookies().get('__session')?.value;
+  
   if (!sessionCookie) {
-    throw new Error('No session cookie');
+    throw new Error('No session cookie provided');
   }
 
   try {
@@ -56,10 +58,10 @@ export async function requireAdmin(request: NextRequest) {
     }
     const profile = profileDoc.data();
     if (!profile || profile.primary_role !== 'admin') {
-      throw new Error('Not an admin');
+      throw new Error('User is not an admin');
     }
 
-    return { uid, profile };
+    return { uid, profile, user: decoded };
   } catch (error) {
     console.error('Admin auth error:', error);
     throw new Error('Unauthorized');
@@ -68,10 +70,10 @@ export async function requireAdmin(request: NextRequest) {
 
 export function getAdminFirestore() {
   initAdminIfNeeded();
-  return getFirestore();
+  return getFirestore(adminApp as App);
 }
 
 export function getAdminAuth() {
   initAdminIfNeeded();
-  return getAuth();
+  return getAuth(adminApp as App);
 }

@@ -9,6 +9,12 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { MoreHorizontal } from 'lucide-react';
+
 
 export default function AdminUsersPage() {
   const { user, isLoading: isUserLoading } = useUser();
@@ -77,13 +83,13 @@ export default function AdminUsersPage() {
   };
 
   if (isUserLoading) return <PageLoader />;
-  if (!user) return null; // Middleware will handle redirect
+  if (!user) return null;
 
   return (
-    <div className="p-4">
-      <h2 className="text-xl font-semibold mb-4">Users</h2>
+    <div className="space-y-4">
+      <h2 className="text-xl font-semibold">User Management</h2>
 
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -98,29 +104,61 @@ export default function AdminUsersPage() {
       </div>
 
       {loading ? <PageLoader /> : (
-        <div className="grid gap-2">
-          {users.map(u => (
-            <div key={u.id} className="p-3 border rounded-lg flex items-center justify-between gap-4 flex-wrap">
-              <div className="flex-1 min-w-[200px]">
-                <div className="font-medium">{u.full_name || u.email || u.id}</div>
-                <div className="text-sm text-muted-foreground">Role: {u.primary_role || 'buyer'}</div>
-                <div className="text-xs text-muted-foreground">Created: {new Date(u.created_at).toLocaleDateString()}</div>
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {u.disabled ? (
-                  <Button size="sm" variant="outline" onClick={() => setConfirmAction({ uid: u.id, action: 'enable' })} disabled={actionLoading === u.id}>Enable</Button>
-                ) : (
-                  <Button size="sm" variant="destructive" onClick={() => setConfirmAction({ uid: u.id, action: 'disable' })} disabled={actionLoading === u.id}>Disable</Button>
-                )}
-                {u.primary_role === 'admin' ? (
-                  <Button size="sm" variant="secondary" onClick={() => setConfirmAction({ uid: u.id, action: 'demote' })} disabled={actionLoading === u.id}>Demote</Button>
-                ) : (
-                  <Button size="sm" onClick={() => setConfirmAction({ uid: u.id, action: 'promote' })} disabled={actionLoading === u.id}>Promote</Button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        <Card>
+            <CardContent className="p-0">
+                 <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>User</TableHead>
+                            <TableHead>Role</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead>Joined</TableHead>
+                            <TableHead><span className="sr-only">Actions</span></TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {users.map(u => (
+                            <TableRow key={u.id}>
+                                <TableCell>
+                                    <div className="font-medium">{u.full_name || 'N/A'}</div>
+                                    <div className="text-sm text-muted-foreground">{u.email}</div>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={u.primary_role === 'admin' ? 'default' : 'secondary'} className="capitalize">{u.primary_role || 'buyer'}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={u.disabled ? 'destructive' : 'outline'}>{u.disabled ? 'Disabled' : 'Active'}</Badge>
+                                </TableCell>
+                                <TableCell>{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon" disabled={actionLoading === u.id}>
+                                                <MoreHorizontal className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                            <DropdownMenuSeparator />
+                                            {u.disabled ? (
+                                                <DropdownMenuItem onClick={() => setConfirmAction({ uid: u.id, action: 'enable' })}>Enable User</DropdownMenuItem>
+                                            ) : (
+                                                <DropdownMenuItem onClick={() => setConfirmAction({ uid: u.id, action: 'disable' })}>Disable User</DropdownMenuItem>
+                                            )}
+                                            {u.primary_role === 'admin' ? (
+                                                <DropdownMenuItem onClick={() => setConfirmAction({ uid: u.id, action: 'demote' })}>Demote to Buyer</DropdownMenuItem>
+                                            ) : (
+                                                <DropdownMenuItem onClick={() => setConfirmAction({ uid: u.id, action: 'promote' })}>Promote to Admin</DropdownMenuItem>
+                                            )}
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
       )}
 
       {confirmAction && (
