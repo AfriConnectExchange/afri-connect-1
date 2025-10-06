@@ -19,14 +19,10 @@ import {
   getAdditionalUserInfo
 } from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
 
-
 export default function AuthPage() {
-  const firestore = useFirestore();
   const { user: firebaseUser, isLoading: isUserLoading } = useUser();
   const [authMode, setAuthMode] = useState<AuthMode>('signin');
   const [isVerifying, setIsVerifying] = useState(false);
@@ -37,7 +33,6 @@ export default function AuthPage() {
 
   const { toast } = useToast();
   const router = useRouter();
-  const auth = useAuth();
 
   // Email verification listener
   useEffect(() => {
@@ -45,14 +40,16 @@ export default function AuthPage() {
     if (authMode === 'awaiting-verification' && firebaseUser && !firebaseUser.emailVerified) {
       setIsVerifying(true);
       intervalId = setInterval(async () => {
-        await firebaseUser.reload();
-        if (firebaseUser.emailVerified) {
-          setIsVerifying(false);
-          if(intervalId) clearInterval(intervalId);
-          toast({ title: 'Email Verified!', description: 'Redirecting you to complete your profile.' });
-           // After verification, middleware will handle the redirect.
-           // We just refresh the page to trigger it.
-          router.refresh();
+        if (firebaseUser) {
+            await firebaseUser.reload();
+            if (firebaseUser.emailVerified) {
+              setIsVerifying(false);
+              if (intervalId) clearInterval(intervalId);
+              toast({ title: 'Email Verified!', description: 'Redirecting you to complete your profile.' });
+              // After verification, middleware will handle the redirect.
+              // We just refresh the page to trigger it.
+              router.refresh();
+            }
         }
       }, 3000);
     }
@@ -73,35 +70,16 @@ export default function AuthPage() {
     toast({ variant, title, description });
   };
 
-  const handleSwitchMode = (mode: AuthMode) => {
+  const handleSwitchMode = (mode: AuthMode, action: 'signin' | 'signup' = 'signin') => {
+    setAuthAction(action);
     setAuthMode(mode);
   };
   
-  const createProfileDocument = async (user: User, additionalData = {}) => {
-    if (!firestore) return;
-    const profileRef = doc(firestore, 'profiles', user.uid);
-    const profileSnap = await getDoc(profileRef);
+  const handleAuthSuccess = async (user: User) => {
+    const isNewUser = getAdditionalUserInfo(user)?.isNewUser || false;
 
-    if (!profileSnap.exists()) {
-        const profileData = {
-          id: user.uid,
-          auth_user_id: user.uid,
-          email: user.email,
-          full_name: user.displayName || '',
-          phone_number: user.phoneNumber,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          onboarding_completed: false,
-          primary_role: 'buyer',
-          ...additionalData,
-        };
-        await setDoc(profileRef, profileData, { merge: true });
-    }
-  }
-
-  const handleAuthSuccess = async (user: User, isNewUser: boolean = false) => {
-    // For email signup, trigger verification flow.
-    if (authAction === 'signup' && user.providerData[0].providerId === 'password' && !user.emailVerified) {
+    // For new email signups, trigger verification flow.
+    if (isNewUser && user.providerData[0].providerId === 'password' && !user.emailVerified) {
         await sendEmailVerification(user);
         setEmailForVerification(user.email || '');
         setAuthMode('awaiting-verification');
@@ -110,10 +88,6 @@ export default function AuthPage() {
     }
 
     try {
-        if (isNewUser) {
-            await createProfileDocument(user);
-        }
-
         toast({
           title: 'Sign In Successful!',
           description: "You'll be redirected shortly.",
@@ -130,13 +104,12 @@ export default function AuthPage() {
             },
             body: JSON.stringify({ idToken }),
         });
-
+        
         if (!response.ok) {
             throw new Error('Failed to create session.');
         }
-        
-        // Now that the session cookie is set, we can redirect.
-        // The middleware will pick up the cookie and handle routing to onboarding or the homepage.
+
+        // Now that the session cookie is set, a page reload will let the middleware handle redirection.
         window.location.href = '/';
 
     } catch (err: any) {
@@ -146,7 +119,6 @@ export default function AuthPage() {
   }
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
-    setAuthAction(authAction);
     setPhoneForVerification(phone);
     setResendOtp(() => resend); // Store the resend function
     setAuthMode('otp');
@@ -165,7 +137,7 @@ export default function AuthPage() {
       case 'signin':
         return (
           <SignInCard
-            onSwitch={() => handleSwitchMode('signup')}
+            onSwitch={() => handleSwitchMode('signup', 'signup')}
             onAuthSuccess={handleAuthSuccess}
             onNeedsOtp={handleNeedsOtp}
           />
@@ -173,12 +145,12 @@ export default function AuthPage() {
       case 'signup':
         return (
           <SignUpCard
-            onSwitch={() => handleSwitchMode('signin')}
+            onSwitch={() => handleSwitchMode('signin', 'signin')}
             onAuthSuccess={handleAuthSuccess}
             onNeedsOtp={handleNeedsOtp}
           />
         );
-        case 'awaiting-verification':
+      case 'awaiting-verification':
         return (
           <CheckEmailCard
             email={emailForVerification}
@@ -186,7 +158,7 @@ export default function AuthPage() {
             isVerifying={isVerifying}
           />
         );
-        case 'otp':
+      case 'otp':
         return (
             <OTPVerification
                 phone={phoneForVerification}

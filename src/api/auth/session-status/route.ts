@@ -7,13 +7,13 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 // This is a server-side only file. NEVER import it on the client.
 const serviceAccount = {
-  projectId: process.env.PROJECT_ID,
-  clientEmail: process.env.CLIENT_EMAIL,
-  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
 };
 
 if (!getApps().length) {
-  if (serviceAccount.projectId) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -34,7 +34,6 @@ export async function GET() {
   const adminAuth = getAuth();
   const adminFirestore = getFirestore();
 
-  // cookies() can be async in some environments; await to be safe
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__session')?.value;
 
@@ -48,23 +47,10 @@ export async function GET() {
 
     const profileDoc = await adminFirestore.collection('profiles').doc(userId).get();
 
+    // Profile should be created on session creation. If it doesn't exist, something is wrong,
+    // but we'll treat them as not onboarded for safety.
     if (!profileDoc.exists) {
-      // This is a new user who just signed up, or a user whose profile creation failed.
-      // We will create their profile now.
-      const userRecord = await adminAuth.getUser(userId);
-      const profileData = {
-        id: userId,
-        auth_user_id: userId,
-        email: userRecord.email,
-        full_name: userRecord.displayName || '',
-        phone_number: userRecord.phoneNumber || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        onboarding_completed: false,
-        primary_role: 'buyer',
-      };
-      await adminFirestore.collection('profiles').doc(userId).set(profileData);
-      return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
+        return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
     }
 
     const profileData = profileDoc.data();

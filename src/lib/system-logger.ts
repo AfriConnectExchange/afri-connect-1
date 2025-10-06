@@ -25,11 +25,9 @@ if (!getApps().length) {
   }
 }
 
-type LogLevel = 'info' | 'warn' | 'error';
-
 interface LogPayload {
-  type: string; // e.g., 'escrow_creation', 'user_login', 'product_view'
-  status?: 'success' | 'failure' | 'pending';
+  type: string; // e.g., 'user_login', 'order_creation'
+  status?: 'success' | 'failure' | 'pending' | 'info';
   amount?: number;
   description: string;
   order_id?: string;
@@ -39,10 +37,10 @@ interface LogPayload {
 /**
  * Logs a critical system event to the database.
  * This is used for creating an audit trail of all important actions.
- * @param user - The user performing the action.
+ * @param user - The user performing the action (or a partial user object with uid).
  * @param payload - The data to be logged.
  */
-export async function logSystemEvent(user: User, payload: LogPayload) {
+export async function logSystemEvent(user: { uid: string }, payload: LogPayload) {
   if (!getApps().length) {
     console.error("CRITICAL: Failed to log system event - Firebase Admin not initialized");
     return;
@@ -53,10 +51,10 @@ export async function logSystemEvent(user: User, payload: LogPayload) {
     await adminFirestore.collection('transactions').add({
       profile_id: user.uid,
       type: payload.type,
-      status: payload.status || 'completed',
+      status: payload.status || 'info', // Default to info if not provided
       amount: payload.amount || 0,
       description: payload.description,
-      order_id: payload.order_id,
+      order_id: payload.order_id || null,
       provider: 'system', // Indicates this is an internal system log
       metadata: payload.metadata || {},
       created_at: new Date().toISOString()
