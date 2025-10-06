@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { WelcomeStep } from './welcome-step';
 import { RoleSelectionStep } from './role-selection-step';
 import { PersonalDetailsStep } from './personal-details-step';
+import { SellerBusinessStep } from './seller-business-step';
 import { FinalStep } from './final-step';
 import { Progress } from '../ui/progress';
 import { Logo } from '../logo';
@@ -40,23 +41,13 @@ export function OnboardingFlow() {
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
     handleUpdateUserData({ primary_role: role });
-
+    // For buyers continue to the personal details step.
+    // For sellers/SME/trainer, insert a lightweight business details step before personal info.
     if (role === 'buyer') {
       setCurrentStep((prev) => prev + 1);
     } else {
-      if (user) {
-          try {
-            await setDoc(doc(firestore, "profiles", user.uid), { primary_role: role }, { merge: true });
-          } catch(error: any) {
-              toast({ variant: 'destructive', title: 'Failed to Save Role', description: error.message });
-              return;
-          }
-      }
-      toast({
-        title: 'Seller Verification Required',
-        description: "You'll be redirected to complete your seller profile.",
-      });
-      router.push('/kyc');
+      // move to the business step
+      setCurrentStep((prev) => prev + 1);
     }
   };
 
@@ -71,7 +62,8 @@ export function OnboardingFlow() {
     }
 
     try {
-      await setDoc(doc(firestore, "profiles", user.uid), {
+      // Merge personal details and any collected business info into the profile.
+      const profileUpdate: any = {
         full_name: data.full_name,
         phone_number: data.phone_number,
         address: data.address,
@@ -80,7 +72,19 @@ export function OnboardingFlow() {
         email: user.email,
         id: user.uid,
         auth_user_id: user.uid,
-      }, { merge: true });
+      };
+
+      if (userData.business) {
+        profileUpdate.business = userData.business;
+      }
+
+      await setDoc(doc(firestore, "profiles", user.uid), profileUpdate, { merge: true });
+
+      // If the user is a seller/SME/trainer, send them to the seller dashboard after onboarding.
+      if (userData.primary_role === 'seller' || userData.primary_role === 'sme' || userData.primary_role === 'trainer') {
+        router.push('/seller/dashboard');
+        return;
+      }
 
       setCurrentStep((prev) => prev + 1);
     } catch(error: any) {
@@ -102,6 +106,23 @@ export function OnboardingFlow() {
       onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as 'buyer' | 'seller' | 'sme' | 'trainer' })}
       currentValue={String(userData.primary_role)}
     />,
+    // If the user selected seller/sme/trainer then the next step is the SellerBusinessStep.
+    userData.primary_role === 'seller' || userData.primary_role === 'sme' || userData.primary_role === 'trainer'
+      ? <SellerBusinessStep
+          onNext={(data) => { handleUpdateUserData({ business: data }); setCurrentStep((prev) => prev + 1); }}
+          onBack={handleBack}
+          defaultValues={userData.business}
+        />
+      : <PersonalDetailsStep
+          onNext={handleOnboardingComplete}
+          onBack={handleBack}
+          defaultValues={{
+            fullName: userData.full_name,
+            phoneNumber: userData.phone_number,
+            address: userData.address,
+          }}
+        />,
+    // After the SellerBusinessStep we still collect personal details.
     <PersonalDetailsStep
       onNext={handleOnboardingComplete}
       onBack={handleBack}

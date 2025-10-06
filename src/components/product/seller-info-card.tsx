@@ -13,8 +13,8 @@ interface SellerInfoCardProps {
     avatar: string;
     location: string;
     verified: boolean;
-    rating: number; // Mock
-    totalSales: number; // Mock
+    rating?: number;
+    totalSales?: number;
     memberSince: string;
   };
 }
@@ -45,14 +45,14 @@ export function SellerInfoCard({ sellerDetails }: SellerInfoCardProps) {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Rating</span>
-            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1">
               <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-              <span>{sellerDetails.rating}</span>
+              <span>{sellerDetails.rating ?? '—'}</span>
             </div>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Sales</span>
-            <span>{sellerDetails.totalSales}</span>
+            <span>{sellerDetails.totalSales ?? '—'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Joined</span>

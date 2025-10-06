@@ -79,7 +79,7 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
       } else {
         const productData = productSnap.data();
         // This mapping needs to be improved based on actual data structure
-        const mappedProduct = {
+        const mappedProduct: any = {
           ...productData,
           id: productSnap.id,
           name: productData.title,
@@ -93,20 +93,43 @@ export function ProductPageComponent({ productId, onNavigate, onAddToCart }: Pro
           rating: productData.average_rating || 0,
           reviews: productData.review_count || 0,
           stockCount: productData.quantity_available || 1,
-          sellerDetails: { // Mock data
+          sellerDetails: {
             id: productData.seller_id,
             name: 'Unknown Seller',
             avatar: '',
             location: 'Unknown',
             verified: false,
-            rating: 4.8,
-            totalSales: 100,
+            rating: 0,
+            totalSales: 0,
             memberSince: 'N/A'
           },
           specifications: productData.specifications,
           shipping_policy: productData.shipping_policy
         };
         setProduct(mappedProduct as unknown as Product);
+
+        // Try to fetch seller profile to replace mocked seller details
+        try {
+          if (productData.seller_id) {
+            const sellerDocRef = doc(firestore, 'profiles', productData.seller_id);
+            const sellerSnap = await getDoc(sellerDocRef);
+            if (sellerSnap.exists()) {
+              const seller = sellerSnap.data();
+              setProduct((prev) => prev ? ({ ...prev, sellerDetails: {
+                id: seller.id || sellerSnap.id,
+                name: seller.full_name || seller.business?.name || 'Seller',
+                avatar: seller.avatar || '',
+                location: seller.address?.city || seller.location || 'Unknown',
+                verified: seller.kyc_status === 'approved' || false,
+                rating: seller.rating || 0,
+                totalSales: seller.totalSales || 0,
+                memberSince: seller.created_at ? new Date(seller.created_at).toLocaleDateString() : 'N/A'
+              } }) as Product : prev);
+            }
+          }
+        } catch (err) {
+          // ignore seller fetch errors, product still shows
+        }
 
         const res = await fetch(`/api/reviews/product?productId=${productId}`);
         if(res.ok) {

@@ -50,6 +50,7 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
     setIsClient(true);
     form.reset({
         fullName: user?.displayName || defaultValues.fullName || '',
+        // If the authenticated user already has a phone number we don't require the user to change it
         phoneNumber: user?.phoneNumber || defaultValues.phoneNumber || '',
         address: defaultValues.address,
       })
