@@ -51,9 +51,10 @@ export default function AdminPage() {
   const canAccess = profile?.primary_role === 'admin';
   
   const navItems = [
-    { id: 'user-management', label: 'User Management', href: '#', icon: UserIcon },
-    { id: 'content-moderation', label: 'Content Moderation', href: '#', icon: Shield },
-    { id: 'analytics', label: 'Platform Analytics', href: '#', icon: BarChart2 },
+    { id: 'user-management', label: 'User Management', href: '/admin/users', icon: UserIcon },
+    { id: 'content-moderation', label: 'Content Moderation', href: '/admin/content', icon: Shield },
+    { id: 'analytics', label: 'Platform Analytics', href: '/admin/analytics', icon: BarChart2 },
+    { id: 'logs', label: 'System Logs', href: '/admin/logs', icon: AlertCircle },
   ];
 
   if (!canAccess) {
