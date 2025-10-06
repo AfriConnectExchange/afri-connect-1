@@ -19,6 +19,7 @@ import {
   GoogleAuthProvider,
   FacebookAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signInWithPhoneNumber,
   RecaptchaVerifier,
   User as FirebaseUser,
@@ -119,13 +120,35 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
     setIsLoading(true);
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+    console.debug(`[auth] starting social signup with provider=${providerName}`);
     try {
       const result = await signInWithPopup(auth, provider);
       const additionalInfo = getAdditionalUserInfo(result);
+      console.debug('[auth] social signup success', { provider: providerName, isNewUser: additionalInfo?.isNewUser });
       onAuthSuccess(result.user, additionalInfo?.isNewUser);
+      try {
+        if (additionalInfo?.isNewUser) {
+          window.location.replace('/onboarding');
+        } else {
+          window.location.replace('/');
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        showAlert('destructive', 'Sign Up Failed', error.message);
+      console.error('[auth] social signup error', error);
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('[auth] signInWithRedirect failed', redirectErr);
+          showAlert('destructive', 'Sign Up Failed', redirectErr.message || 'Popup blocked and redirect failed.');
+        }
+      } else if (error.code === 'auth/operation-not-allowed') {
+        showAlert('destructive', 'Sign Up Failed', `The ${providerName} sign-in method is not enabled. Please enable it in Firebase Console.`);
+      } else {
+        showAlert('destructive', 'Sign Up Failed', error.message || 'An unknown error occurred during social sign up.');
       }
     } finally {
       setIsLoading(false);

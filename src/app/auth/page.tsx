@@ -10,11 +10,12 @@ import CheckEmailCard from '@/components/auth/CheckEmailCard';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
 import { PageLoader } from '@/components/ui/loader';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useAuth } from '@/firebase';
 import {
   Auth,
   User,
   sendEmailVerification,
+  signOut as firebaseSignOut,
 } from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { Card, CardContent } from '@/components/ui/card';
@@ -35,9 +36,15 @@ export default function AuthPage() {
   const [phoneForVerification, setPhoneForVerification] = useState('');
   const [authAction, setAuthAction] = useState<'signin' | 'signup'>('signin');
   const [resendOtp, setResendOtp] = useState<(() => Promise<void>) | null>(null);
+  // If user clicked a 'Sign up as seller' button before auth, the UI can set
+  // sessionStorage.preselect_role = 'seller' (or 'sme'). We read it here and
+  // use it after successful auth to preselect role / redirect to KYC.
+  const [preselectRole, setPreselectRole] = useState<string | null>(null);
 
   const { toast } = useToast();
   const router = useRouter();
+  const [stalled, setStalled] = useState(false);
+  const auth = useAuth();
 
 
   // Main redirect logic for already logged-in users
@@ -79,6 +86,27 @@ export default function AuthPage() {
 
     checkOnboarding();
   }, [firebaseUser, isUserLoading, router, firestore]);
+
+  // Show a 'stalled' UI if loading/redirecting takes too long
+  useEffect(() => {
+    let handle: number | undefined;
+    if (isRedirecting || isUserLoading) {
+      handle = window.setTimeout(() => setStalled(true), 10000); // 10s
+    } else {
+      setStalled(false);
+    }
+    return () => { if (handle) window.clearTimeout(handle); };
+  }, [isRedirecting, isUserLoading]);
+
+  // Read any preselected role set before the auth flow (e.g., user clicked "Sign up as seller")
+  useEffect(() => {
+    try {
+      const role = typeof window !== 'undefined' ? window.sessionStorage.getItem('preselect_role') : null;
+      if (role) setPreselectRole(role);
+    } catch (err) {
+      // ignore
+    }
+  }, []);
 
   // Email verification listener
   useEffect(() => {
@@ -144,13 +172,57 @@ export default function AuthPage() {
         return;
     }
 
-    // For new social logins, create their profile document immediately
-    if (isNewUser) {
-        await createProfileDocument(user);
+    // Ensure a profile document exists for the authenticated user.
+    // This covers new social logins and cases where a Firebase user exists
+    // but a corresponding profile document was never created.
+    try {
+      if (firestore) {
+        const profileRef = doc(firestore, 'profiles', user.uid);
+        const profileSnap = await getDoc(profileRef);
+          if (!profileSnap.exists()) {
+            await createProfileDocument(user);
+          }
+          // If a preselected role was set (e.g., 'seller' or 'sme'), and the user
+          // is a new social signup or has just logged in, update their profile
+          // and redirect them straight to the KYC flow for sellers.
+          if (preselectRole && ['seller', 'sme'].includes(preselectRole)) {
+            try {
+              await setDoc(doc(firestore, 'profiles', user.uid), { primary_role: preselectRole }, { merge: true });
+              // clear session flag so it doesn't apply again
+              if (typeof window !== 'undefined') window.sessionStorage.removeItem('preselect_role');
+              // send user to KYC page directly
+              router.replace('/kyc');
+              return;
+            } catch (err: any) {
+              console.error('Failed to set preselect role:', err);
+            }
+          }
+      } else {
+        // Fallback: create profile document using helper if Firestore isn't available
+        if (isNewUser) {
+          await createProfileDocument(user);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to ensure profile document exists:', err);
     }
 
-    // For all other successful logins/signups, just trigger the redirect
-    setIsRedirecting(true);
+    // For all successful logins/signups, redirect immediately to avoid
+    // reliance on middleware timing. New users go to onboarding, others go home.
+    try {
+      if (isNewUser) {
+        router.replace('/onboarding');
+      } else {
+        // If they selected seller earlier, we may have already redirected to /kyc.
+        // Otherwise send them to the home page.
+        if (!preselectRole) router.replace('/');
+      }
+    } catch (err) {
+      // Fallback to setting redirecting state which will let the existing
+      // logic perform the check.
+      console.warn('Immediate redirect failed, falling back to redirecting state', err);
+      setIsRedirecting(true);
+    }
   }
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
@@ -161,7 +233,47 @@ export default function AuthPage() {
   }
 
   if (isRedirecting || isUserLoading) {
-    return <PageLoader />;
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        <PageLoader />
+        {stalled && (
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-card p-4 rounded-lg shadow-lg border">
+            <div className="flex items-center gap-4">
+              <div className="text-sm">Auth appears stalled. You can retry or clear the server session.</div>
+              <div className="flex gap-2">
+                <button className="btn btn-outline" onClick={async () => {
+                  try {
+                    if (auth) await firebaseSignOut(auth);
+                  } catch (e) {
+                    console.warn('Retry signOut failed', e);
+                  }
+                  window.location.reload();
+                }}>Retry</button>
+                <button className="btn btn-destructive" onClick={async () => {
+                  try {
+                    // Sign out the Firebase client first to avoid a mismatch where
+                    // the client still thinks it's logged in while the server cookie
+                    // has been cleared (which causes middleware redirects).
+                    try {
+                      if (auth) await firebaseSignOut(auth);
+                    } catch (clientErr) {
+                      console.warn('Client signOut failed (continuing to clear server session)', clientErr);
+                    }
+
+                    await fetch('/api/auth/signout', { method: 'POST' });
+                    // Reload to allow middleware and client state to sync
+                    window.location.reload();
+                  } catch (err) {
+                    console.error('Failed to clear server session', err);
+                    window.location.reload();
+                  }
+                }}>Clear Session</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   const RedirectingCard = () => (

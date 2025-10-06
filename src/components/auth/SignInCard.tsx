@@ -17,6 +17,7 @@ import {
   GoogleAuthProvider,
   FacebookAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
   signInWithPhoneNumber,
   RecaptchaVerifier,
   User,
@@ -114,13 +115,38 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
     setIsLoading(true);
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+    console.debug(`[auth] starting social login with provider=${providerName}`);
     try {
       const result = await signInWithPopup(auth, provider);
       const additionalInfo = getAdditionalUserInfo(result);
+      console.debug('[auth] social login success', { provider: providerName, isNewUser: additionalInfo?.isNewUser });
       onAuthSuccess(result.user, additionalInfo?.isNewUser);
+      // Fallback navigation: if the app didn't redirect for some reason,
+      // force a navigation so the UI doesn't stay stuck in a loader.
+      try {
+        if (additionalInfo?.isNewUser) {
+          window.location.replace('/onboarding');
+        } else {
+          window.location.replace('/');
+        }
+      } catch (e) {
+        // ignore
+      }
     } catch (error: any) {
-      if (error.code !== 'auth/popup-closed-by-user') {
-        showAlert('destructive', 'Login Failed', error.message);
+      console.error('[auth] social login error', error);
+      // If popup is blocked, fall back to redirect flow which may succeed.
+      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch (redirectErr: any) {
+          console.error('[auth] signInWithRedirect failed', redirectErr);
+          showAlert('destructive', 'Login Failed', redirectErr.message || 'Popup blocked and redirect failed.');
+        }
+      } else if (error.code === 'auth/operation-not-allowed') {
+        showAlert('destructive', 'Login Failed', `The ${providerName} sign-in method is not enabled. Please enable it in Firebase Console.`);
+      } else {
+        showAlert('destructive', 'Login Failed', error.message || 'An unknown error occurred during social login.');
       }
     } finally {
       setIsLoading(false);
