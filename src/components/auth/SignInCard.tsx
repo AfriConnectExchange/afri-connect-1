@@ -18,6 +18,7 @@ import {
   FacebookAuthProvider,
   signInWithPopup,
   signInWithRedirect,
+  fetchSignInMethodsForEmail,
   signInWithPhoneNumber,
   RecaptchaVerifier,
   User,
@@ -132,8 +133,26 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
           console.error('[auth] signInWithRedirect failed', redirectErr);
           showAlert('destructive', 'Login Failed', redirectErr.message || 'Popup blocked and redirect failed.');
         }
+      } else if (error.code === 'auth/account-exists-with-different-credential') {
+        // The email for this account already exists with a different sign-in method.
+        const email = error.customData?.email || error.email;
+        console.debug('[auth] account exists with different credential for email=', email);
+        if (email) {
+          try {
+            const methods = await fetchSignInMethodsForEmail(auth, email);
+            const friendly = methods.join(', ') || 'another provider';
+            showAlert('destructive', 'Account Conflict', `An account already exists for ${email} using: ${friendly}. Please sign in with that method and link accounts in account settings.`);
+          } catch (mErr: any) {
+            console.error('[auth] fetchSignInMethodsForEmail failed', mErr);
+            showAlert('destructive', 'Account Conflict', 'An account already exists with the same email. Please sign in with the original method.');
+          }
+        } else {
+          showAlert('destructive', 'Account Conflict', 'An account already exists with the same email using a different sign-in method. Please sign in with the original provider.');
+        }
       } else if (error.code === 'auth/operation-not-allowed') {
         showAlert('destructive', 'Login Failed', `The ${providerName} sign-in method is not enabled. Please enable it in Firebase Console.`);
+      } else if (error.code === 'auth/credential-already-in-use') {
+        showAlert('destructive', 'Login Failed', 'This credential is already associated with a different user.');
       } else {
         showAlert('destructive', 'Login Failed', error.message || 'An unknown error occurred during social login.');
       }

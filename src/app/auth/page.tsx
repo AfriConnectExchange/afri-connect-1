@@ -18,6 +18,7 @@ import {
   signOut as firebaseSignOut,
   getAdditionalUserInfo
 } from 'firebase/auth';
+import { getRedirectResult } from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
 
 type AuthMode = 'signin' | 'signup' | 'awaiting-verification' | 'otp';
@@ -33,9 +34,24 @@ export default function AuthPage() {
 
   const { toast } = useToast();
   const router = useRouter();
+  const auth = useAuth();
 
   // Email verification listener
   useEffect(() => {
+    // Handle redirect results (if user was redirected for social login)
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          const additional = getAdditionalUserInfo(result as any);
+          console.debug('[auth] redirect result received', { isNewUser: additional?.isNewUser });
+          await handleAuthSuccess(result.user as User, additional?.isNewUser);
+        }
+      } catch (err: any) {
+        console.warn('[auth] getRedirectResult failed or no redirect result', err?.message || err);
+      }
+    })();
+
     let intervalId: NodeJS.Timeout | null = null;
     if (authMode === 'awaiting-verification' && firebaseUser && !firebaseUser.emailVerified) {
       setIsVerifying(true);
@@ -75,11 +91,12 @@ export default function AuthPage() {
     setAuthMode(mode);
   };
   
-  const handleAuthSuccess = async (user: User) => {
-    const isNewUser = getAdditionalUserInfo(user)?.isNewUser || false;
+  const handleAuthSuccess = async (user: User, isNewUser?: boolean) => {
+    // The isNewUser flag is provided by popup/redirect flows via getAdditionalUserInfo(result)
+    const newUserFlag = typeof isNewUser === 'boolean' ? isNewUser : false;
 
     // For new email signups, trigger verification flow.
-    if (isNewUser && user.providerData[0].providerId === 'password' && !user.emailVerified) {
+    if (newUserFlag && user.providerData[0].providerId === 'password' && !user.emailVerified) {
         await sendEmailVerification(user);
         setEmailForVerification(user.email || '');
         setAuthMode('awaiting-verification');
