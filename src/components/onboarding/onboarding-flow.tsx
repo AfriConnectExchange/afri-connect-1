@@ -24,6 +24,7 @@ export function OnboardingFlow() {
     full_name: '',
     phone_number: '',
     location: '',
+    address: {}
   });
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function OnboardingFlow() {
   const handleOnboardingComplete = async (data: {
     full_name: string;
     phone_number: string;
-    location: string;
+    address: any;
   }) => {
     if (!user) {
       toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
@@ -73,7 +74,7 @@ export function OnboardingFlow() {
       await setDoc(doc(firestore, "profiles", user.uid), {
         full_name: data.full_name,
         phone_number: data.phone_number,
-        address_line1: data.location, 
+        address: data.address,
         onboarding_completed: true,
         primary_role: userData.primary_role,
         email: user.email,
@@ -107,7 +108,7 @@ export function OnboardingFlow() {
       defaultValues={{
         fullName: userData.full_name,
         phoneNumber: userData.phone_number,
-        location: userData.location,
+        address: userData.address,
       }}
     />,
     <FinalStep />,

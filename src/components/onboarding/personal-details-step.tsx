@@ -1,5 +1,5 @@
 'use client';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -16,34 +16,42 @@ import { AnimatedButton } from '../ui/animated-button';
 import PhoneInput from 'react-phone-number-input';
 import 'react-phone-number-input/style.css';
 import { useUser } from '@/firebase';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { GoogleAddressInput } from './google-address-input';
+import { PageLoader } from '../ui/loader';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
   phoneNumber: z.string().min(10, 'Please enter a valid phone number.').optional().or(z.literal('')),
-  location: z.string().min(2, 'Please enter a valid location').optional().or(z.literal('')),
+  address: z.object({
+    description: z.string().min(5, 'Please select a valid address from the suggestions.'),
+    place_id: z.string(),
+  }).optional(),
 });
 
 type PersonalDetailsFormValues = z.infer<typeof formSchema>;
 
 interface PersonalDetailsStepProps {
-  onNext: (data: { full_name: string; phone_number: string; location: string; }) => void;
+  onNext: (data: { full_name: string; phone_number: string; address: any; }) => void;
   onBack: () => void;
   defaultValues: Partial<PersonalDetailsFormValues>;
 }
 
 export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
   const { user } = useUser();
+  const [isClient, setIsClient] = useState(false);
+
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues,
   });
   
   useEffect(() => {
+    setIsClient(true);
     form.reset({
         fullName: user?.displayName || defaultValues.fullName || '',
         phoneNumber: user?.phoneNumber || defaultValues.phoneNumber || '',
-        location: defaultValues.location || '',
+        address: defaultValues.address,
       })
   }, [user, form, defaultValues])
 
@@ -51,9 +59,13 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
     onNext({
         full_name: values.fullName,
         phone_number: values.phoneNumber || '',
-        location: values.location || '',
+        address: values.address || {},
     });
   };
+
+  if (!isClient) {
+    return <div className="flex justify-center items-center h-64"><PageLoader/></div>;
+  }
 
   return (
     <div>
@@ -97,16 +109,24 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
               )}
             />
 
-            <FormField
+            <Controller
                 control={form.control}
-                name="location"
+                name="address"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Location / Address</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., London, UK" {...field} />
-                    </FormControl>
-                    <FormMessage />
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                           <GoogleAddressInput
+                             onAddressSelect={(place) => {
+                                field.onChange({
+                                  description: place.description,
+                                  place_id: place.place_id
+                                });
+                              }}
+                              initialValue={field.value?.description}
+                           />
+                        </FormControl>
+                         <FormMessage />
                     </FormItem>
                 )}
             />
