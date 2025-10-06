@@ -16,6 +16,7 @@ import {
   User,
   sendEmailVerification,
   signOut as firebaseSignOut,
+  getAdditionalUserInfo
 } from 'firebase/auth';
 import OTPVerification from '@/components/auth/OTPVerification';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -113,17 +114,26 @@ export default function AuthPage() {
             await createProfileDocument(user);
         }
 
+        toast({
+          title: 'Sign In Successful!',
+          description: "You'll be redirected shortly.",
+        });
+
         // Get the Firebase ID token.
         const idToken = await user.getIdToken();
 
         // Send the token to our API route to create a session cookie.
-        await fetch('/api/auth/session', {
+        const response = await fetch('/api/auth/session', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify({ idToken }),
         });
+
+        if (!response.ok) {
+            throw new Error('Failed to create session.');
+        }
         
         // Now that the session cookie is set, we can redirect.
         // The middleware will pick up the cookie and handle routing to onboarding or the homepage.

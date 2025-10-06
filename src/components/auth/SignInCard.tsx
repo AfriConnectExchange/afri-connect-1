@@ -121,17 +121,6 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       const additionalInfo = getAdditionalUserInfo(result);
       console.debug('[auth] social login success', { provider: providerName, isNewUser: additionalInfo?.isNewUser });
       onAuthSuccess(result.user, additionalInfo?.isNewUser);
-      // Fallback navigation: if the app didn't redirect for some reason,
-      // force a navigation so the UI doesn't stay stuck in a loader.
-      try {
-        if (additionalInfo?.isNewUser) {
-          window.location.replace('/onboarding');
-        } else {
-          window.location.replace('/');
-        }
-      } catch (e) {
-        // ignore
-      }
     } catch (error: any) {
       console.error('[auth] social login error', error);
       // If popup is blocked, fall back to redirect flow which may succeed.
@@ -222,6 +211,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                                 setFormData((prev) => ({ ...prev, email: e.target.value }))
                                 }
                                 required
+                                disabled={isLoading}
                             />
                         </div>
                     </div>
@@ -237,6 +227,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                                 setFormData((prev) => ({ ...prev, password: e.target.value }))
                                 }
                                 required
+                                disabled={isLoading}
                             />
                             <button
                                 type="button"
@@ -278,6 +269,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                             value={formData.phone}
                             onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                             required
+                            disabled={isLoading}
                         />
                     </div>
                     <AnimatedButton

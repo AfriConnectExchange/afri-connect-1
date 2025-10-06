@@ -126,15 +126,6 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
       const additionalInfo = getAdditionalUserInfo(result);
       console.debug('[auth] social signup success', { provider: providerName, isNewUser: additionalInfo?.isNewUser });
       onAuthSuccess(result.user, additionalInfo?.isNewUser);
-      try {
-        if (additionalInfo?.isNewUser) {
-          window.location.replace('/onboarding');
-        } else {
-          window.location.replace('/');
-        }
-      } catch (e) {
-        // ignore
-      }
     } catch (error: any) {
       console.error('[auth] social signup error', error);
       if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
@@ -239,6 +230,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                         setFormData((prev) => ({ ...prev, email: e.target.value }))
                         }
                         required={signupMethod === 'email'}
+                        disabled={isLoading}
                     />
                     </div>
                 </div>
@@ -254,6 +246,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                         value={formData.phone}
                         onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                         required={signupMethod === 'phone'}
+                        disabled={isLoading}
                     />
                 </div>
             </TabsContent>
@@ -272,6 +265,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
                   }
                   required
+                  disabled={isLoading}
                 />
             </div>
           </div>
@@ -288,6 +282,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                   setFormData((prev) => ({ ...prev, password: e.target.value }))
                 }
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -318,6 +313,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                   }))
                 }
                 required
+                disabled={isLoading}
               />
               <button
                 type="button"
@@ -342,6 +338,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
                   acceptTerms: Boolean(checked),
                 }))
               }
+              disabled={isLoading}
             />
             <Label
               htmlFor="terms"
