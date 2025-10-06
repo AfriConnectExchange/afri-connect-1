@@ -1,4 +1,3 @@
-
 "use server";
 
 import { NextRequest } from 'next/server';
@@ -15,7 +14,7 @@ const serviceAccount = {
 
 let adminApp: App | null = null;
 
-export function initAdminIfNeeded() {
+export async function initAdminIfNeeded() {
   if (!getApps().length) {
     if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
       try {
@@ -34,7 +33,7 @@ export function initAdminIfNeeded() {
 }
 
 export async function requireAdmin(request: NextRequest) {
-  initAdminIfNeeded();
+  await initAdminIfNeeded();
   if (!adminApp) {
     throw new Error('Firebase Admin not configured');
   }
@@ -42,7 +41,7 @@ export async function requireAdmin(request: NextRequest) {
   const adminAuth = getAuth(adminApp);
   const adminFirestore = getFirestore(adminApp);
 
-  const sessionCookie = cookies().get('__session')?.value;
+  const sessionCookie = (await cookies()).get('__session')?.value;
   
   if (!sessionCookie) {
     throw new Error('No session cookie provided');
@@ -68,12 +67,12 @@ export async function requireAdmin(request: NextRequest) {
   }
 }
 
-export function getAdminFirestore() {
-  initAdminIfNeeded();
+export async function getAdminFirestore() {
+  await initAdminIfNeeded();
   return getFirestore(adminApp as App);
 }
 
-export function getAdminAuth() {
-  initAdminIfNeeded();
+export async function getAdminAuth() {
+  await initAdminIfNeeded();
   return getAuth(adminApp as App);
 }

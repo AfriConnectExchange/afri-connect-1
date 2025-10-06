@@ -21,11 +21,11 @@ export async function POST(request: NextRequest) {
 
     const { uid, action, role } = parsed.data;
     const adminAuth = getAdminAuth();
-    const adminFirestore = getAdminFirestore();
+    const adminFirestore = await getAdminFirestore();
 
     if (action === 'disable' || action === 'enable') {
       const disabled = action === 'disable';
-      await adminAuth.updateUser(uid, { disabled });
+      await (await adminAuth).updateUser(uid, { disabled });
       await adminFirestore.collection('profiles').doc(uid).set({ disabled }, { merge: true });
 
       try {

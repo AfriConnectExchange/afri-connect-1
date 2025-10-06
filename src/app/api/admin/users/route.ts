@@ -6,7 +6,7 @@ import { requireAdmin, getAdminFirestore } from '@/lib/admin-utils';
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
 
     const url = new URL(request.url);
     const q = url.searchParams.get('q') || '';
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     if (!q) {
       // simple pagination by created_at
       const snap = await firestore.collection('profiles').orderBy('created_at', 'desc').offset(offset).limit(limit).get();
-      const users = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const users = snap.docs.map((d: FirebaseFirestore.QueryDocumentSnapshot) => ({ id: d.id, ...d.data() }));
       const totalSnap = await firestore.collection('profiles').count().get();
       return NextResponse.json({ users, page, limit, total: totalSnap.data().count });
     }
@@ -28,8 +28,8 @@ export async function GET(request: NextRequest) {
     const byName = await firestore.collection('profiles').where('full_name', '>=', q).where('full_name', '<=', q + '\uf8ff').get();
 
     const merged = new Map();
-    byEmail.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
-    byName.docs.forEach(d => merged.set(d.id, { id: d.id, ...d.data() }));
+    byEmail.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) => merged.set(d.id, { id: d.id, ...d.data() }));
+    byName.docs.forEach((d: FirebaseFirestore.QueryDocumentSnapshot) => merged.set(d.id, { id: d.id, ...d.data() }));
 
     const allResults = Array.from(merged.values());
     const paginatedResults = allResults.slice(offset, offset + limit);
