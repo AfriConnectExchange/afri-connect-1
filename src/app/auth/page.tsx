@@ -40,15 +40,20 @@ export default function AuthPage() {
   useEffect(() => {
     // Handle redirect results (if user was redirected for social login)
     (async () => {
+      if (!auth) return;
       try {
         const result = await getRedirectResult(auth);
         if (result && result.user) {
-          const additional = getAdditionalUserInfo(result as any);
+          const additional = getAdditionalUserInfo(result);
           console.debug('[auth] redirect result received', { isNewUser: additional?.isNewUser });
           await handleAuthSuccess(result.user as User, additional?.isNewUser);
         }
       } catch (err: any) {
-        console.warn('[auth] getRedirectResult failed or no redirect result', err?.message || err);
+        // This can happen if there's no redirect result, which is normal.
+        // We only care about actual errors.
+        if (err.code !== 'auth/no-redirect-operation') {
+            console.warn('[auth] getRedirectResult failed', err.code, err.message);
+        }
       }
     })();
 
@@ -74,7 +79,7 @@ export default function AuthPage() {
         clearInterval(intervalId);
       }
     };
-  }, [authMode, firebaseUser, router, toast]);
+  }, [auth, authMode, firebaseUser, router, toast]);
 
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   AlertDialog,
@@ -68,6 +69,76 @@ export default function AccountLinkModal({ open, onClose, auth, email, methods, 
       toast({ title: 'Accounts linked', description: 'Your social account is now linked.' });
       onLinked(linked.user);
       onClose();
+    } catch (err: any) 'use client';
+
+import { 
+    Auth,
+    AuthCredential,
+    signInWithEmailAndPassword,
+    linkWithCredential,
+    signInWithPopup,
+    GoogleAuthProvider,
+    FacebookAuthProvider,
+    User
+} from 'firebase/auth';
+import { useState } from 'react';
+import {
+    AlertDialog,
+    AlertDialogContent,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { AnimatedButton } from '@/components/ui/animated-button';
+import { useToast } from '@/hooks/use-toast';
+
+
+interface Props {
+  open: boolean;
+  onClose: () => void;
+  auth: Auth;
+  email?: string;
+  methods: string[];
+  pendingCredential?: AuthCredential | null;
+  onLinked: (user: User) => void;
+}
+
+export default function AccountLinkModal({ open, onClose, auth, email, methods, pendingCredential, onLinked }: Props) {
+  const { toast } = useToast();
+  const [password, setPassword] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handlePasswordSignIn = async () => {
+    if (!email || !pendingCredential) return;
+    setIsLoading(true);
+    try {
+      const userCred = await signInWithEmailAndPassword(auth, email, password);
+      const linkedUser = await linkWithCredential(userCred.user, pendingCredential);
+      toast({ title: 'Accounts linked', description: 'Your social account is now linked.' });
+      onLinked(linkedUser.user);
+      onClose();
+    } catch (err: any) {
+      console.error('Linking via password failed', err);
+      toast({ variant: 'destructive', title: 'Link Failed', description: err?.message || 'Could not link accounts.' });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleProviderSignIn = async (providerName: 'google' | 'facebook') => {
+    setIsLoading(true);
+    if (!pendingCredential) return;
+    try {
+      const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const linkedUser = await linkWithCredential(result.user, pendingCredential);
+      toast({ title: 'Accounts linked', description: 'Your social account is now linked.' });
+      onLinked(linkedUser.user);
+      onClose();
     } catch (err: any) {
       console.error('Provider sign-in for linking failed', err);
       toast({ variant: 'destructive', title: 'Link Failed', description: err?.message || 'Could not sign in with provider.' });
@@ -77,7 +148,7 @@ export default function AccountLinkModal({ open, onClose, auth, email, methods, 
   };
 
   return (
-    <AlertDialog open={open}>
+    <AlertDialog open={open} onOpenChange={onClose}>
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Link Accounts</AlertDialogTitle>
@@ -110,7 +181,6 @@ export default function AccountLinkModal({ open, onClose, auth, email, methods, 
 
         <AlertDialogFooter>
           <AlertDialogCancel onClick={onClose}>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={onClose}>Close</AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

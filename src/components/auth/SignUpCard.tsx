@@ -128,54 +128,10 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     console.debug(`[auth] starting social signup with provider=${providerName}`);
     try {
-      const result = await signInWithPopup(auth, provider);
-      const additionalInfo = getAdditionalUserInfo(result);
-      console.debug('[auth] social signup success', { provider: providerName, isNewUser: additionalInfo?.isNewUser });
-      onAuthSuccess(result.user, additionalInfo?.isNewUser);
+      await signInWithRedirect(auth, provider);
     } catch (error: any) {
-      console.error('[auth] social signup error', error);
-      if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-        try {
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch (redirectErr: any) {
-          console.error('[auth] signInWithRedirect failed', redirectErr);
-          showAlert('destructive', 'Sign Up Failed', redirectErr.message || 'Popup blocked and redirect failed.');
-        }
-      } else if (error.code === 'auth/account-exists-with-different-credential') {
-        const email = error.customData?.email || error.email;
-        console.debug('[auth] account exists with different credential for email=', email);
-        // try extract pending credential
-        let cred: any = null;
-        try {
-          cred = GoogleAuthProvider.credentialFromError(error) || FacebookAuthProvider.credentialFromError(error) || (error as any).credential || null;
-        } catch (e) {
-          cred = (error as any).credential || null;
-        }
-
-        if (email) {
-          try {
-            const methods = await fetchSignInMethodsForEmail(auth, email);
-            const friendly = methods.join(', ') || 'another provider';
-            // Open modal to help linking
-            setConflictEmail(email);
-            setConflictMethods(methods);
-            setPendingCredential(cred);
-            setLinkModalOpen(true);
-            showAlert('destructive', 'Account Conflict', `An account already exists for ${email} using: ${friendly}. Please sign in with that method to link accounts.`);
-          } catch (mErr: any) {
-            console.error('[auth] fetchSignInMethodsForEmail failed', mErr);
-            showAlert('destructive', 'Account Conflict', 'An account already exists with the same email. Please sign in with the original method.');
-          }
-        } else {
-          showAlert('destructive', 'Account Conflict', 'An account already exists with the same email using a different sign-in method. Please sign in with the original provider.');
-        }
-      } else if (error.code === 'auth/operation-not-allowed') {
-        showAlert('destructive', 'Sign Up Failed', `The ${providerName} sign-in method is not enabled. Please enable it in Firebase Console.`);
-      } else {
-        showAlert('destructive', 'Sign Up Failed', error.message || 'An unknown error occurred during social sign up.');
-      }
-    } finally {
+      console.error('[auth] signInWithRedirect failed', error);
+      showAlert('destructive', 'Sign Up Failed', error.message || 'Could not start social sign-up.');
       setIsLoading(false);
     }
   }
@@ -418,4 +374,3 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
     </>
   );
 }
-
