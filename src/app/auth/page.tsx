@@ -107,41 +107,59 @@ export default function AuthPage() {
         return;
     }
 
+  try {
+    toast({
+      title: isNewSignUp ? 'Sign Up Successful!' : 'Sign In Successful!',
+      description: "You'll be redirected shortly.",
+    });
+
+    // Get the Firebase ID token.
+    const idToken = await user.getIdToken();
+
+    // Collect silent client info: user-agent and geolocation (if allowed)
+    const clientInfo: any = { userAgent: navigator.userAgent };
     try {
-        toast({
-          title: isNewSignUp ? 'Sign Up Successful!' : 'Sign In Successful!',
-          description: "You'll be redirected shortly.",
-        });
-
-        // Get the Firebase ID token.
-        const idToken = await user.getIdToken();
-
-        // Send the token to our API route to create a session cookie and check if user is new
-        const response = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ idToken }),
-        });
-        
-        if (!response.ok) {
-            throw new Error('Failed to create session.');
-        }
-
-        const { isNewUser: isProfileNew } = await response.json();
-
-        // New users from Social/Phone Auth need onboarding. The middleware will handle this.
-        if (isProfileNew) {
-            window.location.href = '/onboarding';
-        } else {
-            window.location.href = '/';
-        }
-
-    } catch (err: any) {
-        console.error('Failed during auth success handling:', err);
-        showAlert('destructive', 'Error', 'Could not complete sign-in. Please try again.');
+      if (navigator.geolocation) {
+      // attempt to get location quickly without blocking; timeout after 3s
+      const geo = await new Promise<GeolocationPosition | null>((resolve) => {
+        const onSuccess = (pos: GeolocationPosition) => resolve(pos);
+        const onError = () => resolve(null);
+        navigator.geolocation.getCurrentPosition(onSuccess, onError, { maximumAge: 60 * 60 * 1000, timeout: 3000 });
+      });
+      if (geo) {
+        clientInfo.location = { latitude: geo.coords.latitude, longitude: geo.coords.longitude, accuracy: geo.coords.accuracy };
+      }
+      }
+    } catch (e) {
+      // ignore geolocation errors
     }
+
+    // Send the token + client info to our API route to create a session cookie and check if user is new
+    const response = await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ idToken, clientInfo }),
+    });
+        
+    if (!response.ok) {
+      throw new Error('Failed to create session.');
+    }
+
+    const { isNewUser: isProfileNew } = await response.json();
+
+    // New users from Social/Phone Auth need onboarding. The middleware will handle this.
+    if (isProfileNew) {
+      window.location.href = '/onboarding';
+    } else {
+      window.location.href = '/';
+    }
+
+  } catch (err: any) {
+    console.error('Failed during auth success handling:', err);
+    showAlert('destructive', 'Error', 'Could not complete sign-in. Please try again.');
+  }
   }
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {

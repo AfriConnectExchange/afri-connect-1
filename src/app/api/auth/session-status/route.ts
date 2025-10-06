@@ -49,21 +49,10 @@ export async function GET() {
     const profileDoc = await adminFirestore.collection('profiles').doc(userId).get();
 
     if (!profileDoc.exists) {
-      // This is a new user who just signed up, or a user whose profile creation failed.
-      // We will create their profile now.
-      const userRecord = await adminAuth.getUser(userId);
-      const profileData = {
-        id: userId,
-        auth_user_id: userId,
-        email: userRecord.email,
-        full_name: userRecord.displayName || '',
-        phone_number: userRecord.phoneNumber || '',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        onboarding_completed: false,
-        primary_role: 'buyer',
-      };
-      await adminFirestore.collection('profiles').doc(userId).set(profileData);
+      // Do NOT create a profile here. The session creation endpoint is responsible
+      // for creating a minimal profile so it can capture client-provided info.
+      // Returning onboardingComplete: false will cause middleware to redirect users
+      // to the onboarding flow where they can complete their profile.
       return NextResponse.json({ isAuthenticated: true, onboardingComplete: false });
     }
 
