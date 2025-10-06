@@ -92,28 +92,31 @@ export default function AuthPage() {
   };
   
   const handleAuthSuccess = async (user: User, isNewUser?: boolean) => {
-    // The isNewUser flag is provided by popup/redirect flows via getAdditionalUserInfo(result)
-    const newUserFlag = typeof isNewUser === 'boolean' ? isNewUser : false;
+    const isNewSignUp = isNewUser ?? false;
 
-    // For new email signups, trigger verification flow.
-    if (newUserFlag && user.providerData[0].providerId === 'password' && !user.emailVerified) {
-        await sendEmailVerification(user);
-        setEmailForVerification(user.email || '');
-        setAuthMode('awaiting-verification');
-        showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+    // For new email signups, trigger verification flow first.
+    if (isNewSignUp && user.providerData[0].providerId === 'password' && !user.emailVerified) {
+        try {
+            await sendEmailVerification(user);
+            setEmailForVerification(user.email || '');
+            setAuthMode('awaiting-verification');
+            showAlert('default', 'Registration Successful!', 'Please check your email to verify your account.');
+        } catch (error) {
+            showAlert('destructive', 'Verification Error', 'Could not send verification email. Please try signing in again.');
+        }
         return;
     }
 
     try {
         toast({
-          title: 'Sign In Successful!',
+          title: isNewSignUp ? 'Sign Up Successful!' : 'Sign In Successful!',
           description: "You'll be redirected shortly.",
         });
 
         // Get the Firebase ID token.
         const idToken = await user.getIdToken();
 
-        // Send the token to our API route to create a session cookie.
+        // Send the token to our API route to create a session cookie and check if user is new
         const response = await fetch('/api/auth/session', {
             method: 'POST',
             headers: {
@@ -126,8 +129,14 @@ export default function AuthPage() {
             throw new Error('Failed to create session.');
         }
 
-        // Now that the session cookie is set, a page reload will let the middleware handle redirection.
-        window.location.href = '/';
+        const { isNewUser: isProfileNew } = await response.json();
+
+        // New users from Social/Phone Auth need onboarding. The middleware will handle this.
+        if (isProfileNew) {
+            window.location.href = '/onboarding';
+        } else {
+            window.location.href = '/';
+        }
 
     } catch (err: any) {
         console.error('Failed during auth success handling:', err);
