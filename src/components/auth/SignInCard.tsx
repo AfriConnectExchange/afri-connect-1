@@ -142,13 +142,12 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
         // The email for this account already exists with a different sign-in method.
         const email = error.customData?.email || error.email;
         console.debug('[auth] account exists with different credential for email=', email, 'error=', error);
-        // Attempt to extract pending credential
-        let cred = null;
+        // Attempt to extract pending credential using provider helpers (more reliable)
+        let cred: any = null;
         try {
-          // firebase SDK provides helper credentialFromError for providers, but error.credential may exist
-          cred = (error as any).credential || null;
+          cred = GoogleAuthProvider.credentialFromError(error) || FacebookAuthProvider.credentialFromError(error) || (error as any).credential || null;
         } catch (e) {
-          cred = null;
+          cred = (error as any).credential || null;
         }
 
         if (email) {
