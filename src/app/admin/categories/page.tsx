@@ -1,5 +1,5 @@
 
-'use client';
+"use client";
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,8 @@ import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { generateCategories } from '@/ai/flows/generate-categories-flow';
+// NOTE: generate-categories-flow is a server-only AI flow. Do NOT import it into a client component.
+// Call the server API endpoint below instead: /api/admin/categories/generate
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 
@@ -114,8 +115,13 @@ export default function AdminCategoriesPage() {
     setIsGenerating(true);
     setAiSuggestions([]);
     try {
-      const result = await generateCategories();
-      setAiSuggestions(result.categories);
+      const res = await fetch('/api/admin/categories/generate');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate categories');
+      }
+      const result = await res.json();
+      setAiSuggestions(result.categories || []);
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'AI Generation Failed', description: error.message });
     }
