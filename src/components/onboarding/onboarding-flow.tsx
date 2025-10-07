@@ -20,7 +20,14 @@ export function OnboardingFlow() {
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(0);
 
-  const [userData, setUserData] = useState({
+  const [userData, setUserData] = useState<{
+    primary_role: 'buyer' | 'seller' | 'sme' | 'trainer';
+    full_name: string;
+    phone_number: string;
+    location: string;
+    address: any;
+    business?: any;
+  }>({
     primary_role: 'buyer',
     full_name: '',
     phone_number: '',
@@ -41,14 +48,7 @@ export function OnboardingFlow() {
   const handleRoleSelection = async (data: { role: string }) => {
     const role = data.role as 'buyer' | 'seller' | 'sme' | 'trainer';
     handleUpdateUserData({ primary_role: role });
-    // For buyers continue to the personal details step.
-    // For sellers/SME/trainer, insert a lightweight business details step before personal info.
-    if (role === 'buyer') {
-      setCurrentStep((prev) => prev + 1);
-    } else {
-      // move to the business step
-      setCurrentStep((prev) => prev + 1);
-    }
+    setCurrentStep((prev) => prev + 1);
   };
 
   const handleOnboardingComplete = async (data: {
@@ -62,7 +62,6 @@ export function OnboardingFlow() {
     }
 
     try {
-      // Merge personal details and any collected business info into the profile.
       const profileUpdate: any = {
         full_name: data.full_name,
         phone_number: data.phone_number,
@@ -80,13 +79,12 @@ export function OnboardingFlow() {
 
       await setDoc(doc(firestore, "profiles", user.uid), profileUpdate, { merge: true });
 
-      // If the user is a seller/SME/trainer, send them to the seller dashboard after onboarding.
-      if (userData.primary_role === 'seller' || userData.primary_role === 'sme' || userData.primary_role === 'trainer') {
+      if (['seller', 'sme', 'trainer'].includes(userData.primary_role)) {
+        toast({ title: 'Profile Updated!', description: 'Redirecting you to the seller dashboard.'});
         router.push('/seller/dashboard');
-        return;
+      } else {
+        setCurrentStep(steps.length - 1);
       }
-
-      setCurrentStep((prev) => prev + 1);
     } catch(error: any) {
       toast({ variant: 'destructive', title: 'Failed to Save Profile', description: error.message });
     }
@@ -106,23 +104,16 @@ export function OnboardingFlow() {
       onUpdate={(data) => handleUpdateUserData({ primary_role: data.role as 'buyer' | 'seller' | 'sme' | 'trainer' })}
       currentValue={String(userData.primary_role)}
     />,
-    // If the user selected seller/sme/trainer then the next step is the SellerBusinessStep.
-    userData.primary_role === 'seller' || userData.primary_role === 'sme' || userData.primary_role === 'trainer'
-      ? <SellerBusinessStep
-          onNext={(data) => { handleUpdateUserData({ business: data }); setCurrentStep((prev) => prev + 1); }}
-          onBack={handleBack}
-          defaultValues={userData.business}
-        />
-      : <PersonalDetailsStep
-          onNext={handleOnboardingComplete}
-          onBack={handleBack}
-          defaultValues={{
-            fullName: userData.full_name,
-            phoneNumber: userData.phone_number,
-            address: userData.address,
-          }}
-        />,
-    // After the SellerBusinessStep we still collect personal details.
+    ...(userData.primary_role !== 'buyer' ? [
+      <SellerBusinessStep
+        onNext={(data) => {
+          handleUpdateUserData({ business: data });
+          setCurrentStep((prev) => prev + 1);
+        }}
+        onBack={handleBack}
+        defaultValues={userData.business}
+      />
+    ] : []),
     <PersonalDetailsStep
       onNext={handleOnboardingComplete}
       onBack={handleBack}

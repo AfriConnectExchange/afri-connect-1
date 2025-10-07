@@ -32,7 +32,7 @@ const formSchema = z.object({
 type PersonalDetailsFormValues = z.infer<typeof formSchema>;
 
 interface PersonalDetailsStepProps {
-  onNext: (data: { full_name: string; phone_number: string; address: any; }) => void;
+  onNext: (data: { full_name: string; phone_number: string; address: any; }) => Promise<void>;
   onBack: () => void;
   defaultValues: Partial<PersonalDetailsFormValues>;
 }
@@ -40,6 +40,7 @@ interface PersonalDetailsStepProps {
 export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalDetailsStepProps) {
   const { user } = useUser();
   const [isClient, setIsClient] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
@@ -56,12 +57,14 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
       })
   }, [user, form, defaultValues])
 
-  const onSubmit = (values: PersonalDetailsFormValues) => {
-    onNext({
+  const onSubmit = async (values: PersonalDetailsFormValues) => {
+    setIsSubmitting(true);
+    await onNext({
         full_name: values.fullName,
         phone_number: values.phoneNumber || '',
         address: values.address || {},
     });
+    setIsSubmitting(false);
   };
 
   if (!isClient) {
@@ -133,8 +136,8 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
             />
             
             <div className="flex justify-between items-center pt-4">
-                <AnimatedButton variant="outline" type="button" onClick={onBack}>Back</AnimatedButton>
-                <AnimatedButton type="submit">Finish Setup</AnimatedButton>
+                <AnimatedButton variant="outline" type="button" onClick={onBack} disabled={isSubmitting}>Back</AnimatedButton>
+                <AnimatedButton type="submit" isLoading={isSubmitting}>Finish Setup</AnimatedButton>
             </div>
         </form>
         </Form>
