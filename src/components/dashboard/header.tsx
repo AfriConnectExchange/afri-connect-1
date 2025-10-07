@@ -12,6 +12,7 @@ import {
   Settings,
   Handshake,
   TrendingUp,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -104,7 +105,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
         { id: '/profile', label: 'My Account', href: '/profile', show: true, icon: User },
         { id: '/orders', label: 'My Orders', href: '/orders', show: true, icon: Package },
         { id: '/barter', label: 'My Barter Proposals', href: '/barter', show: true, icon: Handshake },
-        { id: '/notifications', label: 'Notifications', href: '/notifications', show: true, icon: Bell },
+        { id: '/notifications', label: 'Inbox', href: '/notifications', show: true, icon: Mail },
       ]
   }
   
@@ -304,7 +305,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={handleLogout}>
                         <LogOut className="mr-2 h-4 w-4" />
-                        <span>Log out</span>
+                        <span>Sign Out</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
