@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { generateCategories } from '@/ai/flows/generate-categories-flow';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Category {
   id: string;
@@ -18,13 +20,23 @@ interface Category {
   parentId?: string | null;
 }
 
+interface AISuggestion {
+  name: string;
+  subcategories: { name: string }[];
+}
+
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [isAIOpen, setIsAIOpen] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Partial<Category> | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+  const [aiTopic, setAiTopic] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const { toast } = useToast();
 
   const fetchCategories = async () => {
@@ -92,13 +104,57 @@ export default function AdminCategoriesPage() {
     }
   };
 
+  const handleGenerateCategories = async () => {
+    if (!aiTopic) return;
+    setIsGenerating(true);
+    try {
+      const result = await generateCategories(aiTopic);
+      setAiSuggestions(result.categories);
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'AI Generation Failed', description: error.message });
+    }
+    setIsGenerating(false);
+  };
+
+  const handleSaveSuggestion = async (suggestion: AISuggestion) => {
+    try {
+      // Save parent category
+      const parentRes = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: suggestion.name, description: `AI generated category for ${aiTopic}` }),
+      });
+      if (!parentRes.ok) throw new Error(`Failed to save category: ${suggestion.name}`);
+      const parentData = await parentRes.json();
+      
+      // Save subcategories
+      for (const sub of suggestion.subcategories) {
+        await fetch('/api/admin/categories', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: sub.name, parentId: parentData.id }),
+        });
+      }
+      toast({ title: 'Success', description: `Category "${suggestion.name}" and its subcategories have been saved.` });
+      fetchCategories();
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error Saving Suggestion', description: err.message });
+    }
+  };
+
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Category Management</h2>
-        <Button onClick={() => { setCurrentCategory({ name: '', description: '' }); setIsModalOpen(true); }}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Category
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsAIOpen(true)}>
+            <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+          </Button>
+          <Button onClick={() => { setCurrentCategory({ name: '', description: '' }); setIsModalOpen(true); }}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Category
+          </Button>
+        </div>
       </div>
       
       <Card>
@@ -132,6 +188,7 @@ export default function AdminCategoriesPage() {
         </CardContent>
       </Card>
       
+      {/* Add/Edit Category Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent>
           <DialogHeader>
@@ -151,6 +208,44 @@ export default function AdminCategoriesPage() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>Save</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* AI Generation Modal */}
+      <Dialog open={isAIOpen} onOpenChange={setIsAIOpen}>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>Generate Categories with AI</DialogTitle>
+            <DialogDescription>Enter a topic (e.g., "Electronics") and let AI create relevant categories for you.</DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2 py-4">
+            <Input placeholder="Enter a topic..." value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} />
+            <Button onClick={handleGenerateCategories} disabled={isGenerating}>
+              {isGenerating ? <Loader2 className="animate-spin" /> : 'Generate'}
+            </Button>
+          </div>
+          <ScrollArea className="h-[300px] border rounded-md p-4">
+            {isGenerating && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin"/></div>}
+            {!isGenerating && aiSuggestions.length === 0 && <p className="text-center text-muted-foreground">Suggestions will appear here.</p>}
+            <div className="space-y-4">
+              {aiSuggestions.map((suggestion, index) => (
+                <Card key={index}>
+                  <CardHeader className="flex flex-row justify-between items-center p-4">
+                    <CardTitle className="text-base">{suggestion.name}</CardTitle>
+                    <Button size="sm" onClick={() => handleSaveSuggestion(suggestion)}>Save</Button>
+                  </CardHeader>
+                  <CardContent className="p-4 pt-0">
+                    <p className="text-xs text-muted-foreground mb-2">Sub-categories:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {suggestion.subcategories.map((sub, i) => (
+                        <Badge key={i} variant="secondary">{sub.name}</Badge>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
 
