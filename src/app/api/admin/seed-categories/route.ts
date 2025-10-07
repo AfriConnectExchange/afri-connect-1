@@ -65,7 +65,7 @@ const categoriesToSeed = [
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
     const batch = writeBatch(firestore);
 
     // 1. Clear existing categories (optional, but prevents duplicates on re-run)

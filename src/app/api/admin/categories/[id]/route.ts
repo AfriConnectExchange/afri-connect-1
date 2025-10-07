@@ -13,7 +13,7 @@ const categoryUpdateSchema = z.object({
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
     const { id } = params;
     const body = await request.json();
     const parsed = categoryUpdateSchema.safeParse(body);
@@ -46,7 +46,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
     const { id } = params;
 
     const categoryRef = firestore.collection('categories').doc(id);
