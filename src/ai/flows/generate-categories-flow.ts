@@ -44,7 +44,7 @@ const generateCategoriesFlow = ai.defineFlow(
     outputSchema: GenerateCategoriesOutputSchema,
   },
   async () => {
-    const { output } = await prompt();
+    const { output } = await prompt(undefined);
     if (!output) {
       throw new Error('Failed to get a response from the AI model.');
     }
