@@ -35,7 +35,6 @@ export default function AdminCategoriesPage() {
   const [currentCategory, setCurrentCategory] = useState<Partial<Category> | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
-  const [aiTopic, setAiTopic] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
 
   const { toast } = useToast();
@@ -57,6 +56,12 @@ export default function AdminCategoriesPage() {
   useEffect(() => {
     fetchCategories();
   }, []);
+  
+  useEffect(() => {
+    if (isAIOpen && aiSuggestions.length === 0) {
+        handleGenerateCategories();
+    }
+  }, [isAIOpen]);
 
   const handleSave = async () => {
     if (!currentCategory || !currentCategory.name) {
@@ -106,10 +111,10 @@ export default function AdminCategoriesPage() {
   };
 
   const handleGenerateCategories = async () => {
-    if (!aiTopic) return;
     setIsGenerating(true);
+    setAiSuggestions([]);
     try {
-      const result = await generateCategories(aiTopic);
+      const result = await generateCategories();
       setAiSuggestions(result.categories);
     } catch (error: any) {
       toast({ variant: 'destructive', title: 'AI Generation Failed', description: error.message });
@@ -123,7 +128,7 @@ export default function AdminCategoriesPage() {
       const parentRes = await fetch('/api/admin/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: suggestion.name, description: `AI generated category for ${aiTopic}` }),
+        body: JSON.stringify({ name: suggestion.name, description: `AI generated category` }),
       });
       if (!parentRes.ok) throw new Error(`Failed to save category: ${suggestion.name}`);
       const parentData = await parentRes.json();
@@ -216,18 +221,12 @@ export default function AdminCategoriesPage() {
       <Dialog open={isAIOpen} onOpenChange={setIsAIOpen}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
-            <DialogTitle>Generate Categories with AI</DialogTitle>
-            <DialogDescription>Enter a topic (e.g., "Electronics") and let AI create relevant categories for you.</DialogDescription>
+            <DialogTitle>AI Generated Categories</DialogTitle>
+            <DialogDescription>Review the categories suggested by AI and save them to your marketplace.</DialogDescription>
           </DialogHeader>
-          <div className="flex gap-2 py-4">
-            <Input placeholder="Enter a topic..." value={aiTopic} onChange={(e) => setAiTopic(e.target.value)} />
-            <Button onClick={handleGenerateCategories} disabled={isGenerating}>
-              {isGenerating ? <Loader2 className="animate-spin" /> : 'Generate'}
-            </Button>
-          </div>
-          <ScrollArea className="h-[300px] border rounded-md p-4">
-            {isGenerating && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin"/></div>}
-            {!isGenerating && aiSuggestions.length === 0 && <p className="text-center text-muted-foreground">Suggestions will appear here.</p>}
+          <ScrollArea className="h-[400px] border rounded-md p-4 mt-4">
+            {isGenerating && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div>}
+            {!isGenerating && aiSuggestions.length === 0 && <p className="text-center text-muted-foreground">No suggestions available. Try generating again.</p>}
             <div className="space-y-4">
               {aiSuggestions.map((suggestion, index) => (
                 <Card key={index}>
@@ -247,6 +246,12 @@ export default function AdminCategoriesPage() {
               ))}
             </div>
           </ScrollArea>
+           <DialogFooter className="mt-4">
+            <Button variant="outline" onClick={() => setIsAIOpen(false)}>Close</Button>
+            <Button onClick={handleGenerateCategories} disabled={isGenerating}>
+              {isGenerating ? <Loader2 className="animate-spin" /> : 'Regenerate'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
