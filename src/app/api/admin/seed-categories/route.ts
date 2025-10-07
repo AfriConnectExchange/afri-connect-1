@@ -1,7 +1,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin, getAdminFirestore } from '@/lib/admin-utils';
-import { writeBatch } from 'firebase-admin/firestore';
 
 const categoriesToSeed = [
     { 
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
     const firestore = await getAdminFirestore();
-    const batch = writeBatch(firestore);
+    const batch = firestore.batch();
 
     // 1. Clear existing categories (optional, but prevents duplicates on re-run)
     const existingCategoriesSnap = await firestore.collection('categories').get();
