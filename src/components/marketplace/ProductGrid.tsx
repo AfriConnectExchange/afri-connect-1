@@ -17,19 +17,6 @@ interface ProductGridProps {
   noResultsMessage?: string;
 }
 
-function LoadingSpinner({ size = 'default' }: { size?: 'sm' | 'default' | 'lg' }) {
-    const sizeClasses = {
-        sm: 'h-6 w-6',
-        default: 'h-8 w-8',
-        lg: 'h-12 w-12',
-    };
-    return (
-        <div className="flex items-center justify-center">
-            <div className={`animate-spin rounded-full border-t-2 border-b-2 border-primary ${sizeClasses[size]}`}></div>
-        </div>
-    );
-}
-
 export function ProductGrid({
   products,
   loading = false,
@@ -48,7 +35,9 @@ export function ProductGrid({
     return 'No products found. Try adjusting your filters.';
   };
 
-  if (loading) {
+  // If loading is true AND there are no products yet, show skeletons.
+  // This prevents showing skeletons when loading more products.
+  if (loading && products.length === 0) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {Array.from({ length: 6 }).map((_, index) => (
@@ -115,13 +104,12 @@ export function ProductGrid({
             size="lg"
             onClick={onLoadMore}
             className="w-full sm:w-auto"
+            disabled={loading}
           >
-            Load More Products
+            {loading ? 'Loading...' : 'Load More Products'}
           </Button>
         </div>
       )}
     </div>
   );
 }
-
-    

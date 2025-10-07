@@ -7,13 +7,14 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { AlertCircle, User as UserIcon, Shield, BarChart2, BookOpen, LayoutDashboard } from 'lucide-react';
+import { AlertCircle, User as UserIcon, Shield, BarChart2, BookOpen, LayoutDashboard, Tag } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 const navItems = [
     { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
     { id: 'user-management', label: 'User Management', href: '/admin/users', icon: UserIcon },
+    { id: 'categories', label: 'Categories', href: '/admin/categories', icon: Tag },
     { id: 'content-moderation', label: 'Content Moderation', href: '/admin/content', icon: Shield },
     { id: 'analytics', label: 'Platform Analytics', href: '/admin/analytics', icon: BarChart2 },
     { id: 'logs', label: 'System Logs', href: '/admin/logs', icon: BookOpen },
