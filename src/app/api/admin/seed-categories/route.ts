@@ -1,7 +1,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireAdmin, getAdminFirestore } from '@/lib/admin-utils';
-import { collection, writeBatch, getDocs } from 'firebase/firestore';
+import { writeBatch } from 'firebase-admin/firestore';
 
 const categoriesToSeed = [
     { 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     const batch = writeBatch(firestore);
 
     // 1. Clear existing categories (optional, but prevents duplicates on re-run)
-    const existingCategoriesSnap = await getDocs(collection(firestore, 'categories'));
+    const existingCategoriesSnap = await firestore.collection('categories').get();
     existingCategoriesSnap.forEach(doc => {
       batch.delete(doc.ref);
     });
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Add new categories
     for (const category of categoriesToSeed) {
-        const parentCategoryRef = collection(firestore, 'categories').doc();
+        const parentCategoryRef = firestore.collection('categories').doc();
         batch.set(parentCategoryRef, {
             name: category.name,
             description: `A wide range of ${category.name.toLowerCase()}.`,
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         count++;
 
         for (const sub of category.subcategories) {
-            const subCategoryRef = collection(firestore, 'categories').doc();
+            const subCategoryRef = firestore.collection('categories').doc();
             batch.set(subCategoryRef, {
                 name: sub,
                 parentId: parentCategoryRef.id,
