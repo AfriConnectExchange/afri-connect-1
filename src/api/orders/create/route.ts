@@ -15,6 +15,7 @@ const serviceAccount = {
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -22,6 +23,7 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  }
 }
 
 
@@ -46,7 +48,6 @@ const createOrderSchema = z.object({
   })
 });
 
-// Function to send a message via the Twilio extension
 async function sendSms(to: string, body: string) {
   if (!getApps().length) {
     console.error("Firestore not initialized for SMS service.");
@@ -87,7 +88,6 @@ export async function POST(request: Request) {
 
     const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
 
-    // 1. Pre-flight check: Verify stock for all items
     for (const item of cartItems) {
       const productDoc = await adminFirestore.collection('products').doc(item.product_id).get();
       if (!productDoc.exists) {
@@ -99,7 +99,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // 2. Create the order
     const orderRef = await adminFirestore.collection('orders').add({
         buyer_id: user.uid,
         total_amount: total,
@@ -113,7 +112,6 @@ export async function POST(request: Request) {
 
     const batch = adminFirestore.batch();
 
-    // 3. Create order items and update product stock
     for (const item of cartItems) {
       const orderItemRef = adminFirestore.collection('orders').doc(newOrderId).collection('order_items').doc();
       batch.set(orderItemRef, {
@@ -131,7 +129,6 @@ export async function POST(request: Request) {
 
     await batch.commit();
 
-    // 4. Create a 'transactions' record (optional, but good practice)
     await adminFirestore.collection('transactions').add({
         order_id: newOrderId,
         profile_id: user.uid,
@@ -142,12 +139,10 @@ export async function POST(request: Request) {
         created_at: new Date().toISOString(),
     });
     
-    // 5. Create notifications for seller(s) and send SMS
     const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
     for (const sellerId of sellerIds) {
         if (sellerId === user.uid) continue;
 
-        // Fetch seller profile to get their phone number
         const sellerProfileDoc = await adminFirestore.collection('profiles').doc(sellerId).get();
         const sellerProfile = sellerProfileDoc.data();
         
@@ -167,7 +162,6 @@ export async function POST(request: Request) {
         }
     }
     
-    // 6. Create notification for buyer
     await adminFirestore.collection('notifications').add({
         user_id: user.uid,
         type: 'order',

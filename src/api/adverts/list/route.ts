@@ -6,12 +6,13 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
 const serviceAccount = {
-  projectId: process.env.PROJECT_ID,
-  clientEmail: process.env.CLIENT_EMAIL,
-  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
 };
 
 if (!getApps().length) {
+    if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -19,6 +20,9 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  } else {
+      console.log('Firebase Admin SDK service account credentials not set.');
+  }
 }
 
 export async function GET(request: Request) {

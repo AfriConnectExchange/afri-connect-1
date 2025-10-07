@@ -13,6 +13,7 @@ const serviceAccount = {
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -20,6 +21,7 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  }
 }
 
 
@@ -55,14 +57,12 @@ export async function POST(request: Request) {
 
     const { productId, orderId, sellerId, rating, comment } = validation.data;
 
-    // 1. Verify user purchased this product via this order
     const orderItemsQuery = await adminFirestore.collection('orders').doc(orderId).collection('order_items').where('product_id', '==', productId).get();
 
     if (orderItemsQuery.empty) {
       return NextResponse.json({ error: 'Purchase not verified. You can only review products you have bought.' }, { status: 403 });
     }
 
-    // 2. Verify a review for this order item doesn't already exist
     const existingReviewQuery = await adminFirestore.collection('reviews')
         .where('order_id', '==', orderId)
         .where('product_id', '==', productId)
@@ -73,7 +73,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'You have already submitted a review for this purchase.' }, { status: 409 });
     }
 
-    // 3. Insert the new review
     const newReviewRef = await adminFirestore.collection('reviews').add({
       order_id: orderId,
       reviewer_id: user.uid,
@@ -84,7 +83,6 @@ export async function POST(request: Request) {
       created_at: new Date().toISOString(),
     });
 
-    // 4. Update the product's average rating and review count
     const productRef = adminFirestore.collection('products').doc(productId);
     await adminFirestore.runTransaction(async (transaction) => {
         const productDoc = await transaction.get(productRef);

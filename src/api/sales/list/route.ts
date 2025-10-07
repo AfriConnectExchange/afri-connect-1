@@ -12,6 +12,7 @@ const serviceAccount = {
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -19,6 +20,7 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  }
 }
 
 

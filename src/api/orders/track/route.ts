@@ -11,6 +11,7 @@ const serviceAccount = {
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -18,6 +19,7 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  }
 }
 
 export async function GET(request: Request) {
@@ -34,22 +36,22 @@ export async function GET(request: Request) {
   }
 
   let orderQuery;
-  if (orderId.length > 20) { // Assume it's a doc ID
+  if (orderId.length > 20) { 
       orderQuery = adminFirestore.collection('orders').doc(orderId);
-  } else { // Assume it's a tracking number
+  } else { 
       orderQuery = adminFirestore.collection('orders').where('tracking_number', '==', orderId).limit(1);
   }
   
   const orderSnap = await orderQuery.get();
   
   let orderData: any;
-  if ('docs' in orderSnap) { // It's a QuerySnapshot
+  if ('docs' in orderSnap) { 
     if (orderSnap.empty) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
     orderData = orderSnap.docs[0].data();
     orderData.id = orderSnap.docs[0].id;
-  } else { // It's a DocumentSnapshot
+  } else { 
     if (!orderSnap.exists) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
@@ -100,7 +102,6 @@ export async function GET(request: Request) {
   const shippingAddress = orderData.shipping_address as any;
   const orderStatus = orderData.status as OrderDetails['status'];
 
-  // Mock tracking events for now as we don't have a table for them
   const events: TrackingEvent[] = [];
   const orderPlacedTime = new Date(orderData.created_at);
   events.push({ id: '1', status: 'Order Placed', description: 'Your order has been received.', location: 'Online', timestamp: orderPlacedTime.toISOString(), isCompleted: true });

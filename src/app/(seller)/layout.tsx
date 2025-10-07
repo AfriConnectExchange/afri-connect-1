@@ -1,4 +1,3 @@
-
 'use client';
 import { useUser, useFirestore } from '@/firebase';
 import { PageLoader } from '@/components/ui/loader';
@@ -43,6 +42,8 @@ export default function SellerLayout({
 
     if (user) {
       fetchProfile();
+    } else if (!isUserLoading) {
+        setLoadingProfile(false);
     }
   }, [user, isUserLoading, router, firestore]);
 
