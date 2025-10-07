@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { generateCategories } from '@/ai/flows/generate-categories-flow';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 
 interface Category {
   id: string;
