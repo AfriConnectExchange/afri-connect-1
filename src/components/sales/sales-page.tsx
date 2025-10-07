@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -119,7 +120,7 @@ export function SalesPage() {
 
   useEffect(() => {
     fetchSales();
-  }, [toast]);
+  }, []);
 
   const getStatusVariant = (status: string) => {
     switch (status) {

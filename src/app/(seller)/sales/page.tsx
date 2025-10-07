@@ -1,3 +1,4 @@
+
 'use client';
 import { SalesPage } from '@/components/sales/sales-page';
 
