@@ -5,14 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles, DatabaseZap } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, DatabaseZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-// NOTE: generate-categories-flow is a server-only AI flow. Do NOT import it into a client component.
-// Call the server API endpoint below instead: /api/admin/categories/generate
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 
 interface Category {
   id: string;
@@ -98,41 +94,13 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const handleGenerateCategories = async () => {
-    setIsGenerating(true);
-    setAiSuggestions([]);
+  const handleSeedCategories = async () => {
+    setIsSeeding(true);
     try {
-      const res = await fetch('/api/admin/categories/generate');
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to generate categories');
-      }
+      const res = await fetch('/api/admin/seed-categories', { method: 'POST' });
       const result = await res.json();
-      setAiSuggestions(result.categories || []);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'AI Generation Failed', description: error.message });
-    }
-    setIsGenerating(false);
-  };
-
-  const handleSaveSuggestion = async (suggestion: AISuggestion) => {
-    try {
-      // Save parent category
-      const parentRes = await fetch('/api/admin/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: suggestion.name, description: `AI generated category` }),
-      });
-      if (!parentRes.ok) throw new Error(`Failed to save category: ${suggestion.name}`);
-      const parentData = await parentRes.json();
-      
-      // Save subcategories
-      for (const sub of suggestion.subcategories) {
-        await fetch('/api/admin/categories', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: sub.name, parentId: parentData.id }),
-        });
+      if (!res.ok) {
+        throw new Error(result.error || 'Failed to seed categories');
       }
       toast({ title: 'Success', description: `${result.count} categories have been seeded into the database.` });
       fetchCategories();
