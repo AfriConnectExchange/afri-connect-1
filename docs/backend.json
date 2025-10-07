@@ -90,6 +90,30 @@
         }
       },
       "required": ["to", "body"]
+    },
+    "Category": {
+      "title": "Product Category",
+      "description": "Represents a category for products.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the category."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of the category."
+        },
+        "parentId": {
+          "type": ["string", "null"],
+          "description": "The ID of the parent category, if this is a sub-category."
+        },
+        "productCount": {
+          "type": "number",
+          "description": "The number of products associated with this category."
+        }
+      },
+      "required": ["name", "productCount"]
     }
   },
   "auth": {
@@ -107,6 +131,12 @@
         "$ref": "#/entities/Message"
       },
       "description": "Collection monitored by the Twilio Send Messages extension to trigger SMS/WhatsApp messages."
+    },
+    "/categories/{categoryId}": {
+        "schema": {
+            "$ref": "#/entities/Category"
+        },
+        "description": "Stores product categories and sub-categories."
     }
   }
 }
