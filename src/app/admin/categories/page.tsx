@@ -70,7 +70,7 @@ export default function AdminCategoriesPage() {
       toast({ title: 'Success', description: `Category ${currentCategory.id ? 'updated' : 'created'}.` });
       setIsModalOpen(false);
       fetchCategories();
-    } catch (err: any) => {
+    } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
   };
