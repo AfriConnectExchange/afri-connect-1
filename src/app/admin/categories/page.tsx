@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, DatabaseZap } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -23,7 +23,6 @@ export default function AdminCategoriesPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Partial<Category> | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
@@ -71,7 +70,7 @@ export default function AdminCategoriesPage() {
       toast({ title: 'Success', description: `Category ${currentCategory.id ? 'updated' : 'created'}.` });
       setIsModalOpen(false);
       fetchCategories();
-    } catch (err: any) {
+    } catch (err: any) => {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
     }
   };
@@ -94,33 +93,12 @@ export default function AdminCategoriesPage() {
     }
   };
 
-  const handleSeedCategories = async () => {
-    setIsSeeding(true);
-    try {
-      const res = await fetch('/api/admin/seed-categories', { method: 'POST' });
-      const result = await res.json();
-      if (!res.ok) {
-        throw new Error(result.error || 'Failed to seed categories');
-      }
-      toast({ title: 'Success', description: `${result.count} categories have been seeded into the database.` });
-      fetchCategories();
-    } catch (err: any) {
-       toast({ variant: 'destructive', title: 'Seeding Failed', description: err.message });
-    } finally {
-        setIsSeeding(false);
-    }
-  }
-
 
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Category Management</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleSeedCategories} disabled={isSeeding}>
-            {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
-            Seed Initial Categories
-          </Button>
           <Button onClick={() => { setCurrentCategory({ name: '', description: '' }); setIsModalOpen(true); }}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Category
           </Button>
@@ -134,7 +112,7 @@ export default function AdminCategoriesPage() {
         </CardHeader>
         <CardContent>
           {loading ? <Loader2 className="animate-spin" /> : categories.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">No categories found. Use the seed button to add initial categories.</div>
+            <div className="text-center text-muted-foreground py-8">No categories found.</div>
           ) : (
             <div className="divide-y">
               {categories.map(cat => (

@@ -268,7 +268,7 @@ export default function MarketplacePage() {
               onFiltersChange={handleFiltersChange}
               onClearAllFilters={handleClearAllFilters}
               currency="£"
-              isLoading={!categories || categories.length === 0}
+              isLoading={categories.length === 0}
             />
           </div>
         </div>
@@ -311,7 +311,7 @@ export default function MarketplacePage() {
                     onFiltersChange={handleFiltersChange}
                     onClearAllFilters={handleClearAllFilters}
                     currency="£"
-                    isLoading={!categories || categories.length === 0}
+                    isLoading={categories.length === 0}
                   />
                 </div>
                 <div className="p-4 border-t bg-background">
@@ -355,7 +355,7 @@ export default function MarketplacePage() {
           <div className="px-4 sm:px-0">
             <ProductGrid
               products={products}
-              loading={loading}
+              loading={loading && products.length === 0}
               onNavigate={onNavigate}
               onAddToCart={onAddToCart}
               currency="£"

@@ -175,6 +175,9 @@ export default function MarketplacePage() {
      // Fetch products only after categories are loaded
     if(categories.length > 0) {
         fetchProducts(filters, sortBy);
+    } else {
+      // If categories aren't loaded yet, at least fetch initial products
+      fetchProducts(filters, sortBy);
     }
   }, [fetchProducts, filters, sortBy, categories]);
 
@@ -278,7 +281,7 @@ export default function MarketplacePage() {
               onFiltersChange={handleFiltersChange}
               onClearAllFilters={handleClearAllFilters}
               currency="£"
-              isLoading={!categories || categories.length === 0}
+              isLoading={categories.length === 0}
             />
           </div>
         </div>
@@ -321,7 +324,7 @@ export default function MarketplacePage() {
                     onFiltersChange={handleFiltersChange}
                     onClearAllFilters={handleClearAllFilters}
                     currency="£"
-                    isLoading={!categories || categories.length === 0}
+                    isLoading={categories.length === 0}
                   />
                 </div>
                 <div className="p-4 border-t bg-background">
@@ -365,7 +368,7 @@ export default function MarketplacePage() {
           <div className="px-4 sm:px-0">
             <ProductGrid
               products={products}
-              loading={loading}
+              loading={loading && products.length === 0}
               onNavigate={onNavigate}
               onAddToCart={onAddToCart}
               currency="£"

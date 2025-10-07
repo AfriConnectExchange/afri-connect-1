@@ -1,3 +1,4 @@
+
 'use client';
 import { ProductCard } from './ProductCard';
 import { Button } from '../ui/button';
@@ -37,7 +38,7 @@ export function ProductGrid({
 
   // If loading is true AND there are no products yet, show skeletons.
   // This prevents showing skeletons when loading more products.
-  if (loading && products.length === 0) {
+  if (loading) {
     return (
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {Array.from({ length: 6 }).map((_, index) => (
