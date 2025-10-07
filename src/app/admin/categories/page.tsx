@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, AlertCircle, Sparkles, DatabaseZap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ConfirmationModal } from '@/components/ui/confirmation-modal';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -22,21 +22,14 @@ interface Category {
   parentId?: string | null;
 }
 
-interface AISuggestion {
-  name: string;
-  subcategories: { name: string }[];
-}
-
 export default function AdminCategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [isAIOpen, setIsAIOpen] = useState(false);
+  const [isSeeding, setIsSeeding] = useState(false);
   const [currentCategory, setCurrentCategory] = useState<Partial<Category> | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const { toast } = useToast();
 
@@ -57,12 +50,6 @@ export default function AdminCategoriesPage() {
   useEffect(() => {
     fetchCategories();
   }, []);
-  
-  useEffect(() => {
-    if (isAIOpen && aiSuggestions.length === 0) {
-        handleGenerateCategories();
-    }
-  }, [isAIOpen]);
 
   const handleSave = async () => {
     if (!currentCategory || !currentCategory.name) {
@@ -147,12 +134,14 @@ export default function AdminCategoriesPage() {
           body: JSON.stringify({ name: sub.name, parentId: parentData.id }),
         });
       }
-      toast({ title: 'Success', description: `Category "${suggestion.name}" and its subcategories have been saved.` });
+      toast({ title: 'Success', description: `${result.count} categories have been seeded into the database.` });
       fetchCategories();
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error Saving Suggestion', description: err.message });
+       toast({ variant: 'destructive', title: 'Seeding Failed', description: err.message });
+    } finally {
+        setIsSeeding(false);
     }
-  };
+  }
 
 
   return (
@@ -160,8 +149,9 @@ export default function AdminCategoriesPage() {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Category Management</h2>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setIsAIOpen(true)}>
-            <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+          <Button variant="outline" onClick={handleSeedCategories} disabled={isSeeding}>
+            {isSeeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <DatabaseZap className="mr-2 h-4 w-4" />}
+            Seed Initial Categories
           </Button>
           <Button onClick={() => { setCurrentCategory({ name: '', description: '' }); setIsModalOpen(true); }}>
             <PlusCircle className="mr-2 h-4 w-4" /> Add Category
@@ -176,7 +166,7 @@ export default function AdminCategoriesPage() {
         </CardHeader>
         <CardContent>
           {loading ? <Loader2 className="animate-spin" /> : categories.length === 0 ? (
-            <div className="text-center text-muted-foreground py-8">No categories found.</div>
+            <div className="text-center text-muted-foreground py-8">No categories found. Use the seed button to add initial categories.</div>
           ) : (
             <div className="divide-y">
               {categories.map(cat => (
@@ -223,44 +213,6 @@ export default function AdminCategoriesPage() {
         </DialogContent>
       </Dialog>
       
-      {/* AI Generation Modal */}
-      <Dialog open={isAIOpen} onOpenChange={setIsAIOpen}>
-        <DialogContent className="sm:max-w-[625px]">
-          <DialogHeader>
-            <DialogTitle>AI Generated Categories</DialogTitle>
-            <DialogDescription>Review the categories suggested by AI and save them to your marketplace.</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="h-[400px] border rounded-md p-4 mt-4">
-            {isGenerating && <div className="flex justify-center items-center h-full"><Loader2 className="animate-spin h-8 w-8 text-primary"/></div>}
-            {!isGenerating && aiSuggestions.length === 0 && <p className="text-center text-muted-foreground">No suggestions available. Try generating again.</p>}
-            <div className="space-y-4">
-              {aiSuggestions.map((suggestion, index) => (
-                <Card key={index}>
-                  <CardHeader className="flex flex-row justify-between items-center p-4">
-                    <CardTitle className="text-base">{suggestion.name}</CardTitle>
-                    <Button size="sm" onClick={() => handleSaveSuggestion(suggestion)}>Save</Button>
-                  </CardHeader>
-                  <CardContent className="p-4 pt-0">
-                    <p className="text-xs text-muted-foreground mb-2">Sub-categories:</p>
-                    <div className="flex flex-wrap gap-2">
-                      {suggestion.subcategories.map((sub, i) => (
-                        <Badge key={i} variant="secondary">{sub.name}</Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </ScrollArea>
-           <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsAIOpen(false)}>Close</Button>
-            <Button onClick={handleGenerateCategories} disabled={isGenerating}>
-              {isGenerating ? <Loader2 className="animate-spin" /> : 'Regenerate'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {categoryToDelete && (
         <ConfirmationModal
           isOpen={isConfirmOpen}

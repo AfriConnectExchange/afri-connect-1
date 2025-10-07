@@ -13,7 +13,7 @@ const categorySchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
 
     const snap = await firestore.collection('categories').orderBy('name').get();
     const categories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const admin = await requireAdmin(request);
-    const firestore = getAdminFirestore();
+    const firestore = await getAdminFirestore();
     const body = await request.json();
     const parsed = categorySchema.safeParse(body);
 
