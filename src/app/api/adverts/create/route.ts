@@ -12,7 +12,7 @@ const PROJECT_ID = process.env.PROJECT_ID || process.env.project_id || process.e
 const CLIENT_EMAIL = process.env.CLIENT_EMAIL || process.env.client_email || process.env.FIREBASE_CLIENT_EMAIL;
 const PRIVATE_KEY_RAW = process.env.PRIVATE_KEY || process.env.private_key || process.env.FIREBASE_PRIVATE_KEY;
 const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, '\n') : undefined;
-const BUCKET_NAME = `${PROJECT_ID}.appspot.com`;
+const BUCKET_NAME = `studio-5210962417-9bc8d.appspot.com`;
 
 const serviceAccount = {
   projectId: PROJECT_ID,
