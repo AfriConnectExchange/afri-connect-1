@@ -40,6 +40,8 @@ export default function AuthPage() {
   // Track whether we've already handled a redirect or completed the sign-in flow
   // to avoid double-processing.
   const handledRedirect = useRef(false);
+  // Prevent concurrent processing of auth success (popup result + redirect/onAuthState races)
+  const authProcessing = useRef(false);
 
   // Email verification listener
   useEffect(() => {
@@ -103,6 +105,15 @@ export default function AuthPage() {
     };
   }, [auth, authMode, firebaseUser, router, toast]);
 
+  // Allow dismissing the authInProgress overlay with Escape key
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setAuthInProgress(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
 
   const showAlert = (
@@ -119,6 +130,11 @@ export default function AuthPage() {
   };
   
   const handleAuthSuccess = async (user: User, isNewUser?: boolean) => {
+    if (authProcessing.current) {
+      console.debug('[auth] handleAuthSuccess called while already processing - ignoring');
+      return;
+    }
+    authProcessing.current = true;
     const isNewSignUp = isNewUser ?? false;
 
     // For new email signups, trigger verification flow first.
@@ -186,7 +202,10 @@ export default function AuthPage() {
   } catch (err: any) {
     console.error('Failed during auth success handling:', err);
     showAlert('destructive', 'Error', 'Could not complete sign-in. Please try again.');
+    authProcessing.current = false;
   }
+  // Do not reset authProcessing here — navigation should occur on success; if no navigation occurs
+  // it will be reset on subsequent failures where we set it back to false.
   }
 
   const handleNeedsOtp = (phone: string, resend: () => Promise<void>) => {
@@ -247,6 +266,7 @@ export default function AuthPage() {
     }
   };
 
+
   return (
     <div className="w-full bg-background">
       <div id="recaptcha-container"></div>
@@ -282,9 +302,17 @@ export default function AuthPage() {
             {renderAuthCard()}
             {authInProgress && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/70">
-                <div className="p-6 rounded-lg flex flex-col items-center gap-4">
+                <div className="relative p-6 rounded-lg flex flex-col items-center gap-4">
+                  <button
+                    aria-label="Close auth progress"
+                    className="absolute -top-3 -right-3 rounded-full bg-muted p-2 hover:bg-muted/80"
+                    onClick={() => setAuthInProgress(false)}
+                  >
+                    ✕
+                  </button>
                   <PageLoader />
                   <div className="text-sm text-muted-foreground">Completing sign-in... please do not close or navigate away.</div>
+                  <div className="text-xs text-muted-foreground">If this hangs, click ✕ or press Esc to dismiss. This does not cancel any external popup/redirect.</div>
                 </div>
               </div>
             )}

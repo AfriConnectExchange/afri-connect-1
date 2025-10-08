@@ -137,9 +137,9 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
           const result = await signInWithPopup(auth, provider);
           const additional = getAdditionalUserInfo(result as any);
           console.debug('[auth] signInWithPopup result', { isNewUser: additional?.isNewUser });
-          onAuthSuccess((result as any).user as FirebaseUser, additional?.isNewUser);
-          setIsLoading(false);
           try { onAuthEnd?.(); } catch {}
+          setTimeout(() => onAuthSuccess((result as any).user as FirebaseUser, additional?.isNewUser), 50);
+          setIsLoading(false);
           return;
         } catch (popupErr: any) {
           console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);

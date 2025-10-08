@@ -135,9 +135,11 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
           // If popup succeeded, complete the auth flow immediately.
           const additional = getAdditionalUserInfo(result as any);
           console.debug('[auth] signInWithPopup result', { isNewUser: additional?.isNewUser });
-          onAuthSuccess((result as any).user as User, additional?.isNewUser);
-          setIsLoading(false);
+          // End auth progress in parent before calling success handler to avoid UI race/redirect while overlay is showing.
           try { onAuthEnd?.(); } catch {}
+          // Small delay to allow parent to clear UI, then notify success.
+          setTimeout(() => onAuthSuccess((result as any).user as User, additional?.isNewUser), 50);
+          setIsLoading(false);
           return;
         } catch (popupErr: any) {
           console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);
