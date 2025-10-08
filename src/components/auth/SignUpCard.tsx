@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { Mail, Eye, EyeOff, User, Phone } from 'lucide-react';
+import { Mail, Eye, EyeOff, User, Phone, Lock } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Checkbox } from '../ui/checkbox';
@@ -144,9 +144,18 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
         } catch (popupErr: any) {
           console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);
           showAlert('default', 'Popup blocked', 'Popup sign-up failed — continuing with redirect.');
+          try { onAuthEnd?.(); } catch {}
         }
       }
-      await signInWithRedirect(auth, provider);
+      try {
+        try { sessionStorage.setItem('afri:social-redirect', '1'); } catch {}
+        await signInWithRedirect(auth, provider);
+      } catch (redirectErr) {
+        console.error('[auth] signInWithRedirect failed', redirectErr);
+        showAlert('destructive', 'Sign Up Failed', (redirectErr as any)?.message || 'Could not start social sign-up.');
+        try { onAuthEnd?.(); } catch {}
+        setIsLoading(false);
+      }
     } catch (error: any) {
       console.error('[auth] signInWithRedirect failed', error);
       showAlert('destructive', 'Sign Up Failed', error.message || 'Could not start social sign-up.');
@@ -177,21 +186,21 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
   return (
     <>
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-      <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">AE</span>
+      <div className="p-6 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+            <span className="text-primary-foreground font-bold text-sm">AE</span>
           </div>
-          <span className="text-2xl font-bold">AfriConnect Exchange</span>
+            <span className="text-base font-semibold">AfriConnect Exchange</span>
         </div>
-        <h1 className="text-xl font-semibold mb-2">Join AfriConnect Exchange</h1>
-        <p className="text-sm text-muted-foreground">
-          Connect, trade, and thrive
+          <h1 className="text-lg font-medium mb-1">Create an account</h1>
+        <p className="text-xs text-muted-foreground">
+          Create your account to get started
         </p>
       </div>
-      <div className="p-8">
+  <div className="p-4">
         <div className="flex flex-col sm:flex-row gap-2">
-            <AnimatedButton
+      <AnimatedButton
                 variant="outline"
                 className="w-full"
                 onClick={() => handleSocialLogin('google')}
@@ -227,50 +236,52 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                 <TabsTrigger value="phone">Phone</TabsTrigger>
             </TabsList>
             <TabsContent value="email" className="space-y-4 pt-4">
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        className="pl-10"
-                        value={formData.email}
-                        onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, email: e.target.value }))
-                        }
-                        required={signupMethod === 'email'}
-                        disabled={isLoading}
-                    />
-                    </div>
-                </div>
+        <div className="space-y-2">
+          <Label htmlFor="email">Email Address</Label>
+          <div className="relative max-w-sm mx-auto w-full">
+          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            id="email"
+            type="email"
+            placeholder="Enter your email"
+            className="pl-10 text-sm"
+            value={formData.email}
+            onChange={(e) =>
+            setFormData((prev) => ({ ...prev, email: e.target.value }))
+            }
+            required={signupMethod === 'email'}
+            disabled={isLoading}
+          />
+          </div>
+        </div>
             </TabsContent>
-            <TabsContent value="phone" className="space-y-4 pt-4">
-                <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <PhoneInput
-                        id="phone"
-                        placeholder="Enter your phone number"
-                        international
-                        defaultCountry="GB"
-                        value={formData.phone}
-                        onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
-                        required={signupMethod === 'phone'}
-                        disabled={isLoading}
-                    />
-                </div>
-            </TabsContent>
+      <TabsContent value="phone" className="space-y-4 pt-4">
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone Number</Label>
+          <div className="max-w-sm mx-auto w-full">
+          <PhoneInput
+            id="phone"
+            placeholder="Enter your phone number"
+            international
+            defaultCountry="GB"
+            value={formData.phone}
+            onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
+            required={signupMethod === 'phone'}
+            disabled={isLoading}
+          />
+          </div>
+        </div>
+      </TabsContent>
          </Tabs>
 
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
-              <div className="relative">
+              <div className="relative max-w-sm mx-auto w-full">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   placeholder="Enter your full name"
-                  className="pl-10"
+                  className="pl-10 text-sm"
                   value={formData.name}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, name: e.target.value }))
@@ -281,13 +292,15 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </div>
           </div>
           
-          <div className="space-y-2">
+            <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
-            <div className="relative">
+            <div className="relative max-w-sm mx-auto w-full">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder="Enter your password"
+                className="pl-10 text-sm"
                 value={formData.password}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, password: e.target.value }))
@@ -309,13 +322,15 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </div>
              <PasswordStrength password={formData.password} />
           </div>
-          <div className="space-y-2">
+            <div className="space-y-2">
             <Label htmlFor="confirmPassword">Confirm Password</Label>
-            <div className="relative">
+            <div className="relative max-w-sm mx-auto w-full">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="confirmPassword"
                 type={showConfirmPassword ? 'text' : 'password'}
                 placeholder="Confirm your password"
+                className="pl-10 text-sm"
                 value={formData.confirmPassword}
                 onChange={(e) =>
                   setFormData((prev) => ({

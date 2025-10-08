@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { Mail, Eye, EyeOff, Phone } from 'lucide-react';
+import { Mail, Eye, EyeOff, Phone, Lock } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { AnimatedButton } from '../ui/animated-button';
@@ -143,14 +143,24 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
           return;
         } catch (popupErr: any) {
           console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);
-          // Inform the user we're switching to redirect flow
+          // Inform the user we're switching to redirect flow and end the overlay
           showAlert('default', 'Popup blocked', 'Popup sign-in failed — continuing with redirect.');
+          try { onAuthEnd?.(); } catch {}
           // continue to redirect fallback
         }
       }
       // Mobile or popup failed: use redirect
-      await signInWithRedirect(auth, provider);
-      // we don't call onAuthEnd here because redirect will unload the page
+      try {
+        // Mark in sessionStorage that we're about to redirect so the auth page
+        // can show a helpful message if nothing is processed on return.
+        try { sessionStorage.setItem('afri:social-redirect', '1'); } catch {}
+        await signInWithRedirect(auth, provider);
+      } catch (redirectErr) {
+  console.error('[auth] signInWithRedirect failed', redirectErr);
+  showAlert('destructive', 'Login Failed', (redirectErr as any)?.message || 'Could not start social sign-in.');
+        try { onAuthEnd?.(); } catch {}
+        setIsLoading(false);
+      }
     } catch (error: any) {
       console.error('[auth] signInWithRedirect failed', error);
       showAlert('destructive', 'Login Failed', error.message || 'Could not start social sign-in.');
@@ -163,20 +173,20 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
   return (
     <>
     <div className="bg-card rounded-2xl shadow-xl border border-border overflow-hidden">
-      <div className="p-8 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-            <span className="text-primary-foreground font-bold text-lg">AE</span>
-          </div>
-          <span className="text-2xl font-bold">AfriConnect Exchange</span>
-        </div>
-        <h1 className="text-xl font-semibold mb-2">Welcome Back!</h1>
-        <p className="text-sm text-muted-foreground">
-          Sign in to continue your journey
-        </p>
+  <div className="p-6 text-center bg-gradient-to-r from-primary/5 to-secondary/5 dark:from-primary/10 dark:to-secondary/10">
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-sm">AE</span>
+              </div>
+              <span className="text-base font-semibold">AfriConnect Exchange</span>
+            </div>
+            <h1 className="text-lg font-medium mb-1">Welcome Back</h1>
+            <p className="text-xs text-muted-foreground">
+              Sign in to continue
+            </p>
       </div>
-      <div className="p-8">
-        <div className="flex flex-col sm:flex-row gap-2">
+  <div className="p-4">
+  <div className="flex flex-col sm:flex-row gap-2">
             <AnimatedButton
                 variant="outline"
                 className="w-full"
@@ -203,28 +213,28 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             <Separator className="flex-1" />
         </div>
 
-        <Tabs defaultValue="email" className="w-full">
+  <Tabs defaultValue="email" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="email">Email</TabsTrigger>
                 <TabsTrigger value="phone">Phone</TabsTrigger>
             </TabsList>
             <TabsContent value="email" className="space-y-4 pt-4">
-                <form
+        <form
                     onSubmit={(e) => {
                         e.preventDefault();
                         handleEmailLogin();
                     }}
-                    className="space-y-4"
+          className="space-y-4"
                 >
                     <div className="space-y-2">
-                        <Label htmlFor="email">Email Address</Label>
-                        <div className="relative">
+                    <Label htmlFor="email">Email Address</Label>
+                    <div className="relative max-w-sm mx-auto w-full">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
+              <Input
                                 id="email"
                                 type="email"
                                 placeholder="Enter your email"
-                                className="pl-10"
+        className="pl-10 text-sm"
                                 value={formData.email}
                                 onChange={(e) =>
                                 setFormData((prev) => ({ ...prev, email: e.target.value }))
@@ -234,20 +244,22 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                             />
                         </div>
                     </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <div className="relative">
-                            <Input
-                                id="password"
-                                type={showPassword ? 'text' : 'password'}
-                                placeholder="Enter your password"
-                                value={formData.password}
-                                onChange={(e) =>
-                                setFormData((prev) => ({ ...prev, password: e.target.value }))
-                                }
-                                required
-                                disabled={isLoading}
-                            />
+          <div className="space-y-2">
+          <Label htmlFor="password">Password</Label>
+          <div className="relative max-w-sm mx-auto w-full">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Enter your password"
+        className="pl-10"
+        value={formData.password}
+                onChange={(e) =>
+                setFormData((prev) => ({ ...prev, password: e.target.value }))
+                }
+                required
+                disabled={isLoading}
+              />
                             <button
                                 type="button"
                                 onClick={() => setShowPassword((v: boolean) => !v)}
@@ -278,9 +290,10 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                     }}
                     className="space-y-4"
                 >
-                    <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
-                         <PhoneInput
+        <div className="space-y-2">
+                    <Label htmlFor="phone">Phone Number</Label>
+             <div className="max-w-sm mx-auto w-full">
+                     <PhoneInput
                             id="phone"
                             placeholder="Enter your phone number"
                             international
@@ -289,7 +302,8 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                             onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                             required
                             disabled={isLoading}
-                        />
+                    />
+                    </div>
                     </div>
                     <AnimatedButton
                         type="submit"
@@ -302,7 +316,7 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </TabsContent>
         </Tabs>
         
-        <div className="mt-6 text-center space-y-2">
+  <div className="mt-6 text-center space-y-2 text-sm">
           <Link
             href="/forgot-password"
             className="text-sm text-primary hover:underline"

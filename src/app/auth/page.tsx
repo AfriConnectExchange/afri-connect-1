@@ -1,9 +1,7 @@
 
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { Logo } from '@/components/logo';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import Image from 'next/image';
+// Auth page UI – keep imports minimal for layout tweaks
 import SignInCard from '@/components/auth/SignInCard';
 import SignUpCard from '@/components/auth/SignUpCard';
 import CheckEmailCard from '@/components/auth/CheckEmailCard';
@@ -48,18 +46,41 @@ export default function AuthPage() {
     // Handle redirect results (if user was redirected for social login)
     (async () => {
       if (!auth) return;
+      // Small retry loop – sometimes getRedirectResult isn't immediately available
+      const tryGetRedirect = async (attempts = 3, delayMs = 500) => {
+        for (let i = 0; i < attempts; i++) {
+          try {
+            const result = await getRedirectResult(auth);
+            return result;
+          } catch (err: any) {
+            // If there's no redirect operation yet, wait and retry
+            if (err && err.code === 'auth/no-redirect-operation') {
+              // wait before retrying
+              await new Promise((r) => setTimeout(r, delayMs));
+              continue;
+            }
+            // any other error should be logged and rethrown
+            console.warn('[auth] getRedirectResult failed', err?.code, err?.message);
+            throw err;
+          }
+        }
+        return null;
+      };
+
       try {
-        const result = await getRedirectResult(auth);
+        const result = await tryGetRedirect(4, 600);
         if (result && result.user) {
           const additional = getAdditionalUserInfo(result);
           console.debug('[auth] redirect result received', { isNewUser: additional?.isNewUser });
+            // Clear the transient sessionStorage flag if present
+            try { sessionStorage.removeItem('afri:social-redirect'); } catch {}
             await handleAuthSuccess(result.user as User, additional?.isNewUser);
             handledRedirect.current = true;
+            return; // stop further fallback handling
         }
       } catch (err: any) {
-        // This can happen if there's no redirect result, which is normal.
-        // We only care about actual errors.
-        if (err.code !== 'auth/no-redirect-operation') {
+        // If this is a benign 'no-redirect-operation' after retries, ignore; otherwise log.
+        if (err && err.code !== 'auth/no-redirect-operation') {
             console.warn('[auth] getRedirectResult failed', err.code, err.message);
         }
       }
@@ -75,11 +96,23 @@ export default function AuthPage() {
           console.debug('[auth] no redirect payload but firebaseUser present — completing auth flow from onAuthStateChanged');
           await handleAuthSuccess(firebaseUser as User);
           handledRedirect.current = true;
+          try { sessionStorage.removeItem('afri:social-redirect'); } catch {}
         } catch (e) {
           console.warn('[auth] fallback handleAuthSuccess failed', e);
         }
       })();
     }
+
+    // If we attempted a redirect (session flag set) but after retries nothing
+    // was processed, show a non-blocking hint to the user to try again.
+    try {
+      const attempted = sessionStorage.getItem('afri:social-redirect');
+      if (attempted && !handledRedirect.current) {
+        // Clear the flag so we only show this once per return
+        sessionStorage.removeItem('afri:social-redirect');
+        toast({ title: 'Welcome back', description: 'If you were signing in with Google/Facebook and nothing happened, try the button again.' });
+      }
+    } catch {}
 
     let intervalId: NodeJS.Timeout | null = null;
     if (authMode === 'awaiting-verification' && firebaseUser && !firebaseUser.emailVerified) {
@@ -114,7 +147,7 @@ export default function AuthPage() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const authBgImage = PlaceHolderImages.find((img) => img.id === 'auth-background');
+  // auth background image intentionally unused for a leaner auth layout
 
   const showAlert = (
     variant: 'default' | 'destructive',
@@ -270,52 +303,11 @@ export default function AuthPage() {
   return (
     <div className="w-full bg-background">
       <div id="recaptcha-container"></div>
-      <div className="relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 p-0">
-        <div className="relative hidden h-full flex-col bg-muted p-10 text-white dark:border-r lg:flex">
-          {authBgImage && (
-            <Image
-              src={authBgImage.imageUrl}
-              alt={authBgImage.description}
-              fill
-              className="object-cover"
-              data-ai-hint={authBgImage.imageHint}
-            />
-          )}
-          <div className="absolute inset-0 bg-zinc-900/60" />
-          <div className="relative z-20 flex items-center text-lg font-medium">
-            <Logo withText={false} />
-            <span className="ml-2">AfriConnect Exchange</span>
-          </div>
-          <div className="relative z-20 mt-auto">
-            <blockquote className="space-y-2">
-              <p className="text-lg">
-                &ldquo;Connecting the diaspora, one transaction at a time.
-                Secure, fast, and reliable exchanges for a new era of
-                commerce.&rdquo;
-              </p>
-              <footer className="text-sm">The Future of Exchange</footer>
-            </blockquote>
-          </div>
-        </div>
-        <div className="p-4 lg:p-8 flex items-center justify-center">
-          <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
+      <div className="relative min-h-screen flex-col items-center justify-center p-0">
+        <div className="p-3 lg:p-6 flex items-center justify-center">
+          <div className="mx-auto flex w-full max-w-[520px] flex-col justify-center space-y-6 px-4 text-sm">
             {renderAuthCard()}
-            {authInProgress && (
-              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/70">
-                <div className="relative p-6 rounded-lg flex flex-col items-center gap-4">
-                  <button
-                    aria-label="Close auth progress"
-                    className="absolute -top-3 -right-3 rounded-full bg-muted p-2 hover:bg-muted/80"
-                    onClick={() => setAuthInProgress(false)}
-                  >
-                    ✕
-                  </button>
-                  <PageLoader />
-                  <div className="text-sm text-muted-foreground">Completing sign-in... please do not close or navigate away.</div>
-                  <div className="text-xs text-muted-foreground">If this hangs, click ✕ or press Esc to dismiss. This does not cancel any external popup/redirect.</div>
-                </div>
-              </div>
-            )}
+            {/* authInProgress overlay removed to avoid blocking UX when provider popups/redirects misbehave */}
           </div>
         </div>
       </div>

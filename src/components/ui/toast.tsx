@@ -49,6 +49,9 @@ const Toast = React.forwardRef<
 >(({ className, variant, children, ...props }, ref) => {
   const isDestructive = variant === "destructive"
 
+  const [successImgLoadError, setSuccessImgLoadError] = React.useState(false)
+  const [errorImgLoadError, setErrorImgLoadError] = React.useState(false)
+
   return (
     <ToastPrimitives.Root
       ref={ref}
@@ -56,19 +59,23 @@ const Toast = React.forwardRef<
       {...props}
     >
   <ToastVariantContext.Provider value={variant as "default" | "destructive" | undefined}>
-      {/* 3D badge / accent */}
-      <div className={cn("flex-shrink-0 rounded-md flex items-center justify-center", isDestructive ? "w-10 h-10 bg-red-700 text-white" : "w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 text-white")} aria-hidden>
-        {/* layered circular badge for a subtle 3D effect */}
-        <div className="relative w-9 h-9 rounded-full shadow-inner transform -translate-y-0.5">
-          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-white/5 opacity-60" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            {isDestructive ? (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="16.5" r="1" fill="currentColor" /></svg>
-            ) : (
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            )}
-          </div>
-        </div>
+      {/* Icon (standalone, no decorative badge) */}
+      <div className={cn('flex-shrink-0 flex items-center justify-center', isDestructive ? 'text-white' : 'text-green-600')} aria-hidden>
+        {isDestructive ? (
+          (!errorImgLoadError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/error.svg" alt="Error" className="w-6 h-6" onError={() => setErrorImgLoadError(true)} />
+          ) : (
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="16.5" r="1" fill="currentColor" /></svg>
+          ))
+        ) : (
+          (!successImgLoadError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/check.svg" alt="Success" className="w-6 h-6" onError={() => setSuccessImgLoadError(true)} />
+          ) : (
+            <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          ))
+        )}
       </div>
 
       {/* Content */}

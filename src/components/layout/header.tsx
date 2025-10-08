@@ -109,7 +109,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                       <span className="text-white font-bold">AE</span>
                     </div>
                     <span className="text-xl font-bold text-primary">
-                      AfriConnect Exchange
+                      AppExchange
                     </span>
                   </Link>
                 </div>
@@ -208,7 +208,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 <span className="text-white font-bold text-base">AE</span>
               </div>
               <span className="hidden sm:inline-block text-lg lg:text-xl font-bold text-primary truncate">
-                AfriConnect Exchange
+                AppExchange
               </span>
             </Link>
           </div>

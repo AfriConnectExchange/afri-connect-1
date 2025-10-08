@@ -82,12 +82,12 @@ export function HomePage({ onNavigate }: HomePageProps) {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <h1 className="mb-4 text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-                Connect, Trade & Thrive Across Africa
+              <h1 className="mb-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight">
+                Connect, Trade & Thrive Worldwide
               </h1>
-              <p className="mb-8 text-lg md:text-xl opacity-90 leading-relaxed">
-                Your trusted marketplace for authentic African products, skills training, 
-                and seamless money transfers. Built by Africans, for Africa.
+              <p className="mb-8 text-base md:text-lg opacity-90 leading-relaxed">
+                Your trusted marketplace for authentic products, skills training,
+                and seamless money transfers.
               </p>
               <div className="flex flex-col sm:flex-row gap-4">
                 <Button 
@@ -116,8 +116,8 @@ export function HomePage({ onNavigate }: HomePageProps) {
               transition={{ duration: 0.6, delay: 0.2 }}
             >
               <Image
-                src="https://images.unsplash.com/photo-1655720357872-ce227e4164ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxhZnJpY2FuJTIwd29tYW4lMjBlbnRyZXByZW5ldXIlMjBidXNpbmVzc3xlbnwxfHx8fDE3NTgxMjE0Nzd8MA&ixlib=rb-4.1.0&q=80&w=1080"
-                alt="African entrepreneur"
+                src="https://images.unsplash.com/photo-1655720357872-ce227e4164ba?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixlib=rb-4.1.0&q=80&w=1080"
+                alt="Entrepreneur"
                 width={600}
                 height={400}
                 className="rounded-lg shadow-2xl w-full h-auto max-h-[400px] object-cover"
@@ -177,7 +177,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               <Truck className="w-12 h-12 text-primary mx-auto mb-4" />
               <h3 className="text-base md:text-lg font-semibold mb-2">Fast Delivery</h3>
               <p className="text-sm text-muted-foreground">
-                Reliable delivery across all African countries
+                Reliable delivery across many countries worldwide
               </p>
             </motion.div>
             <motion.div 
@@ -190,7 +190,7 @@ export function HomePage({ onNavigate }: HomePageProps) {
               <Star className="w-12 h-12 text-primary mx-auto mb-4" />
               <h3 className="text-base md:text-lg font-semibold mb-2">Quality Assured</h3>
               <p className="text-sm text-muted-foreground">
-                Only authentic, high-quality African products
+                Only authentic, high-quality products
               </p>
             </motion.div>
           </div>
@@ -305,9 +305,9 @@ export function HomePage({ onNavigate }: HomePageProps) {
             transition={{ duration: 0.6 }}
             viewport={{ once: true }}
           >
-            <h2 className="mb-4 text-3xl md:text-4xl font-bold">Ready to Join AfriConnect?</h2>
-            <p className="mb-8 text-lg md:text-xl opacity-90 max-w-3xl mx-auto leading-relaxed">
-              Whether you're looking to buy authentic African products, sell your crafts, 
+            <h2 className="mb-4 text-2xl md:text-3xl font-bold">Ready to Join?</h2>
+            <p className="mb-8 text-base md:text-lg opacity-90 max-w-3xl mx-auto leading-relaxed">
+              Whether you're looking to buy unique products, sell your crafts,
               or learn new skills, we've got you covered.
             </p>
             <Button 

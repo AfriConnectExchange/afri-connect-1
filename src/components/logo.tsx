@@ -10,8 +10,8 @@ export function Logo({
   return (
     <div className={cn('flex items-center gap-2', className)}>
       <svg
-        width="32"
-        height="32"
+        width="28"
+        height="28"
         viewBox="0 0 24 24"
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
@@ -64,7 +64,7 @@ export function Logo({
         />
       </svg>
       {withText && (
-        <h1 className="text-2xl font-bold tracking-tight text-white font-headline">
+        <h1 className="text-base font-semibold tracking-tight text-white font-headline">
           AfriConnect Exchange
         </h1>
       )}

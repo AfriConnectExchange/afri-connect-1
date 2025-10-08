@@ -108,7 +108,7 @@ export function OTPVerification({ phone, onAuthSuccess, onBack, onResend }: Prop
                 onChange={(e) => handleChange(e, index)}
                 onKeyDown={(e) => handleKeyDown(e, index)}
                 disabled={isLoading}
-                className="w-12 h-14 text-center text-2xl font-semibold bg-muted/50 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-primary transition"
+                className="w-10 h-12 text-center text-xl font-semibold bg-muted/50 border border-border rounded-lg focus:ring-2 focus:ring-ring focus:border-primary transition"
               />
             ))}
           </div>
