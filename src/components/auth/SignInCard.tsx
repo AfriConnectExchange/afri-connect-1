@@ -220,67 +220,67 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </TabsList>
             <TabsContent value="email" className="space-y-4 pt-4">
         <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        handleEmailLogin();
-                    }}
-          className="space-y-4"
-                >
-                    <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <div className="relative max-w-sm mx-auto w-full">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                                id="email"
-                                type="email"
-                                placeholder="Enter your email"
-        className="pl-10 text-sm"
-                                value={formData.email}
-                                onChange={(e) =>
-                                setFormData((prev) => ({ ...prev, email: e.target.value }))
-                                }
-                                required
-                                disabled={isLoading}
-                            />
-                        </div>
-                    </div>
-          <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <div className="relative max-w-sm mx-auto w-full">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="password"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Enter your password"
-        className="pl-10"
-        value={formData.password}
-                onChange={(e) =>
-                setFormData((prev) => ({ ...prev, password: e.target.value }))
-                }
-                required
-                disabled={isLoading}
-              />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword((v: boolean) => !v)}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                            >
-                                {showPassword ? (
-                                <EyeOff className="w-4 h-4" />
-                                ) : (
-                                <Eye className="w-4 h-4" />
-                                )}
-                            </button>
-                        </div>
-                    </div>
-                     <AnimatedButton
-                        type="submit"
-                        className="w-full"
-                        isLoading={isLoading}
+            onSubmit={(e) => {
+                e.preventDefault();
+                handleEmailLogin();
+            }}
+            className="space-y-4"
+            >
+            <div className="space-y-2 max-w-sm mx-auto w-full">
+                <Label htmlFor="email" className="text-left w-full block">Email Address</Label>
+                <div className="relative w-full">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="Enter your email"
+                        className="pl-10 text-sm"
+                        value={formData.email}
+                        onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, email: e.target.value }))
+                        }
+                        required
+                        disabled={isLoading}
+                    />
+                </div>
+            </div>
+            <div className="space-y-2 max-w-sm mx-auto w-full">
+                <Label htmlFor="password" className="text-left w-full block">Password</Label>
+                <div className="relative w-full">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        className="pl-10"
+                        value={formData.password}
+                        onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, password: e.target.value }))
+                        }
+                        required
+                        disabled={isLoading}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => setShowPassword((v: boolean) => !v)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
-                        Sign In
-                    </AnimatedButton>
-                </form>
+                        {showPassword ? (
+                        <EyeOff className="w-4 h-4" />
+                        ) : (
+                        <Eye className="w-4 h-4" />
+                        )}
+                    </button>
+                </div>
+            </div>
+            <AnimatedButton
+                type="submit"
+                className="w-full max-w-sm mx-auto"
+                isLoading={isLoading}
+            >
+                Sign In
+            </AnimatedButton>
+        </form>
             </TabsContent>
             <TabsContent value="phone" className="space-y-4 pt-4">
                 <form
@@ -290,10 +290,9 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                     }}
                     className="space-y-4"
                 >
-        <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-             <div className="max-w-sm mx-auto w-full">
-                     <PhoneInput
+                    <div className="space-y-2 max-w-sm mx-auto w-full">
+                        <Label htmlFor="phone" className="text-left w-full block">Phone Number</Label>
+                        <PhoneInput
                             id="phone"
                             placeholder="Enter your phone number"
                             international
@@ -302,12 +301,11 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                             onChange={(value) => setFormData((prev) => ({ ...prev, phone: value || ''}))}
                             required
                             disabled={isLoading}
-                    />
-                    </div>
+                        />
                     </div>
                     <AnimatedButton
                         type="submit"
-                        className="w-full"
+                        className="w-full max-w-sm mx-auto"
                         isLoading={isLoading}
                     >
                         Send OTP
