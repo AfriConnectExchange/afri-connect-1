@@ -1,7 +1,7 @@
 
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
@@ -48,6 +48,7 @@ const createOrderSchema = z.object({
   })
 });
 
+// Function to send an SMS via the Twilio extension
 async function sendSms(to: string, body: string) {
   if (!getApps().length) {
     console.error("Firestore not initialized for SMS service.");
@@ -55,6 +56,19 @@ async function sendSms(to: string, body: string) {
   }
   const firestore = getFirestore();
   await addDoc(collection(firestore, 'messages'), { to, body });
+}
+
+// Function to send an Email via the Email extension
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!getApps().length) {
+    console.error("Firestore not initialized for Email service.");
+    return;
+  }
+  const firestore = getFirestore();
+  await addDoc(collection(firestore, 'mail'), {
+    to: [to],
+    message: { subject, html },
+  });
 }
 
 
@@ -88,6 +102,7 @@ export async function POST(request: Request) {
 
     const { cartItems, total, paymentMethod, shippingAddress } = validation.data;
 
+    // Pre-flight check for stock
     for (const item of cartItems) {
       const productDoc = await adminFirestore.collection('products').doc(item.product_id).get();
       if (!productDoc.exists) {
@@ -99,6 +114,7 @@ export async function POST(request: Request) {
       }
     }
 
+    // Create the order document
     const orderRef = await adminFirestore.collection('orders').add({
         buyer_id: user.uid,
         total_amount: total,
@@ -110,8 +126,8 @@ export async function POST(request: Request) {
     });
     const newOrderId = orderRef.id;
 
+    // Use a batch to create order items and update product stock atomically
     const batch = adminFirestore.batch();
-
     for (const item of cartItems) {
       const orderItemRef = adminFirestore.collection('orders').doc(newOrderId).collection('order_items').doc();
       batch.set(orderItemRef, {
@@ -126,9 +142,9 @@ export async function POST(request: Request) {
       const currentQuantity = productDoc.data()?.quantity_available || 0;
       batch.update(productRef, { quantity_available: currentQuantity - item.quantity });
     }
-
     await batch.commit();
 
+    // Log the transaction
     await adminFirestore.collection('transactions').add({
         order_id: newOrderId,
         profile_id: user.uid,
@@ -139,29 +155,10 @@ export async function POST(request: Request) {
         created_at: new Date().toISOString(),
     });
     
-    const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
-    for (const sellerId of sellerIds) {
-        if (sellerId === user.uid) continue;
+    // --- NOTIFICATION LOGIC ---
 
-        const sellerProfileDoc = await adminFirestore.collection('profiles').doc(sellerId).get();
-        const sellerProfile = sellerProfileDoc.data();
-        
-        await adminFirestore.collection('notifications').add({
-            user_id: sellerId,
-            type: 'order',
-            title: 'New Sale!',
-            message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${user.displayName || 'a buyer'}.`,
-            link_url: '/sales',
-            read: false,
-            created_at: new Date().toISOString(),
-        });
-
-        if (sellerProfile && sellerProfile.phone_number) {
-            const smsBody = `AfriConnect: New Sale! You have an order for £${total.toFixed(2)} from ${user.displayName || 'a buyer'}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
-            await sendSms(sellerProfile.phone_number, smsBody);
-        }
-    }
-    
+    // 1. Notify Buyer (In-App and Email)
+    const buyerName = user.displayName || 'customer';
     await adminFirestore.collection('notifications').add({
         user_id: user.uid,
         type: 'order',
@@ -171,7 +168,48 @@ export async function POST(request: Request) {
         read: false,
         created_at: new Date().toISOString(),
     });
+    if (user.email) {
+      await sendEmail(
+        user.email,
+        `Your AfriConnect Order #${String(newOrderId).substring(0, 8)} is Confirmed!`,
+        `<h1>Thank you for your order, ${buyerName}!</h1><p>Your order with ID #${String(newOrderId).substring(0, 8)} has been placed successfully. We will notify you once it has been shipped.</p>`
+      );
+    }
 
+    // 2. Notify Seller(s) (In-App, Email, and SMS)
+    const sellerIds = [...new Set(cartItems.map(item => item.seller_id))];
+    for (const sellerId of sellerIds) {
+        if (sellerId === user.uid) continue; // Don't notify user if they bought their own item
+
+        const sellerProfileDoc = await adminFirestore.collection('profiles').doc(sellerId).get();
+        const sellerProfile = sellerProfileDoc.data();
+        
+        await adminFirestore.collection('notifications').add({
+            user_id: sellerId,
+            type: 'order',
+            title: 'New Sale!',
+            message: `You have a new order #${String(newOrderId).substring(0, 8)} from ${buyerName}.`,
+            link_url: '/sales',
+            read: false,
+            created_at: new Date().toISOString(),
+        });
+        
+        if (sellerProfile) {
+            // Send Email to Seller
+            if (sellerProfile.email) {
+              await sendEmail(
+                sellerProfile.email,
+                `New Sale on AfriConnect! Order #${String(newOrderId).substring(0, 8)}`,
+                `<h1>You have a new sale!</h1><p>Order ID: #${String(newOrderId).substring(0, 8)} from ${buyerName}. Please prepare the items for shipping.</p><p>Total: £${total.toFixed(2)}</p>`
+              );
+            }
+            // Send SMS to Seller
+            if (sellerProfile.phone_number) {
+                const smsBody = `AfriConnect: New Sale! Order for £${total.toFixed(2)} from ${buyerName}. Order ID: #${String(newOrderId).substring(0, 8)}.`;
+                await sendSms(sellerProfile.phone_number, smsBody);
+            }
+        }
+    }
 
     return NextResponse.json({ success: true, message: 'Order created successfully', orderId: newOrderId });
 
