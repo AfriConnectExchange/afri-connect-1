@@ -66,6 +66,7 @@ export default function TestUploadPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataUrl, filename: file.name }),
+        credentials: 'same-origin',
       });
       addLog(`Server responded with status: ${response.status}`, response.ok ? 'success' : 'error');
 

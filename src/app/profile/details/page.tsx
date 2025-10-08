@@ -95,7 +95,7 @@ export default function ProfileDetailsPage() {
 
       console.debug('Starting avatar upload for', file.name);
 
-      const res = await fetch('/api/uploads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl, filename: file.name }) });
+  const res = await fetch('/api/uploads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl, filename: file.name }), credentials: 'same-origin' });
       const json = await res.json();
       if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed');
 

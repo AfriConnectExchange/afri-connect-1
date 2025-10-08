@@ -8,8 +8,11 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
-const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+const TOAST_LIMIT = 3
+// Time between toast close and removal from DOM (ms)
+const TOAST_REMOVE_DELAY = 600
+// Auto-dismiss time for visible toasts (ms)
+const TOAST_AUTO_DISMISS = 6000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -163,6 +166,24 @@ function toast({ ...props }: Toast) {
       },
     },
   })
+
+  // Auto-dismiss after configured delay
+  const autoTimeout = setTimeout(() => {
+    dispatch({ type: 'DISMISS_TOAST', toastId: id })
+  }, TOAST_AUTO_DISMISS)
+
+  // Ensure we clear the auto timeout if removed manually
+  const originalDismiss = dismiss
+  const dismissWithClear = () => {
+    clearTimeout(autoTimeout)
+    originalDismiss()
+  }
+
+  return {
+    id: id,
+    dismiss: dismissWithClear,
+    update,
+  }
 
   return {
     id: id,

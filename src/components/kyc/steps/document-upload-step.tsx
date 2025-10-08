@@ -53,7 +53,8 @@ export function DocumentUploadStep({ documents, setDocuments, setError }: Docume
                 const res = await fetch('/api/uploads/upload', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ dataUrl, filename: file.name })
+                    body: JSON.stringify({ dataUrl, filename: file.name }),
+                    credentials: 'same-origin',
                 });
                 const payload = await res.json();
                 if (!res.ok || !payload.url) throw new Error(payload.error || 'Upload failed');

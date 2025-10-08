@@ -9,10 +9,11 @@ import { cookies } from 'next/headers';
 const PROJECT_ID = process.env.PROJECT_ID || process.env.project_id || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const CLIENT_EMAIL = process.env.CLIENT_EMAIL || process.env.client_email || process.env.FIREBASE_CLIENT_EMAIL;
 const PRIVATE_KEY_RAW = process.env.PRIVATE_KEY || process.env.private_key || process.env.FIREBASE_PRIVATE_KEY;
-const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, '\n') : undefined;
+// sanitize quoted private key and escaped newlines
+const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/^"|"$/g, '').replace(/\\n/g, '\n') : undefined;
 
-// Explicitly define the bucket name from your project details
-const BUCKET_NAME = `studio-5210962417-9bc8d.appspot.com`;
+// Prefer explicit STORAGE_BUCKET env var (matches .env), fallback to default project bucket name
+const BUCKET_NAME = process.env.STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${PROJECT_ID}.appspot.com`;
 
 const serviceAccount = {
   projectId: PROJECT_ID,
@@ -45,9 +46,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const adminAuth = getAuth();
-    const cookieStore = cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
+  const adminAuth = getAuth();
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
     if (!sessionCookie) {
       return NextResponse.json({ error: 'Unauthorized: No session cookie.' }, { status: 401 });
     }
@@ -74,19 +75,25 @@ export async function POST(request: Request) {
     
     console.log(`Attempting to upload to bucket: ${BUCKET_NAME}, path: ${filePath}`);
 
-    const storage = getStorage();
-    const bucket = storage.bucket(); // When initialized with storageBucket, this gets the default bucket
+  const storage = getStorage();
+  const bucket = storage.bucket(BUCKET_NAME);
     const file = bucket.file(filePath);
     
     await file.save(buffer, { metadata: { contentType: mime } });
     console.log(`File saved to ${filePath}`);
-
-    await file.makePublic();
-    const publicUrl = file.publicUrl();
-
-    console.log(`File made public. URL: ${publicUrl}`);
-
-    return NextResponse.json({ success: true, url: publicUrl });
+    try {
+      await file.makePublic();
+      const publicUrl = file.publicUrl();
+      console.log(`File made public. URL: ${publicUrl}`);
+      return NextResponse.json({ success: true, url: publicUrl });
+    } catch (err) {
+      try {
+        const [signedUrl] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+        return NextResponse.json({ success: true, url: signedUrl });
+      } catch {
+        return NextResponse.json({ success: true, url: `gs://${BUCKET_NAME}/${filePath}` });
+      }
+    }
 
   } catch (error: any) {
     console.error('Test Upload Error:', error);

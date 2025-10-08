@@ -28,16 +28,12 @@ const ToastViewport = React.forwardRef<
 ToastViewport.displayName = ToastPrimitives.Viewport.displayName
 
 const toastVariants = cva(
-  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-md border p-6 pr-8 shadow-lg transition-all data-[swipe=cancel]:translate-x-0 data-[swipe=end]:translate-x-[var(--radix-toast-swipe-end-x)] data-[swipe=move]:translate-x-[var(--radix-toast-swipe-move-x)] data-[swipe=move]:transition-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[swipe=end]:animate-out data-[state=closed]:fade-out-80 data-[state=closed]:slide-out-to-right-full data-[state=open]:slide-in-from-top-full data-[state=open]:sm:slide-in-from-bottom-full",
+  "group pointer-events-auto relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-6 shadow-2xl transition-all will-change-transform transform-gpu data-[state=open]:animate-in data-[state=closed]:animate-out",
   {
     variants: {
       variant: {
-        default: "border bg-background text-foreground",
-        destructive:
-          // Use a solid red background and white text for error toasts so they are
-          // clearly readable (high contrast) — override token-based 'destructive'
-          // classes which were too translucent in the previous design.
-          "group border-transparent bg-red-600 text-white",
+        default: "border bg-white/80 backdrop-blur-sm text-foreground",
+        destructive: "border-transparent bg-red-600 text-white",
       },
     },
     defaultVariants: {
@@ -60,36 +56,35 @@ const Toast = React.forwardRef<
       {...props}
     >
   <ToastVariantContext.Provider value={variant as "default" | "destructive" | undefined}>
-      {/* Left accent */}
-      {isDestructive ? (
-        <div className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center bg-red-700 text-white" aria-hidden>
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="12" cy="16.5" r="1" fill="currentColor" />
-          </svg>
-        </div>
-      ) : (
-        // Modern slim accent for success: vertical bar with a small centered check
-        <div className="relative flex-shrink-0 h-10 w-2 rounded-r-md bg-green-500" aria-hidden>
-          <div className="absolute left-2 -translate-x-1/2 top-1/2 -translate-y-1/2">
-            <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+      {/* 3D badge / accent */}
+      <div className={cn("flex-shrink-0 rounded-md flex items-center justify-center", isDestructive ? "w-10 h-10 bg-red-700 text-white" : "w-12 h-12 bg-gradient-to-br from-green-400 to-green-600 text-white")} aria-hidden>
+        {/* layered circular badge for a subtle 3D effect */}
+        <div className="relative w-9 h-9 rounded-full shadow-inner transform -translate-y-0.5">
+          <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-white/30 to-white/5 opacity-60" />
+          <div className="absolute inset-0 flex items-center justify-center">
+            {isDestructive ? (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 9v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /><circle cx="12" cy="16.5" r="1" fill="currentColor" /></svg>
+            ) : (
+              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            )}
           </div>
         </div>
-      )}
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
         {children}
 
-        {/* progress bar: green for success, white/bright for destructive */}
-        <div className={cn("mt-3 h-1 w-full overflow-hidden rounded-full", isDestructive ? "bg-white/20" : "bg-green-50")}>
-          {isDestructive ? (
-            <div className="h-full bg-white/70 animate-toast-progress" style={{ width: '100%' }} />
-          ) : (
-            <div className="h-full bg-gradient-to-r from-green-500 to-green-400 animate-toast-progress" style={{ width: '100%' }} />
-          )}
+        {/* progress rail + animated shrinking bar (shrinks left-to-right over auto-dismiss duration) */}
+        <div className={cn("mt-3 h-1 w-full overflow-hidden rounded-full bg-black/5", isDestructive ? "bg-white/10" : "bg-gradient-to-r from-green-100/60 to-green-50/60")}>
+          <div
+            className={cn(
+              "h-full rounded-full transform-gpu",
+              isDestructive ? "bg-white/80 animate-toast-fill-destructive" : "bg-gradient-to-r from-green-500 to-green-400 animate-toast-fill"
+            )}
+            style={{ width: '100%' }}
+            aria-hidden
+          />
         </div>
       </div>
       </ToastVariantContext.Provider>

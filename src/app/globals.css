@@ -103,3 +103,29 @@
 .animate-toast-progress {
   animation: toast-progress 5s linear forwards;
 }
+
+/* 3D and progress animations for toasts */
+@keyframes toast-fill {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+@keyframes toast-fill-destructive {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-toast-fill {
+  animation: toast-fill 6s linear forwards;
+}
+.animate-toast-fill-destructive {
+  animation: toast-fill-destructive 6s linear forwards;
+}
+
+/* Subtle 3D entrance for toasts */
+@keyframes toast-entrance {
+  from { opacity: 0; transform: translateY(-8px) rotateX(8deg) translateZ(-8px); }
+  to { opacity: 1; transform: translateY(0) rotateX(0deg) translateZ(0); }
+}
+
+[data-state="open"] { animation: toast-entrance 320ms cubic-bezier(.2,.9,.2,1) both; }

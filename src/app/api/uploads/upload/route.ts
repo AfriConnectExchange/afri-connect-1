@@ -10,7 +10,8 @@ const PROJECT_ID = process.env.PROJECT_ID || process.env.project_id || process.e
 const CLIENT_EMAIL = process.env.CLIENT_EMAIL || process.env.client_email || process.env.FIREBASE_CLIENT_EMAIL;
 const PRIVATE_KEY_RAW = process.env.PRIVATE_KEY || process.env.private_key || process.env.FIREBASE_PRIVATE_KEY;
 const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, '\n') : undefined;
-const BUCKET_NAME = `studio-5210962417-9bc8d.appspot.com`;
+// Prefer explicit STORAGE_BUCKET env var (matches .env), fallback to default project bucket name
+const BUCKET_NAME = process.env.STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || `${PROJECT_ID}.appspot.com`;
 
 const serviceAccount = {
   projectId: PROJECT_ID,
@@ -44,12 +45,19 @@ async function uploadDataUrlToBucket(dataUrl: string, filenameHint = 'upload') {
   const bucket = storage.bucket(BUCKET_NAME);
   const file = bucket.file(filePath);
   await file.save(buffer, { metadata: { contentType: mime } });
-  try { 
-      await file.makePublic(); 
-      return file.publicUrl();
-    } catch { 
-      return `gs://${BUCKET_NAME}/${filePath}`; 
+  try {
+    await file.makePublic();
+    return file.publicUrl();
+  } catch (err) {
+    // If makePublic fails (restricted bucket), generate a signed read URL that expires in 7 days
+    try {
+      const [signedUrl] = await file.getSignedUrl({ action: 'read', expires: Date.now() + 7 * 24 * 60 * 60 * 1000 });
+      return signedUrl;
+    } catch (err2) {
+      // as a last resort return gs:// path
+      return `gs://${BUCKET_NAME}/${filePath}`;
     }
+  }
 }
 
 export async function POST(request: Request) {
