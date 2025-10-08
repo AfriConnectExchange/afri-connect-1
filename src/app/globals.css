@@ -93,3 +93,13 @@
   outline: none;
   @apply text-base md:text-sm;
 }
+
+/* Toast progress animation: fills left-to-right over 5s (visual only) */
+@keyframes toast-progress {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(0%); }
+}
+
+.animate-toast-progress {
+  animation: toast-progress 5s linear forwards;
+}
