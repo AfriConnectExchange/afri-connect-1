@@ -8,12 +8,13 @@ import { cookies } from 'next/headers';
 
 
 const serviceAccount = {
-  projectId: process.env.PROJECT_ID,
-  clientEmail: process.env.CLIENT_EMAIL,
-  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+  projectId: process.env.project_id,
+  clientEmail: process.env.client_email,
+  privateKey: process.env.private_key?.replace(/\\n/g, '\n'),
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -21,15 +22,17 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  } else {
+      console.log('Firebase Admin SDK service account credentials not set.');
+  }
 }
 
 
-// Define the schema for the product data
 const productSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters.'),
   description: z.string().min(20, 'Description must be at least 20 characters.'),
   price: z.number().min(0, 'Price must be a positive number.'),
-  category_id: z.coerce.number().int().positive('Please select a category.'),
+  category_id: z.string().min(1, 'Please select a category.'),
   listing_type: z.enum(['sale', 'barter', 'freebie']),
   location_text: z.string().min(3, 'Please provide a location.'),
   quantity_available: z.number().int().min(1, 'Quantity must be at least 1.'),
@@ -63,12 +66,7 @@ export async function POST(request: Request) {
     
     const { images, ...productData } = validation.data;
 
-    // In a real app, you would upload the base64 images to a storage service like Firebase Storage
-    // and get back the public URLs. For now, we'll just log that we received them.
-    console.log(`Received ${images.length} images to process.`);
-    
-    // For this example, let's pretend we uploaded them and got URLs
-    const imageUrls = images; // Using the URLs directly from the client for now
+    const imageUrls = images; 
 
 
     const newProductRef = await adminFirestore.collection('products').add({
@@ -92,3 +90,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Failed to create product.', details: error.message }, { status: 500 });
   }
 }
+

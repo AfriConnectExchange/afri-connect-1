@@ -1,21 +1,40 @@
 
 'use server';
 import { NextResponse } from 'next/server';
-import { getAdminFirestore } from '@/lib/admin-utils';
+import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+
+const serviceAccount = {
+  projectId: process.env.PROJECT_ID,
+  clientEmail: process.env.CLIENT_EMAIL,
+  privateKey: process.env.PRIVATE_KEY?.replace(/\\n/g, '\n'),
+};
+
+if (!getApps().length) {
+    try {
+        initializeApp({
+            credential: cert(serviceAccount),
+        });
+    } catch (e) {
+        console.error('Firebase Admin initialization error', e);
+    }
+}
+
 
 export async function GET() {
+  if (!getApps().length) {
+    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
+  }
+  const adminFirestore = getFirestore();
+
   try {
-    const firestore = await getAdminFirestore();
-    const categoriesSnap = await firestore.collection('categories').orderBy('name').get();
+    const categoriesSnap = await adminFirestore.collection('categories').orderBy('name').get();
     const categoriesData = categoriesSnap.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as any[];
 
-    // Fetch all products to calculate counts in-memory.
-    // This is not scalable for large product sets. For production,
-    // this count should be maintained with triggers or aggregated periodically.
-    const productsSnap = await firestore.collection('products').select('category_id').get();
+    const productsSnap = await adminFirestore.collection('products').select('category_id').get();
     const productCounts = new Map<string, number>();
 
     productsSnap.forEach(doc => {
@@ -36,8 +55,8 @@ export async function GET() {
     ];
 
     return NextResponse.json(allCategories);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error fetching categories:", error);
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+    return NextResponse.json([]);
   }
 }

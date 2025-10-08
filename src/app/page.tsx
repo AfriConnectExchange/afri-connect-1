@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { SlidersHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -20,7 +20,7 @@ import {
 import { FilterPanel } from '@/components/marketplace/FilterPanel';
 import { ProductGrid } from '@/components/marketplace/ProductGrid';
 import { SearchBar } from '@/components/marketplace/SearchBar';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Header } from '@/components/dashboard/header';
 import { useToast } from '@/hooks/use-toast';
 import { useCart } from '@/context/cart-context';
@@ -46,14 +46,13 @@ export interface Product {
   average_rating: number;
   review_count: number;
   
-  // Properties from old interface, to be mapped or joined
-  name: string; // Will map from title
+  name: string; 
   originalPrice?: number;
   rating: number; 
   reviews: number; 
   seller: string; 
   sellerVerified: boolean; 
-  image: string; // Will use the first image from the images array
+  image: string;
   category: string;
   featured?: boolean;
   discount?: number;
@@ -80,8 +79,9 @@ export interface FilterState {
   freeListingsOnly: boolean;
 }
 
-export default function MarketplacePage() {
+function MarketplacePageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const { toast } = useToast();
   const { cart, addToCart, cartCount } = useCart();
@@ -96,7 +96,7 @@ export default function MarketplacePage() {
   const [totalProducts, setTotalProducts] = useState(0);
 
   const [filters, setFilters] = useState<FilterState>({
-    searchQuery: '',
+    searchQuery: searchParams.get('q') || '',
     selectedCategories: [],
     priceRange: { min: null, max: null },
     verifiedSellersOnly: false,
@@ -114,7 +114,6 @@ export default function MarketplacePage() {
         params.append('q', currentFilters.searchQuery);
       }
       if (currentFilters.selectedCategories.length > 0 && !currentFilters.selectedCategories.includes('all')) {
-        // The API expects the category name, not the ID
         const selectedCategoryName = categories.find(c => c.id === currentFilters.selectedCategories[0])?.name;
         if(selectedCategoryName) {
             params.append('category', selectedCategoryName);
@@ -138,8 +137,8 @@ export default function MarketplacePage() {
       if (!res.ok) throw new Error('Failed to fetch products');
       
       const data = await res.json();
-      setProducts(data.products);
-      setTotalProducts(data.total);
+      setProducts(data.products || []);
+      setTotalProducts(data.total || 0);
 
     } catch (error) {
        toast({
@@ -158,7 +157,7 @@ export default function MarketplacePage() {
         const categoriesRes = await fetch('/api/categories');
         if (!categoriesRes.ok) throw new Error('Failed to fetch categories');
         const categoriesData = await categoriesRes.json();
-        setCategories(categoriesData);
+        setCategories(categoriesData || []);
       } catch (error) {
         toast({
           variant: 'destructive',
@@ -172,14 +171,8 @@ export default function MarketplacePage() {
   }, [toast]);
   
   useEffect(() => {
-     // Fetch products only after categories are loaded
-    if(categories.length > 0) {
-        fetchProducts(filters, sortBy);
-    } else {
-      // If categories aren't loaded yet, at least fetch initial products
-      fetchProducts(filters, sortBy);
-    }
-  }, [fetchProducts, filters, sortBy, categories]);
+    fetchProducts(filters, sortBy);
+  }, [fetchProducts, filters, sortBy]);
 
 
   const onNavigate = (page: string, productId?: string) => {
@@ -206,7 +199,6 @@ export default function MarketplacePage() {
     });
   };
 
-  // Handle search with validation (US014)
   const handleSearch = (query: string) => {
     setSearchError('');
     if (query.length > 0 && query.length < 3) {
@@ -221,12 +213,10 @@ export default function MarketplacePage() {
     setFilters(prev => ({ ...prev, searchQuery: query }));
   };
 
-  // Handle filter changes
   const handleFiltersChange = (newFilters: Partial<FilterState>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
-  // Clear all filters
   const handleClearAllFilters = () => {
     setFilters({
       searchQuery: '',
@@ -243,16 +233,16 @@ export default function MarketplacePage() {
 
   const getNoResultsMessage = () => {
     if (filters.searchQuery.length >= 3) {
-      return 'No products found. Try a different keyword.'; // US014-AC02
+      return 'No products found. Try a different keyword.';
     }
     if (filters.selectedCategories.length > 0) {
-      return 'No products found in this category.'; // US015-AC02
+      return 'No products found in this category.';
     }
     if (filters.priceRange.min !== null || filters.priceRange.max !== null) {
-      return 'No products found in this price range.'; // US016-AC03
+      return 'No products found in this price range.';
     }
     if (filters.freeListingsOnly) {
-      return 'No free products found.'; // US017-AC02
+      return 'No free products found.';
     }
     return 'No products match your current filters.';
   };
@@ -261,7 +251,6 @@ export default function MarketplacePage() {
     <>
     <Header cartCount={cartCount} />
     <div className="container mx-auto px-0 sm:px-4 py-6 md:py-8 relative">
-      {/* Page Header */}
       <div className="mb-6 md:mb-8 px-4 sm:px-0">
         <h1 className="mb-1 text-2xl md:text-3xl font-bold tracking-tight">
           Marketplace
@@ -272,7 +261,6 @@ export default function MarketplacePage() {
       </div>
 
       <div className="grid lg:grid-cols-4 gap-6 md:gap-8">
-        {/* Desktop Filters Sidebar */}
         <div className="hidden lg:block lg:col-span-1">
           <div className="sticky top-24">
             <FilterPanel
@@ -286,9 +274,7 @@ export default function MarketplacePage() {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="lg:col-span-3">
-          {/* Mobile Search and Filters */}
           <div className="lg:hidden px-4 mb-4 flex gap-2">
             <SearchBar
               value={filters.searchQuery}
@@ -343,7 +329,6 @@ export default function MarketplacePage() {
             )}
 
 
-          {/* Results Header */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3 px-4 sm:px-0">
             <div>
               <p className="text-muted-foreground text-xs md:text-sm">
@@ -364,11 +349,10 @@ export default function MarketplacePage() {
             </Select>
           </div>
 
-          {/* Products Grid */}
           <div className="px-4 sm:px-0">
             <ProductGrid
               products={products}
-              loading={loading && products.length === 0}
+              loading={loading}
               onNavigate={onNavigate}
               onAddToCart={onAddToCart}
               currency="£"
@@ -383,4 +367,13 @@ export default function MarketplacePage() {
     </div>
     </>
   );
+}
+
+
+export default function MarketplacePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <MarketplacePageContent />
+    </Suspense>
+  )
 }

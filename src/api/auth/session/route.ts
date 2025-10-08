@@ -2,7 +2,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, doc, setDoc, getDoc } from 'firebase-admin/firestore';
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc } from 'firebase-admin/firestore';
 import { z } from 'zod';
 import { logSystemEvent } from '@/lib/system-logger';
 
@@ -24,6 +24,29 @@ if (!getApps().length) {
   } else {
     console.error("Firebase service account key is not set. This API route will not work.");
   }
+}
+
+// Function to send an SMS via the Twilio extension
+async function sendSms(to: string, body: string) {
+  if (!getApps().length) {
+    console.error("Firestore not initialized for SMS service.");
+    return;
+  }
+  const firestore = getFirestore();
+  await addDoc(collection(firestore, 'messages'), { to, body });
+}
+
+// Function to send an Email via the Email extension
+async function sendEmail(to: string, subject: string, html: string) {
+  if (!getApps().length) {
+    console.error("Firestore not initialized for Email service.");
+    return;
+  }
+  const firestore = getFirestore();
+  await addDoc(collection(firestore, 'mail'), {
+    to: [to],
+    message: { subject, html },
+  });
 }
 
 const sessionRequestSchema = z.object({
@@ -56,6 +79,19 @@ async function createProfileIfNotExists(userId: string) {
       status: 'success',
       description: `New user profile created for ${userRecord.email || userId}.`,
     });
+    
+    // Send Welcome Notifications
+    if (userRecord.email) {
+      await sendEmail(
+        userRecord.email,
+        'Welcome to AfriConnect Exchange!',
+        `<h1>Welcome, ${userRecord.displayName || 'Friend'}!</h1><p>Thank you for joining AfriConnect Exchange. We're excited to have you on board.</p>`
+      );
+    }
+    if (userRecord.phoneNumber) {
+        await sendSms(userRecord.phoneNumber, `Welcome to AfriConnect Exchange! Your account is ready. Explore the marketplace today.`);
+    }
+
     return true; // Indicates a new profile was created
   }
   return false; // Indicates profile already existed

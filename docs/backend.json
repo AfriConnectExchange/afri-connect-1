@@ -114,6 +114,26 @@
         }
       },
       "required": ["name", "productCount"]
+    },
+    "Mail": {
+        "title": "Email",
+        "description": "Represents an email to be sent by the 'Trigger Email from Firestore' extension.",
+        "type": "object",
+        "properties": {
+            "to": {
+                "type": "array",
+                "items": { "type": "string", "format": "email" }
+            },
+            "message": {
+                "type": "object",
+                "properties": {
+                    "subject": { "type": "string" },
+                    "html": { "type": "string" }
+                },
+                "required": ["subject", "html"]
+            }
+        },
+        "required": ["to", "message"]
     }
   },
   "auth": {
@@ -137,6 +157,12 @@
             "$ref": "#/entities/Category"
         },
         "description": "Stores product categories and sub-categories."
+    },
+    "/mail/{mailId}": {
+        "schema": {
+            "$ref": "#/entities/Mail"
+        },
+        "description": "Collection monitored by the 'Trigger Email from Firestore' extension to send emails."
     }
   }
 }

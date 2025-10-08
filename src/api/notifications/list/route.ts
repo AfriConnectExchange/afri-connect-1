@@ -1,7 +1,7 @@
 
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { cookies } from 'next/headers';
-import { initializeApp, getApps, getApp, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 
@@ -25,16 +25,14 @@ if (!getApps().length) {
   }
 }
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   if (!getApps().length) {
     return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
   }
-
   const adminAuth = getAuth();
   const adminFirestore = getFirestore();
 
-  const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get('__session')?.value;
+  const sessionCookie = cookies().get('__session')?.value;
   if (!sessionCookie) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -42,15 +40,19 @@ export async function GET(request: Request) {
   try {
     const decodedToken = await adminAuth.verifySessionCookie(sessionCookie, true);
     const userId = decodedToken.uid;
-
-    const productsSnapshot = await adminFirestore.collection('products').where('seller_id', '==', userId).get();
     
-    const products = productsSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-    
-    return NextResponse.json(products);
+    const notificationsSnap = await adminFirestore.collection('notifications')
+      .where('user_id', '==', userId)
+      .orderBy('created_at', 'desc')
+      .limit(50)
+      .get();
+      
+    const notifications = notificationsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-  } catch (error) {
-    console.error('Error fetching seller products:', error);
-    return NextResponse.json({ error: 'Failed to fetch products.' }, { status: 500 });
+    return NextResponse.json(notifications);
+
+  } catch (error: any) {
+    console.error('Error fetching notifications:', error);
+    return NextResponse.json({ error: 'Failed to fetch notifications', details: error.message }, { status: 500 });
   }
 }

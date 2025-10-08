@@ -13,6 +13,7 @@ const serviceAccount = {
 };
 
 if (!getApps().length) {
+  if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
         initializeApp({
             credential: cert(serviceAccount),
@@ -20,6 +21,7 @@ if (!getApps().length) {
     } catch (e) {
         console.error('Firebase Admin initialization error', e);
     }
+  }
 }
 
 const shipOrderSchema = z.object({
@@ -88,7 +90,6 @@ export async function POST(request: Request) {
     });
     
     if (orderData?.buyer_id) {
-      // In a real app, you'd create a notification document in Firestore.
       console.log(`Creating notification for buyer ${orderData.buyer_id}`);
     }
 

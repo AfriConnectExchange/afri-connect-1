@@ -42,6 +42,8 @@ export default function SellerLayout({
 
     if (user) {
       fetchProfile();
+    } else if (!isUserLoading) {
+        setLoadingProfile(false);
     }
   }, [user, isUserLoading, router, firestore]);
 
