@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Plus, UploadCloud, X } from 'lucide-react';
 import { Button } from '../ui/button';
+import { AnimatedButton } from '../ui/animated-button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import Image from 'next/image';
 import { useToast } from '@/hooks/use-toast';
@@ -243,10 +244,10 @@ export function ProductForm() {
             </Card>
 
              <div className="flex justify-end gap-2">
-                <Button variant="outline" type="button">Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? 'Saving...' : 'Save and Continue'}
-                </Button>
+                <Button variant="outline" type="button" disabled={isSubmitting}>Cancel</Button>
+                <AnimatedButton type="submit" isLoading={isSubmitting}>
+                    Save and Continue
+                </AnimatedButton>
             </div>
         </form>
         </Form>

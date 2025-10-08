@@ -20,12 +20,23 @@ interface ProductActionsProps {
 
 export function ProductActions({ productId, onDelete }: ProductActionsProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirm = async () => {
+    setIsDeleting(true);
+    try {
+      await onDelete();
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button aria-haspopup="true" size="icon" variant="ghost">
+          <Button aria-haspopup="true" size="icon" variant="ghost" disabled={isDeleting}>
             <MoreHorizontal className="h-4 w-4" />
             <span className="sr-only">Toggle menu</span>
           </Button>
@@ -51,11 +62,13 @@ export function ProductActions({ productId, onDelete }: ProductActionsProps) {
         <ConfirmationModal
             isOpen={showDeleteConfirm}
             onClose={() => setShowDeleteConfirm(false)}
-            onConfirm={onDelete}
+            onConfirm={handleConfirm}
             title="Delete Product"
             description="Are you sure you want to permanently delete this product? This action cannot be undone."
             confirmText="Delete"
             type="destructive"
+            isLoading={isDeleting}
+            loadingText="Deleting..."
         />
       )}
     </>

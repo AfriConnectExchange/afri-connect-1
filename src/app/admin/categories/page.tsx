@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { AnimatedButton } from '@/components/ui/animated-button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlusCircle, Edit, Trash2, Loader2, AlertCircle } from 'lucide-react';
@@ -27,6 +28,8 @@ export default function AdminCategoriesPage() {
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
 
   const { toast } = useToast();
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchCategories = async () => {
     setLoading(true);
@@ -56,6 +59,7 @@ export default function AdminCategoriesPage() {
     const method = currentCategory.id ? 'PUT' : 'POST';
 
     try {
+      setIsSaving(true);
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -72,6 +76,8 @@ export default function AdminCategoriesPage() {
       fetchCategories();
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -79,6 +85,7 @@ export default function AdminCategoriesPage() {
     if (!categoryToDelete) return;
 
     try {
+      setIsDeleting(true);
       const res = await fetch(`/api/admin/categories/${categoryToDelete.id}`, { method: 'DELETE' });
       if (!res.ok) {
         const errorData = await res.json();
@@ -90,6 +97,8 @@ export default function AdminCategoriesPage() {
       fetchCategories();
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -122,10 +131,10 @@ export default function AdminCategoriesPage() {
                     <p className="text-sm text-muted-foreground">{cat.productCount} products</p>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => { setCurrentCategory(cat); setIsModalOpen(true); }}>
+                    <Button variant="ghost" size="icon" onClick={() => { setCurrentCategory(cat); setIsModalOpen(true); }} disabled={isSaving || isDeleting}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => { setCategoryToDelete(cat); setIsConfirmOpen(true); }}>
+                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => { setCategoryToDelete(cat); setIsConfirmOpen(true); }} disabled={isSaving || isDeleting}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -153,8 +162,8 @@ export default function AdminCategoriesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave}>Save</Button>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)} disabled={isSaving}>Cancel</Button>
+            <AnimatedButton onClick={handleSave} isLoading={isSaving}>Save</AnimatedButton>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -169,6 +178,8 @@ export default function AdminCategoriesPage() {
           confirmText="Delete"
           type="destructive"
           icon={<AlertCircle className="w-6 h-6 text-destructive" />}
+          isLoading={isDeleting}
+          loadingText="Deleting..."
         />
       )}
     </div>
