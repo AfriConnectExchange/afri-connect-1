@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Html, Button, Body, Container, Head, Heading, Text, Link, Preview, Section } from '@react-email/components';
 
@@ -28,7 +29,7 @@ export default function WelcomeEmail({ full_name, verify_link, domain }: Props) 
             <>
               <Text style={text}>To complete your registration, please verify your email address by clicking the button below:</Text>
               <Section style={{ textAlign: 'center', marginTop: '32px', marginBottom: '32px' }}>
-                <Button pX={20} pY={12} style={button} href={verify_link}>
+                <Button style={button} href={verify_link}>
                   Verify Your Email
                 </Button>
               </Section>
@@ -44,7 +45,7 @@ export default function WelcomeEmail({ full_name, verify_link, domain }: Props) 
             <>
               <Text style={text}>You're all set! You can start exploring the marketplace right away.</Text>
               <Section style={{ textAlign: 'center', marginTop: '32px', marginBottom: '32px' }}>
-                <Button pX={20} pY={12} style={button} href={siteUrl}>
+                <Button style={button} href={siteUrl}>
                   Explore Marketplace
                 </Button>
               </Section>
@@ -106,6 +107,7 @@ const button = {
   textDecoration: 'none',
   textAlign: 'center' as const,
   display: 'block',
+  padding: '12px 20px',
 };
 
 const link = {
