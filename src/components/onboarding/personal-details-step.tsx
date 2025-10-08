@@ -19,6 +19,9 @@ import { useUser } from '@/firebase';
 import { useEffect, useState } from 'react';
 import { GoogleAddressInput } from './google-address-input';
 import { PageLoader } from '../ui/loader';
+import MissingFieldPrompt from './missing-field-prompt';
+import ConflictModal from './conflict-modal';
+import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
   fullName: z.string().min(2, 'Full name must be at least 2 characters.'),
@@ -41,6 +44,10 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
   const { user } = useUser();
   const [isClient, setIsClient] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showMissingField, setShowMissingField] = useState<null | 'email' | 'phone'>(null);
+  const [conflictInfo, setConflictInfo] = useState<any>(null);
+  const [showConflict, setShowConflict] = useState(false);
+  const { toast } = useToast();
 
   const form = useForm<PersonalDetailsFormValues>({
     resolver: zodResolver(formSchema),
@@ -59,12 +66,80 @@ export function PersonalDetailsStep({ onNext, onBack, defaultValues }: PersonalD
 
   const onSubmit = async (values: PersonalDetailsFormValues) => {
     setIsSubmitting(true);
-    await onNext({
+
+    // If we don't have an email on the auth user, ask for email first.
+    // The onboarding check endpoint expects email/phone fields.
+    // We'll gather whichever identity we have from the current user context.
+    const payload: any = {};
+    if (user?.email) payload.email = user.email;
+    if (values.phoneNumber) payload.phone = values.phoneNumber;
+
+    try {
+      const res = await fetch('/api/onboarding/check-identity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), credentials: 'same-origin' });
+      const json = await res.json();
+
+      // If provider didn't supply email and we have no email, prompt for it.
+      if (!user?.email) {
+        setShowMissingField('email');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // If conflict detected for email or phone, show conflict modal
+      const { result } = json || {};
+      if (result?.email?.exists && !result.email.sameAsCurrent) {
+        setConflictInfo({ field: 'email', existingUid: result.email.uid, providerNames: (result.email.providerData || []).map((p:any)=>p.providerId) });
+        setShowConflict(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      if (result?.phone?.exists && !result.phone.sameAsCurrent) {
+        setConflictInfo({ field: 'phone', existingUid: result.phone.uid, providerNames: (result.phone.providerData || []).map((p:any)=>p.providerId) });
+        setShowConflict(true);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // No conflicts or missing fields -> continue
+      await onNext({
         full_name: values.fullName,
         phone_number: values.phoneNumber || '',
         address: values.address || {},
-    });
-    setIsSubmitting(false);
+      });
+
+    } catch (err: any) {
+      console.error('Onboarding identity check failed', err);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMissingSave = async (val: string) => {
+    // Save provided email to profile and re-run submit
+    if (!user) return;
+    await fetch('/api/onboarding/check-identity', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: val }), credentials: 'same-origin' });
+    setShowMissingField(null);
+    // Re-submit the form programmatically
+    form.handleSubmit(onSubmit)();
+  };
+
+  const handleConflictLink = () => {
+    // Kick off client-side linking flow - left as a stub for now.
+    // In practice: store the provider credential and ask user to authenticate to existing account to link.
+    setShowConflict(false);
+    toast({ title: 'Link accounts', description: 'Please sign in to your existing account to link providers.' });
+  };
+
+  const handleConflictSignIn = () => {
+    setShowConflict(false);
+    // redirect to sign-in page or show sign-in modal
+    window.location.href = '/auth';
+  };
+
+  const handleUseDifferent = () => {
+    setShowConflict(false);
+    setShowMissingField(conflictInfo.field === 'email' ? 'email' : 'phone');
   };
 
   if (!isClient) {
