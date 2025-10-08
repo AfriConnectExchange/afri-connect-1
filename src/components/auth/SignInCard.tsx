@@ -31,6 +31,8 @@ type Props = {
     onSwitch: () => void;
     onAuthSuccess: (user: User, isNewUser?: boolean) => void;
     onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
+  onAuthStart?: () => void;
+  onAuthEnd?: () => void;
 };
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -49,7 +51,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
 );
 
 
-export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
+export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuthStart, onAuthEnd }: Props) {
   const auth = useAuth();
   const { toast } = useToast();
   const [formData, setFormData] = useState({ email: '', password: '', phone: '' });
@@ -119,18 +121,42 @@ export default function SignInCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   };
   
   const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
-    setIsLoading(true);
+  setIsLoading(true);
+  try { onAuthStart?.(); } catch {}
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     console.debug(`[auth] starting social login with provider=${providerName}`);
     try {
-      // Prioritize redirect flow for reliability
+      // Prefer popup on non-mobile user agents for a smoother UX. If popup
+      // fails or we detect a mobile UA, fall back to redirect flow.
+      const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|Opera Mini|IEMobile/i.test(navigator.userAgent);
+      if (!isMobile) {
+        try {
+          const result = await signInWithPopup(auth, provider);
+          // If popup succeeded, complete the auth flow immediately.
+          const additional = getAdditionalUserInfo(result as any);
+          console.debug('[auth] signInWithPopup result', { isNewUser: additional?.isNewUser });
+          onAuthSuccess((result as any).user as User, additional?.isNewUser);
+          setIsLoading(false);
+          try { onAuthEnd?.(); } catch {}
+          return;
+        } catch (popupErr: any) {
+          console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);
+          // Inform the user we're switching to redirect flow
+          showAlert('default', 'Popup blocked', 'Popup sign-in failed — continuing with redirect.');
+          // continue to redirect fallback
+        }
+      }
+      // Mobile or popup failed: use redirect
       await signInWithRedirect(auth, provider);
+      // we don't call onAuthEnd here because redirect will unload the page
     } catch (error: any) {
       console.error('[auth] signInWithRedirect failed', error);
       showAlert('destructive', 'Login Failed', error.message || 'Could not start social sign-in.');
       setIsLoading(false);
+      try { onAuthEnd?.(); } catch {}
     }
   }
+
 
   return (
     <>

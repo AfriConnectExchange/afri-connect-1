@@ -36,24 +36,35 @@ export function DocumentUploadStep({ documents, setDocuments, setError }: Docume
         setError('');
         setUploadingDocId(documentId);
 
-        try {
-            if (!user) {
-                throw new Error("You must be logged in to upload documents.");
-            }
-            
-            // This logic needs to be connected to a storage service like Firebase Storage
-            console.log(`Uploading ${file.name} for document ${documentId}`);
-            
-            // Simulate upload
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            try {
+                if (!user) {
+                    throw new Error("You must be logged in to upload documents.");
+                }
 
-            setDocuments(prev => 
-                prev.map(doc => 
-                    doc.id === documentId 
-                    ? { ...doc, file, uploaded: true, status: 'pending' }
-                    : doc
-                )
-            );
+                // Read file as data URL
+                const reader = new FileReader();
+                const dataUrl: string = await new Promise((resolve, reject) => {
+                    reader.onerror = () => reject(new Error('Failed to read file'));
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.readAsDataURL(file);
+                });
+
+                // Upload to server uploads API
+                const res = await fetch('/api/uploads/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dataUrl, filename: file.name })
+                });
+                const payload = await res.json();
+                if (!res.ok || !payload.url) throw new Error(payload.error || 'Upload failed');
+
+                setDocuments(prev => 
+                    prev.map(doc => 
+                        doc.id === documentId 
+                        ? { ...doc, file, uploaded: true, status: 'pending', url: payload.url }
+                        : doc
+                    )
+                );
 
         } catch(error: any) {
             setError(`Upload failed: ${error.message}`);

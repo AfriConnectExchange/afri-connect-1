@@ -70,7 +70,8 @@ export function ProductsPage() {
         throw new Error('Failed to fetch products');
       }
       const data = await res.json();
-      setProducts(data);
+      // API returns array of products for seller
+      setProducts(Array.isArray(data) ? data : data.products || []);
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -86,27 +87,34 @@ export function ProductsPage() {
     fetchProducts();
   }, []);
   
+  const [deleting, setDeleting] = useState<string | null>(null);
+
   const handleDelete = async (productId: string) => {
+    if (deleting) return; // prevent re-entry
+    setDeleting(productId);
     // Optimistically remove the product from the UI
-    setProducts((prev) => prev.filter((p) => p.id !== productId));
-    
+    const prev = products;
+    setProducts((prevP) => prevP.filter((p) => p.id !== productId));
+
     try {
-        const response = await fetch('/api/adverts/delete', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId })
-        });
-        const result = await response.json();
-        if (!response.ok) {
-            throw new Error(result.error || 'Failed to delete product.');
-        }
-        toast({ title: "Product Deleted", description: "The product has been successfully removed." });
+      const response = await fetch('/api/adverts/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete product.');
+      }
+      toast({ title: 'Product Deleted', description: 'The product has been successfully removed.' });
     } catch (error) {
-        toast({ variant: 'destructive', title: "Deletion Failed", description: (error as Error).message });
-        // If the API call fails, re-fetch the products to revert the UI
-        fetchProducts();
+      toast({ variant: 'destructive', title: 'Deletion Failed', description: (error as Error).message });
+      // Revert optimistic update
+      setProducts(prev);
+    } finally {
+      setDeleting(null);
     }
-  }
+  };
 
   const getStatusVariant = (status: string) => {
     switch (status) {

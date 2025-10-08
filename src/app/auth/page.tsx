@@ -1,6 +1,6 @@
 
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Logo } from '@/components/logo';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import Image from 'next/image';
@@ -31,10 +31,15 @@ export default function AuthPage() {
   const [phoneForVerification, setPhoneForVerification] = useState('');
   const [authAction, setAuthAction] = useState<'signin' | 'signup'>('signin');
   const [resendOtp, setResendOtp] = useState<(() => Promise<void>) | null>(null);
+  const [authInProgress, setAuthInProgress] = useState(false);
 
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
+
+  // Track whether we've already handled a redirect or completed the sign-in flow
+  // to avoid double-processing.
+  const handledRedirect = useRef(false);
 
   // Email verification listener
   useEffect(() => {
@@ -46,7 +51,8 @@ export default function AuthPage() {
         if (result && result.user) {
           const additional = getAdditionalUserInfo(result);
           console.debug('[auth] redirect result received', { isNewUser: additional?.isNewUser });
-          await handleAuthSuccess(result.user as User, additional?.isNewUser);
+            await handleAuthSuccess(result.user as User, additional?.isNewUser);
+            handledRedirect.current = true;
         }
       } catch (err: any) {
         // This can happen if there's no redirect result, which is normal.
@@ -56,6 +62,22 @@ export default function AuthPage() {
         }
       }
     })();
+
+    // If getRedirectResult didn't return a result (it can be null if onAuthStateChanged
+    // already updated the user), fall back to using the firebaseUser from the
+    // onAuthStateChanged listener so we still create the session and redirect.
+    // We guard with handledRedirect to avoid double-processing.
+    if (!handledRedirect.current && firebaseUser) {
+      (async () => {
+        try {
+          console.debug('[auth] no redirect payload but firebaseUser present — completing auth flow from onAuthStateChanged');
+          await handleAuthSuccess(firebaseUser as User);
+          handledRedirect.current = true;
+        } catch (e) {
+          console.warn('[auth] fallback handleAuthSuccess failed', e);
+        }
+      })();
+    }
 
     let intervalId: NodeJS.Timeout | null = null;
     if (authMode === 'awaiting-verification' && firebaseUser && !firebaseUser.emailVerified) {
@@ -189,6 +211,8 @@ export default function AuthPage() {
             onSwitch={() => handleSwitchMode('signup', 'signup')}
             onAuthSuccess={handleAuthSuccess}
             onNeedsOtp={handleNeedsOtp}
+            onAuthStart={() => setAuthInProgress(true)}
+            onAuthEnd={() => setAuthInProgress(false)}
           />
         );
       case 'signup':
@@ -197,6 +221,8 @@ export default function AuthPage() {
             onSwitch={() => handleSwitchMode('signin', 'signin')}
             onAuthSuccess={handleAuthSuccess}
             onNeedsOtp={handleNeedsOtp}
+            onAuthStart={() => setAuthInProgress(true)}
+            onAuthEnd={() => setAuthInProgress(false)}
           />
         );
       case 'awaiting-verification':
@@ -254,6 +280,14 @@ export default function AuthPage() {
         <div className="p-4 lg:p-8 flex items-center justify-center">
           <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[450px]">
             {renderAuthCard()}
+            {authInProgress && (
+              <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/70">
+                <div className="p-6 rounded-lg flex flex-col items-center gap-4">
+                  <PageLoader />
+                  <div className="text-sm text-muted-foreground">Completing sign-in... please do not close or navigate away.</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

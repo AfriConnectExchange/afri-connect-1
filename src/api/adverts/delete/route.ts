@@ -25,31 +25,41 @@ if (!getApps().length) {
       console.error('Firebase Admin initialization error', e);
     }
   } else {
-    console.warn('Firebase Admin SDK credentials not fully set; adverts list API will return 500 until configured.');
+    console.warn('Firebase Admin SDK credentials not fully set; adverts delete API will return 500 until configured.');
   }
 }
 
-export async function GET(request: Request) {
-  if (!getApps().length) {
-    return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
-  }
+export async function POST(request: Request) {
+  if (!getApps().length) return NextResponse.json({ error: 'Firebase Admin SDK not configured' }, { status: 500 });
 
   try {
-    const adminAuth = getAuth();
-    const adminFirestore = getFirestore();
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get('__session')?.value;
+  const adminAuth = getAuth();
+  const adminFirestore = getFirestore();
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__session')?.value;
     if (!sessionCookie) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const decoded = await adminAuth.verifySessionCookie(sessionCookie, true).catch(() => null);
     if (!decoded) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const userId = decoded.uid;
-    const productsSnapshot = await adminFirestore.collection('products').where('seller_id', '==', userId).get();
-    const products = productsSnapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }));
-    return NextResponse.json(products);
+    const body = await request.json();
+    const { productId } = body;
+    if (!productId) return NextResponse.json({ error: 'Missing productId' }, { status: 400 });
+
+    const docRef = adminFirestore.collection('products').doc(productId);
+    const doc = await docRef.get();
+    if (!doc.exists) return NextResponse.json({ error: 'Product not found' }, { status: 404 });
+
+    const data: any = doc.data();
+    if (data.seller_id !== decoded.uid) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Soft-delete by marking status
+    await docRef.update({ status: 'deleted' });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error fetching seller products:', error);
-    return NextResponse.json({ error: 'Failed to fetch products.' }, { status: 500 });
+    console.error('Delete advert error', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

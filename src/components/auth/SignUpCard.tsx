@@ -33,6 +33,8 @@ type Props = {
     onSwitch: () => void;
     onAuthSuccess: (user: FirebaseUser, isNewUser?: boolean) => void;
     onNeedsOtp: (phone: string, resend: () => Promise<void>) => void;
+  onAuthStart?: () => void;
+  onAuthEnd?: () => void;
 };
 
 const GoogleIcon = (props: React.SVGProps<SVGSVGElement>) => (
@@ -50,7 +52,7 @@ const FacebookIcon = (props: React.SVGProps<SVGSVGElement>) => (
     </svg>
 );
 
-export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Props) {
+export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuthStart, onAuthEnd }: Props) {
   const auth = useAuth();
   const { toast } = useToast();
 
@@ -124,17 +126,35 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp }: Prop
   };
 
   const handleSocialLogin = async (providerName: 'google' | 'facebook') => {
-    setIsLoading(true);
+  setIsLoading(true);
+  try { onAuthStart?.(); } catch {}
     const provider = providerName === 'google' ? new GoogleAuthProvider() : new FacebookAuthProvider();
     console.debug(`[auth] starting social signup with provider=${providerName}`);
     try {
+      const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|Opera Mini|IEMobile/i.test(navigator.userAgent);
+      if (!isMobile) {
+        try {
+          const result = await signInWithPopup(auth, provider);
+          const additional = getAdditionalUserInfo(result as any);
+          console.debug('[auth] signInWithPopup result', { isNewUser: additional?.isNewUser });
+          onAuthSuccess((result as any).user as FirebaseUser, additional?.isNewUser);
+          setIsLoading(false);
+          try { onAuthEnd?.(); } catch {}
+          return;
+        } catch (popupErr: any) {
+          console.warn('[auth] signInWithPopup failed, falling back to redirect', popupErr);
+          showAlert('default', 'Popup blocked', 'Popup sign-up failed — continuing with redirect.');
+        }
+      }
       await signInWithRedirect(auth, provider);
     } catch (error: any) {
       console.error('[auth] signInWithRedirect failed', error);
       showAlert('destructive', 'Sign Up Failed', error.message || 'Could not start social sign-up.');
       setIsLoading(false);
+      try { onAuthEnd?.(); } catch {}
     }
   }
+
 
   const handleFormSubmit = (e: React.FormEvent) => {
       e.preventDefault();

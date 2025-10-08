@@ -25,6 +25,7 @@ export interface DocumentUpload {
   required: boolean;
   uploaded: boolean;
   status: 'pending' | 'approved' | 'rejected';
+  url?: string | null;
 }
 
 export interface KYCData {
@@ -88,12 +89,12 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
   });
 
   const [documents, setDocuments] = useState<DocumentUpload[]>([
-    { id: 'government_id', name: 'Government ID', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'proof_of_address', name: 'Proof of Address', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'business_registration', name: 'Business Registration', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'tax_certificate', name: 'Tax Certificate', file: null, required: false, uploaded: false, status: 'pending' },
-    { id: 'bank_statement', name: 'Bank Statement', file: null, required: true, uploaded: false, status: 'pending' },
-    { id: 'business_license', name: 'Business License', file: null, required: false, uploaded: false, status: 'pending' },
+    { id: 'government_id', name: 'Government ID', file: null, required: true, uploaded: false, status: 'pending', url: null },
+    { id: 'proof_of_address', name: 'Proof of Address', file: null, required: true, uploaded: false, status: 'pending', url: null },
+    { id: 'business_registration', name: 'Business Registration', file: null, required: true, uploaded: false, status: 'pending', url: null },
+    { id: 'tax_certificate', name: 'Tax Certificate', file: null, required: false, uploaded: false, status: 'pending', url: null },
+    { id: 'bank_statement', name: 'Bank Statement', file: null, required: true, uploaded: false, status: 'pending', url: null },
+    { id: 'business_license', name: 'Business License', file: null, required: false, uploaded: false, status: 'pending', url: null },
   ]);
 
   const handleInputChange = (field: keyof KYCData, value: string) => {
@@ -159,9 +160,12 @@ export function KycFlow({ onNavigate }: KYCPageProps) {
     setError('');
 
     try {
-      // In a real app, you would upload files and submit data to your KYC service
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-      
+      // POST kyc data and uploaded document URLs to server
+      const payload = { kycData, documents: documents.map(d => ({ id: d.id, name: d.name, url: d.url, status: d.status })) };
+      const res = await fetch('/api/kyc/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to submit KYC');
+
       setVerificationStatus('pending');
       setCurrentStep('complete');
       setSuccess('KYC application submitted successfully! We will review your information within 2-3 business days.');

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useUser, useFirestore, useAuth } from '@/firebase';
@@ -78,6 +78,37 @@ export default function ProfileDetailsPage() {
     }
   };
 
+  const [avatarUploading, setAvatarUploading] = useState(false);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !firestore || !auth.currentUser) return;
+    if (file.size > 5 * 1024 * 1024) { toast({ variant: 'destructive', title: 'Error', description: 'Avatar must be <5MB' }); return; }
+    setAvatarUploading(true);
+    try {
+      const reader = new FileReader();
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        reader.onerror = () => reject(new Error('Failed to read file'));
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch('/api/uploads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl, filename: file.name }) });
+      const json = await res.json();
+      if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed');
+
+      // Update auth profile and Firestore
+      await updateProfile(auth.currentUser, { photoURL: json.url });
+      await setDoc(doc(firestore, 'profiles', user.uid), { avatar_url: json.url }, { merge: true });
+
+      toast({ title: 'Success', description: 'Avatar updated' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to upload avatar' });
+    } finally {
+      setAvatarUploading(false);
+    }
+  };
+
   if (loading || isUserLoading) {
     return <ProfileDetailsSkeleton />;
   }
@@ -92,6 +123,16 @@ export default function ProfileDetailsPage() {
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)}>
                 <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <label className="text-sm">Profile Picture</label>
+                    <div className="flex items-center gap-4">
+                      <img src={user?.photoURL || '/favicon.ico'} alt="avatar" className="w-16 h-16 rounded-full object-cover" />
+                      <div>
+                        <input type="file" accept="image/*" id="avatar-input" className="hidden" onChange={handleAvatarChange} />
+                        <Button variant="outline" onClick={() => document.getElementById('avatar-input')?.click()} disabled={avatarUploading}>{avatarUploading ? 'Uploading...' : 'Change Photo'}</Button>
+                      </div>
+                    </div>
+                </div>
                 <FormField
                     control={form.control}
                     name="fullName"
