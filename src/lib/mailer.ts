@@ -1,8 +1,8 @@
 "use server";
 
 import nodemailer from 'nodemailer';
-import { getFirestore } from 'firebase-admin/firestore';
 import { getAdminFirestore } from '@/lib/admin-utils';
+import { renderTemplate } from './email-templates';
 
 type MailOptions = {
   to: string;
@@ -13,6 +13,7 @@ type MailOptions = {
   replyTo?: string;
   templateId?: string;
   templateData?: any;
+  mailDocId?: string; // Optional ID of the existing Firestore mail document
 };
 
 export async function sendMailNow(opts: MailOptions) {
@@ -26,34 +27,62 @@ export async function sendMailNow(opts: MailOptions) {
   if (!host || !port) throw new Error('SMTP not configured');
 
   const transporter = nodemailer.createTransport({ host, port, secure, auth: user && pass ? { user, pass } : undefined });
-
   const adminDb = await getAdminFirestore();
-  const mailRef = adminDb.collection('mail').doc();
-  const createdAt = new Date().toISOString();
+  const mailRef = adminDb.collection('mail').doc(opts.mailDocId); // Use existing doc ID if provided
 
-  // create initial mail doc
-  await mailRef.set({
-    to: opts.to,
-    createdAt,
-    message: {
-      subject: opts.subject,
-      from,
-      ...(opts.text ? { text: opts.text } : {}),
-      ...(opts.html ? { html: opts.html } : {}),
-      ...(opts.replyTo ? { replyTo: opts.replyTo } : {}),
-    },
-    templateId: opts.templateId || null,
-    templateData: opts.templateData || {},
-    delivery: { attempts: 0, state: 'PENDING', startTime: null, endTime: null, error: null },
-  });
+  let mailContent = {
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text
+  };
 
+  // If a template is used, render it to get the final HTML and subject
+  if (opts.templateId) {
+    const rendered = await renderTemplate(opts.templateId, opts.templateData);
+    mailContent.subject = rendered.subject;
+    mailContent.html = rendered.html;
+    mailContent.text = rendered.text;
+  }
+  
   const startTime = new Date();
+  
+  // Update Firestore doc to 'PROCESSING' state
+  if (opts.mailDocId) {
+    await mailRef.update({
+      'delivery.state': 'PROCESSING',
+      'delivery.startTime': startTime.toISOString(),
+    });
+  }
+
   try {
-    const info = await transporter.sendMail({ from, to: opts.to, subject: opts.subject, text: opts.text, html: opts.html, replyTo: opts.replyTo });
-    await mailRef.update({ 'delivery.attempts': 1, 'delivery.state': 'DELIVERED', 'delivery.startTime': startTime.toISOString(), 'delivery.endTime': new Date().toISOString(), 'delivery.info': info });
+    const info = await transporter.sendMail({ 
+      from, 
+      to: opts.to, 
+      subject: mailContent.subject, 
+      text: mailContent.text,
+      html: mailContent.html, 
+      replyTo: opts.replyTo 
+    });
+    
+    // Update Firestore doc to 'SUCCESS' state
+    if (opts.mailDocId) {
+      await mailRef.update({ 
+        'delivery.state': 'SUCCESS', 
+        'delivery.endTime': new Date().toISOString(),
+        'delivery.info': info 
+      });
+    }
     return { ok: true, info };
+
   } catch (err: any) {
-    await mailRef.update({ 'delivery.attempts': 1, 'delivery.state': 'ERROR', 'delivery.startTime': startTime.toISOString(), 'delivery.endTime': new Date().toISOString(), 'delivery.error': String(err?.message || err) });
+    // Update Firestore doc to 'ERROR' state
+    if (opts.mailDocId) {
+      await mailRef.update({ 
+        'delivery.state': 'ERROR', 
+        'delivery.endTime': new Date().toISOString(),
+        'delivery.error': String(err?.message || err)
+      });
+    }
     throw err;
   }
 }
