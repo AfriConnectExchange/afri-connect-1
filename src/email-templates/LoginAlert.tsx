@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Html, Body, Container, Head, Heading, Text, Preview, Section } from '@react-email/components';
 
@@ -41,7 +42,7 @@ export default function LoginAlert({ full_name, time, ip, agent }: Props) {
           </Text>
         </Container>
       </Body>
-    </html>
+    </Html>
   );
 }
 
