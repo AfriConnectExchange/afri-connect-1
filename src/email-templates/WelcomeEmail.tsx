@@ -1,6 +1,21 @@
 
 import React from 'react';
-import { Html, Button, Body, Container, Head, Heading, Text, Link, Preview, Section } from '@react-email/components';
+import {
+  Html,
+  Body,
+  Container,
+  Head,
+  Heading,
+  Text,
+  Link,
+  Preview,
+  Section,
+  Row,
+  Column,
+  Img,
+  Hr,
+} from '@react-email/components';
+import { Button } from '@react-email/components';
 
 type Props = {
   full_name?: string;
@@ -8,61 +23,110 @@ type Props = {
   domain?: string;
 };
 
-export default function WelcomeEmail({ full_name, verify_link, domain }: Props) {
-  const siteUrl = domain || process.env.NEXT_PUBLIC_DOMAIN || 'http://localhost:9002';
-  const previewText = `Welcome to AfriConnect, ${full_name || 'there'}!`;
+const baseUrl = process.env.NEXT_PUBLIC_DOMAIN || 'http://localhost:9002';
+
+export default function WelcomeEmail({
+  full_name = 'Valued Member',
+  verify_link,
+}: Props) {
+  const previewText = `Welcome to AfriConnect, ${full_name}!`;
 
   return (
-    <Html lang="en">
-      <Head>
-        <title>Welcome to AfriConnect Exchange</title>
-      </Head>
+    <Html>
+      <Head />
       <Preview>{previewText}</Preview>
       <Body style={main}>
         <Container style={container}>
+          <Section style={header}>
+            <Img
+              src={`${baseUrl}/logo-email.png`}
+              width="180"
+              alt="AfriConnect Exchange"
+            />
+          </Section>
           <Heading style={h1}>Welcome to AfriConnect Exchange!</Heading>
-          
-          <Text style={text}>Hi {full_name || 'there'},</Text>
-          <Text style={text}>Thank you for joining AfriConnect Exchange, the marketplace connecting Africa and the diaspora.</Text>
-          
-          {verify_link ? (
-            <>
-              <Text style={text}>To complete your registration, please verify your email address by clicking the button below:</Text>
-              <Section style={{ textAlign: 'center', marginTop: '32px', marginBottom: '32px' }}>
-                <Button style={button} href={verify_link}>
-                  Verify Your Email
-                </Button>
-              </Section>
-              <Text style={text}>
-                If the button doesn't work, you can copy and paste this link into your browser:
-                <br />
-                <Link href={verify_link} style={link}>
-                  {verify_link}
-                </Link>
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={text}>You're all set! You can start exploring the marketplace right away.</Text>
-              <Section style={{ textAlign: 'center', marginTop: '32px', marginBottom: '32px' }}>
-                <Button style={button} href={siteUrl}>
-                  Explore Marketplace
-                </Button>
-              </Section>
-            </>
-          )}
 
-          <Text style={text}>We're excited to have you as part of our community!</Text>
+          <Text style={text}>Hi {full_name},</Text>
           <Text style={text}>
-            Best regards,
-            <br />
-            The AfriConnect Team
+            We're thrilled to have you join our community. AfriConnect is your
+            gateway to authentic African products, unique services, and empowering
+            educational courses.
           </Text>
 
+          {verify_link && (
+            <Section style={ctaSection}>
+              <Text style={text}>
+                To get started, please verify your email address by clicking the
+                button below:
+              </Text>
+              <Button href={verify_link} style={button}>
+                Verify Your Email
+              </Button>
+            </Section>
+          )}
+
+          <Section style={threeStepsSection}>
+            <Heading as="h2" style={h2}>
+              What's Next?
+            </Heading>
+            <Row style={stepRow}>
+              <Column align="center" style={stepColumn}>
+                <Img
+                  src={`${baseUrl}/marketplace-icon.png`}
+                  alt="Marketplace"
+                  width="48"
+                  height="48"
+                />
+                <Heading as="h3" style={stepTitle}>
+                  Explore the Marketplace
+                </Heading>
+                <Text style={stepText}>
+                  Discover unique products from verified sellers across the continent.
+                </Text>
+              </Column>
+              <Column align="center" style={stepColumn}>
+                <Img
+                  src={`${baseUrl}/seller-icon.png`}
+                  alt="Become a Seller"
+                  width="48"
+                  height="48"
+                />
+                <Heading as="h3" style={stepTitle}>
+                  Become a Seller
+                </Heading>
+                <Text style={stepText}>
+                  Ready to sell? Complete your profile and KYC to start listing your products.
+                </Text>
+              </Column>
+              <Column align="center" style={stepColumn}>
+                <Img
+                  src={`${baseUrl}/support-icon.png`}
+                  alt="Get Help"
+                  width="48"
+                  height="48"
+                />
+                <Heading as="h3" style={stepTitle}>
+                  Get Help
+                </Heading>
+                <Text style={stepText}>
+                  Visit our Help Center or contact support if you have any questions.
+                </Text>
+              </Column>
+            </Row>
+          </Section>
+
+          <Text style={text}>
+            Happy trading!
+            <br />- The AfriConnect Team
+          </Text>
+
+          <Hr style={hr} />
+
           <Text style={footer}>
-            &copy; {new Date().getFullYear()} AfriConnect Exchange. All rights reserved.
-            <br />
-            If you did not sign up for this account, please disregard this email.
+            AfriConnect Exchange, 123 Innovation Drive, London, UK
+          </Text>
+          <Text style={footer}>
+            You received this email because you signed up on our platform.
           </Text>
         </Container>
       </Body>
@@ -70,54 +134,106 @@ export default function WelcomeEmail({ full_name, verify_link, domain }: Props) 
   );
 }
 
+
+// Styles
 const main = {
-  backgroundColor: '#f6f9fc',
-  fontFamily: '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Ubuntu,sans-serif',
+  backgroundColor: '#f0f2f5',
+  fontFamily:
+    '-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif',
 };
 
 const container = {
-  backgroundColor: '#ffffff',
   margin: '0 auto',
   padding: '20px 0 48px',
-  marginBottom: '64px',
-  border: '1px solid #f0f0f0',
-  borderRadius: '4px',
+  width: '580px',
+  backgroundColor: '#ffffff',
+  borderRadius: '8px',
+  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+};
+
+const header = {
+  padding: '20px',
+  textAlign: 'center' as const,
 };
 
 const h1 = {
-  color: '#E65100',
-  fontSize: '24px',
-  fontWeight: 'bold',
+  color: '#1a202c',
+  fontSize: '26px',
+  fontWeight: '700',
   textAlign: 'center' as const,
-  margin: '30px 0',
+  margin: '0 0 30px',
+};
+
+const h2 = {
+  color: '#2d3748',
+  fontSize: '20px',
+  fontWeight: '600',
+  textAlign: 'center' as const,
+  margin: '0 0 30px',
 };
 
 const text = {
-  color: '#333',
-  fontSize: '14px',
-  lineHeight: '24px',
-  padding: '0 20px',
+  color: '#4a5568',
+  fontSize: '16px',
+  lineHeight: '26px',
+  padding: '0 30px',
+};
+
+const ctaSection = {
+  padding: '20px 30px',
+  textAlign: 'center' as const,
 };
 
 const button = {
   backgroundColor: '#E65100',
-  borderRadius: '6px',
+  borderRadius: '8px',
   color: '#fff',
-  fontSize: '15px',
+  fontSize: '16px',
+  fontWeight: 'bold',
   textDecoration: 'none',
   textAlign: 'center' as const,
-  display: 'block',
-  padding: '12px 20px',
+  display: 'inline-block',
+  padding: '14px 28px',
 };
 
-const link = {
-  color: '#E65100',
-  wordBreak: 'break-all' as const,
+const threeStepsSection = {
+  padding: '30px',
+  backgroundColor: '#fafafa',
+  borderTop: '1px solid #e2e8f0',
+  borderBottom: '1px solid #e2e8f0',
+};
+
+const stepRow = {
+  width: '100%',
+};
+
+const stepColumn = {
+  width: '33.33%',
+  padding: '0 10px',
+};
+
+const stepTitle = {
+  fontSize: '14px',
+  fontWeight: '600',
+  color: '#2d3748',
+  margin: '12px 0 4px',
+};
+
+const stepText = {
+  fontSize: '12px',
+  color: '#718096',
+  lineHeight: '18px',
+};
+
+const hr = {
+  borderColor: '#e2e8f0',
+  margin: '30px',
 };
 
 const footer = {
-  color: '#8898aa',
+  color: '#a0aec0',
   fontSize: '12px',
-  lineHeight: '16px',
-  padding: '0 20px',
+  lineHeight: '18px',
+  textAlign: 'center' as const,
+  padding: '0 30px',
 };
