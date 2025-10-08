@@ -52,6 +52,7 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isCartAnimating, setIsCartAnimating] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   
   useEffect(() => {
     const fetchProfile = async () => {
@@ -84,12 +85,17 @@ export function Header({ cartCount = 0 }: HeaderProps) {
   }, [cartCount]);
   
   const handleLogout = async () => {
-    // First, call the server to clear the session cookie
-    await fetch('/api/auth/signout', { method: 'POST' });
-    // Then, sign out from the client-side Firebase instance
-    await auth.signOut();
-    // Redirect to home. The page will reload and see the signed-out state.
-    window.location.href = '/';
+    try {
+      setIsSigningOut(true);
+      // First, call the server to clear the session cookie
+      await fetch('/api/auth/signout', { method: 'POST' });
+      // Then, sign out from the client-side Firebase instance
+      await auth.signOut();
+    } finally {
+      setIsSigningOut(false);
+      // Redirect to home. The page will reload and see the signed-out state.
+      window.location.href = '/';
+    }
   }
   
   const canAccessSellerFeatures = profile?.primary_role === 'seller' || profile?.primary_role === 'sme';
@@ -168,14 +174,15 @@ export function Header({ cartCount = 0 }: HeaderProps) {
                 <div className="border-t mt-4 pt-4">
                     {user ? (
                         <>
-                          <Button
-                              variant="ghost"
-                              className="w-full justify-start text-destructive hover:text-destructive"
-                              onClick={() => { handleLogout(); handleMobileLinkClick(); }}
-                          >
-                              <LogOut className="w-4 h-4 mr-2" />
-                              Sign Out
-                          </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start text-destructive hover:text-destructive"
+                onClick={() => { handleLogout(); handleMobileLinkClick(); }}
+                disabled={isSigningOut}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                {isSigningOut ? 'Signing out...' : 'Sign Out'}
+              </Button>
                         </>
                     ) : (
                          <Link href="/auth" passHref>

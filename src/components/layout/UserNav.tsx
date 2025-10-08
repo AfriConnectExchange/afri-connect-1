@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { useState as ReactUseState } from 'react';
 
 export function UserNav() {
   const router = useRouter();
@@ -24,9 +25,11 @@ export function UserNav() {
   const userAvatar = PlaceHolderImages.find((img) => img.id === 'user-avatar');
   const { user } = useUser();
   const auth = useAuth();
+  const [isSigningOut, setIsSigningOut] = ReactUseState(false);
 
   const handleLogout = async () => {
     try {
+      setIsSigningOut(true);
       await signOut(auth);
       toast({
         title: 'Logged Out',
@@ -39,6 +42,8 @@ export function UserNav() {
         title: 'Logout Failed',
         description: 'An error occurred during logout. Please try again.',
       });
+    } finally {
+      setIsSigningOut(false);
     }
   };
 
@@ -79,11 +84,15 @@ export function UserNav() {
           </Link>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
+        <DropdownMenuItem onClick={handleLogout} disabled={isSigningOut}>
           <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
+          <span>{isSigningOut ? 'Signing out...' : 'Log out'}</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+function useState(arg0: boolean): [any, any] {
+  throw new Error('Function not implemented.');
+}
+
