@@ -1,6 +1,6 @@
 
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatedButton } from '@/components/ui/animated-button';
+import { Loader2 } from 'lucide-react';
 
 const emailTemplates = [
   { id: 'welcome_email', name: 'Welcome Email' },
@@ -20,7 +21,7 @@ export default function MailPreviewPage() {
   const [selectedTemplate, setSelectedTemplate] = useState('welcome_email');
   const [recipient, setRecipient] = useState('');
   const [previewHtml, setPreviewHtml] = useState('');
-  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
   const fetchPreview = async (templateId: string) => {
@@ -31,13 +32,20 @@ export default function MailPreviewPage() {
         setPreviewHtml(await res.text());
       } else {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch preview.' });
+        setPreviewHtml('<p>Error loading preview</p>');
       }
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to fetch preview.' });
+      setPreviewHtml('<p>Error loading preview</p>');
     } finally {
       setIsLoadingPreview(false);
     }
   };
+  
+  useEffect(() => {
+      fetchPreview(selectedTemplate);
+  }, [selectedTemplate]);
+
 
   const sendTestEmail = async () => {
     if (!recipient) {
@@ -77,7 +85,7 @@ export default function MailPreviewPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="template-select">Select Template</Label>
-                <Select value={selectedTemplate} onValueChange={(val) => {setSelectedTemplate(val); fetchPreview(val);}}>
+                <Select value={selectedTemplate} onValueChange={setSelectedTemplate}>
                   <SelectTrigger id="template-select"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {emailTemplates.map(t => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
@@ -113,7 +121,9 @@ export default function MailPreviewPage() {
             <CardContent>
               <div className="border rounded-md aspect-video h-[600px] w-full bg-white">
                 {isLoadingPreview ? (
-                  <div className="flex items-center justify-center h-full">Loading...</div>
+                  <div className="flex items-center justify-center h-full">
+                      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground"/>
+                  </div>
                 ) : (
                   <iframe srcDoc={previewHtml} className="w-full h-full" />
                 )}
