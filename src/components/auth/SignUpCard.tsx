@@ -228,7 +228,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
 
         <form
           onSubmit={handleFormSubmit}
-          className="space-y-4"
+          className="space-y-4 max-w-sm mx-auto w-full"
         >
          <Tabs value={signupMethod} onValueChange={setSignupMethod} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
@@ -236,9 +236,9 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
                 <TabsTrigger value="phone">Phone</TabsTrigger>
             </TabsList>
             <TabsContent value="email" className="space-y-4 pt-4">
-              <div className="space-y-2 max-w-sm mx-auto w-full">
-                <Label htmlFor="email" className="text-left w-full block">Email Address</Label>
-                <div className="relative w-full">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email Address</Label>
+                <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
@@ -256,8 +256,8 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
               </div>
             </TabsContent>
       <TabsContent value="phone" className="space-y-4 pt-4">
-        <div className="space-y-2 max-w-sm mx-auto w-full">
-          <Label htmlFor="phone" className="text-left w-full block">Phone Number</Label>
+        <div className="space-y-2">
+          <Label htmlFor="phone">Phone Number</Label>
           <div className="w-full">
           <PhoneInput
             id="phone"
@@ -274,9 +274,9 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
       </TabsContent>
          </Tabs>
 
-          <div className="space-y-2 max-w-sm mx-auto w-full">
-            <Label htmlFor="name" className="text-left w-full block">Full Name</Label>
-              <div className="relative w-full">
+          <div className="space-y-2">
+            <Label htmlFor="name">Full Name</Label>
+              <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
@@ -292,9 +292,9 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </div>
           </div>
           
-            <div className="space-y-2 max-w-sm mx-auto w-full">
-            <Label htmlFor="password" className="text-left w-full block">Password</Label>
-            <div className="relative w-full">
+            <div className="space-y-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="password"
@@ -322,9 +322,9 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
             </div>
              <PasswordStrength password={formData.password} />
           </div>
-            <div className="space-y-2 max-w-sm mx-auto w-full">
-            <Label htmlFor="confirmPassword" className="text-left w-full block">Confirm Password</Label>
-            <div className="relative w-full">
+            <div className="space-y-2">
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
+            <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 id="confirmPassword"
@@ -354,7 +354,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
               </button>
             </div>
           </div>
-          <div className="flex items-center space-x-2 pt-2 max-w-sm mx-auto w-full">
+          <div className="flex items-center space-x-2 pt-2">
             <Checkbox
               id="terms"
               checked={formData.acceptTerms}
@@ -376,7 +376,7 @@ export default function SignUpCard({ onSwitch, onAuthSuccess, onNeedsOtp, onAuth
           <AnimatedButton
             type="submit"
             size="lg"
-            className="w-full mt-6 max-w-sm mx-auto"
+            className="w-full mt-6"
             isLoading={isLoading}
             animationType="glow"
           >
