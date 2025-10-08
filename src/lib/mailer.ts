@@ -1,8 +1,9 @@
+
 "use server";
 
 import nodemailer from 'nodemailer';
 import { getAdminFirestore } from '@/lib/admin-utils';
-import { renderTemplate } from './email-templates';
+import { renderEmailHtml } from './email-renderer';
 
 type MailOptions = {
   to: string;
@@ -28,7 +29,7 @@ export async function sendMailNow(opts: MailOptions) {
 
   const transporter = nodemailer.createTransport({ host, port, secure, auth: user && pass ? { user, pass } : undefined });
   const adminDb = await getAdminFirestore();
-  const mailRef = adminDb.collection('mail').doc(opts.mailDocId); // Use existing doc ID if provided
+  const mailRef = opts.mailDocId ? adminDb.collection('mail').doc(opts.mailDocId) : null;
 
   let mailContent = {
     subject: opts.subject,
@@ -38,16 +39,16 @@ export async function sendMailNow(opts: MailOptions) {
 
   // If a template is used, render it to get the final HTML and subject
   if (opts.templateId) {
-    const rendered = await renderTemplate(opts.templateId, opts.templateData);
+    const rendered = await renderEmailHtml(opts.templateId, opts.templateData);
     mailContent.subject = rendered.subject;
     mailContent.html = rendered.html;
-    mailContent.text = rendered.text;
+    mailContent.text = `This is an automated email. HTML is required to view it. Subject: ${rendered.subject}`;
   }
   
   const startTime = new Date();
   
   // Update Firestore doc to 'PROCESSING' state
-  if (opts.mailDocId) {
+  if (mailRef) {
     await mailRef.update({
       'delivery.state': 'PROCESSING',
       'delivery.startTime': startTime.toISOString(),
@@ -65,7 +66,7 @@ export async function sendMailNow(opts: MailOptions) {
     });
     
     // Update Firestore doc to 'SUCCESS' state
-    if (opts.mailDocId) {
+    if (mailRef) {
       await mailRef.update({ 
         'delivery.state': 'SUCCESS', 
         'delivery.endTime': new Date().toISOString(),
@@ -76,7 +77,7 @@ export async function sendMailNow(opts: MailOptions) {
 
   } catch (err: any) {
     // Update Firestore doc to 'ERROR' state
-    if (opts.mailDocId) {
+    if (mailRef) {
       await mailRef.update({ 
         'delivery.state': 'ERROR', 
         'delivery.endTime': new Date().toISOString(),
