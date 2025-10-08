@@ -93,6 +93,8 @@ export default function ProfileDetailsPage() {
         reader.readAsDataURL(file);
       });
 
+      console.debug('Starting avatar upload for', file.name);
+
       const res = await fetch('/api/uploads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dataUrl, filename: file.name }) });
       const json = await res.json();
       if (!res.ok || !json.url) throw new Error(json.error || 'Upload failed');
@@ -129,7 +131,7 @@ export default function ProfileDetailsPage() {
                       <img src={user?.photoURL || '/favicon.ico'} alt="avatar" className="w-16 h-16 rounded-full object-cover" />
                       <div>
                         <input type="file" accept="image/*" id="avatar-input" className="hidden" onChange={handleAvatarChange} />
-                        <Button variant="outline" onClick={() => document.getElementById('avatar-input')?.click()} disabled={avatarUploading}>{avatarUploading ? 'Uploading...' : 'Change Photo'}</Button>
+                        <Button type="button" variant="outline" onClick={() => document.getElementById('avatar-input')?.click()} disabled={avatarUploading}>{avatarUploading ? 'Uploading...' : 'Change Photo'}</Button>
                       </div>
                     </div>
                 </div>

@@ -11,7 +11,7 @@ import { z } from 'zod';
 const PROJECT_ID = process.env.PROJECT_ID || process.env.project_id || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
 const CLIENT_EMAIL = process.env.CLIENT_EMAIL || process.env.client_email || process.env.FIREBASE_CLIENT_EMAIL;
 const PRIVATE_KEY_RAW = process.env.PRIVATE_KEY || process.env.private_key || process.env.FIREBASE_PRIVATE_KEY;
-const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/\\n/g, '\n') : undefined;
+const PRIVATE_KEY = PRIVATE_KEY_RAW ? PRIVATE_KEY_RAW.replace(/^"|"$/g, '').replace(/\\n/g, '\n') : undefined;
 const STORAGE_BUCKET = process.env.STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || process.env.firebase_storage_bucket;
 
 const serviceAccount = {
@@ -23,7 +23,9 @@ const serviceAccount = {
 if (!getApps().length) {
   if (serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
     try {
-      initializeApp({ credential: cert(serviceAccount) });
+      const initOpts: any = { credential: cert(serviceAccount) };
+      if (STORAGE_BUCKET) initOpts.storageBucket = STORAGE_BUCKET;
+      initializeApp(initOpts);
     } catch (e) {
       console.error('Firebase Admin initialization error', e);
     }
