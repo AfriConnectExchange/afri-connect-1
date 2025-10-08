@@ -73,14 +73,12 @@ export async function generateAndQueueVerificationEmail(email: string, uid: stri
     const actionUrl = process.env.NEXT_PUBLIC_DOMAIN || process.env.DOMAIN || 'http://localhost:9002';
     const link = await auth.generateEmailVerificationLink(email, { url: `${actionUrl}/onboarding`, handleCodeInApp: true });
 
-    await queueEmail({ 
-        to: email, 
-        subject: 'Verify your AfriConnect email', 
-        templateId: 'welcome_email',
-        templateData: {
-            verify_link: link
-        }
-    });
+  await queueEmail({
+    to: email,
+    subject: 'Verify your AfriConnect email',
+    templateId: 'email_verification',
+    templateData: { verify_link: link },
+  });
   } catch (err) {
     console.error('Failed to generate verification link and queue email', err);
   }

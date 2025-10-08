@@ -103,14 +103,18 @@ export async function POST(request: NextRequest) {
 
   await adminFirestore.collection('profiles').doc(uid!).set(profileData);
         isNewUser = true;
-        // Queue verification email + welcome message if email exists
+        // Queue only the welcome email if email exists. Firebase handles sending verification emails.
         if (profileData.email) {
           try {
-            const { generateAndQueueVerificationEmail, queueEmail } = await import('@/lib/email');
-            await generateAndQueueVerificationEmail(profileData.email, uid!);
-            await queueEmail({ to: profileData.email, subject: 'Welcome to AfriConnect', html: `<p>Welcome ${profileData.full_name || ''} — thanks for joining AfriConnect.</p>`, text: `Welcome to AfriConnect` });
+            const { queueEmail } = await import('@/lib/email');
+            await queueEmail({
+              to: profileData.email,
+              subject: 'Welcome to AfriConnect',
+              html: `<p>Welcome ${profileData.full_name || ''} — thanks for joining AfriConnect.</p>`,
+              text: `Welcome to AfriConnect`,
+            });
           } catch (e) {
-            console.error('Failed to queue welcome/verification emails', e);
+            console.error('Failed to queue welcome email', e);
           }
         }
       }

@@ -31,7 +31,7 @@ export default function PasswordResetConfirmation({ full_name, time }: Props) {
           </Text>
         </Container>
       </Body>
-    </html>
+    </Html>
   );
 }
 
